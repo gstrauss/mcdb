@@ -4,20 +4,28 @@
  * License: GPLv3
  * Originally based upon the Public Domain 'cdb-0.75' by Dan Bernstein
  *
- * - updated to C99
- * - optimized for mmap access to constant db
+ * - updated to C99 and POSIX.1-2001
+ * - optimized for mmap access to constant db (and avoid double buffering)
  * - redesigned for use in threaded programs
  * - convenience routines to check for updated constant db and to refresh mmap
+ * - 64-bit safe (needed to be able to create up to 4 GB database, max cdb size)
  *
  * Advantages over external database
  * - performance: better; avoids context switch to external database process
  * Advantages over specialized hash map
  * - generic, reusable
- * - maintained (created and verified) externally to process (less overhead)
+ * - maintained (created and verified) externally from process (less overhead)
  * - shared across processes (though shared-memory could be used for hash map)
  * - read-only (though memory pages could also be marked read-only for hash map)
  * Disadvantages to specialized hash map
  * - performance: slightly lower than specialized hash map
+ * Disadvantages to djb cdb
+ * - mmap requires address space be available into which to mmap the const db
+ *   (i.e. large const db might fail to mmap into 32-bit process)
+ * - mmap page alignment requirements and use of address space limits const db
+ *   max size when created by 32-bit process.  Sizes approaching 4 GB may fail.
+ * - arbitrary limit of each key or data to (2 GB - 8 bytes) in size
+ *   (djb cdb doc states there is limit besides cdb fitting into 4 GB)
  */
 
 #ifndef MCDB_H
@@ -28,7 +36,7 @@
 #include <unistd.h>   /* size_t   */
 #include <sys/time.h> /* time_t   */
 
-#ifndef _POSIX_MAPPED_FILES
+#if !defined(_POSIX_MAPPED_FILES) || !(_POSIX_MAPPED_FILES-0)
 #error "mcdb requires mmap support"
 #endif
 
@@ -57,8 +65,10 @@ struct mcdb {
   uint32_t dlen;   /* initialized if cdb_findnext() returns 1 */
 };
 
+#define MCDB_HASH_INIT 5381
+
 extern uint32_t
-mcdb_hash(const void *, size_t);
+mcdb_hash(uint32_t, const void *, size_t);
 
 #define mcdb_find(m,key,klen) \
   (mcdb_findstart((m),(key),(klen)) && mcdb_findnext((m),(key),(klen)))
@@ -85,10 +95,6 @@ extern bool
 mcdb_mmap_init(struct mcdb_mmap * restrict, int);
 extern bool
 mcdb_mmap_refresh(struct mcdb_mmap * restrict);
-extern bool
-mcdb_mmap_reopen(struct mcdb_mmap * restrict);
-extern void
-mcdb_mmap_unmap(struct mcdb_mmap * restrict);
 extern void
 mcdb_mmap_free(struct mcdb_mmap * restrict);
 extern void
@@ -104,6 +110,18 @@ mcdb_register_access(struct mcdb_mmap **, bool);
   ((mcdb)->map->next == NULL || mcdb_register_access(&((mcdb)->map), true))
 
 #endif
+
+
+#define MCDB_SLOTS 256                      /* must be power-of-2 */
+#define MCDB_SLOT_MASK (MCDB_SLOTS-1)       /* bitmask */
+#define MCDB_HEADER_SZ (MCDB_SLOTS<<3)      /* MCDB_SLOTS * 8  (256*8 = 2048) */
+#define MCDB_HEADER_MASK (MCDB_HEADER_SZ-1) /* bitmask */
+#define MCDB_INITIAL_SZ (1<<12) /* 4 MB; must be larger than MCDB_HEADER_SZ */
+/* MCDB_INITIAL_SZ must be a multiple of page size, and so 64 KB or larger on
+ * modern systems (e.g. AIX supports setting system-wide 64 KB page size)
+ * This is done for efficiency of I/O and for convenience, so that calculations
+ * for mmap sizes used by mcdb are already multiples of sysconf(_SC_PAGESIZE)
+ */
 
 
 #endif

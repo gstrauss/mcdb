@@ -19,14 +19,11 @@
 #include <pthread.h>       /* pthread_mutex_t */
 #endif
 
-#define MCDB_HASHSTART 5381
-
 uint32_t
-mcdb_hash(const void * const vbuf, const size_t sz)
+mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
 {
     const unsigned char * const restrict buf = (const unsigned char *)vbuf;
     size_t i = SIZE_MAX;  /* (size_t)-1; will wrap around to 0 with first ++i */
-    uint32_t h = MCDB_HASHSTART;
     while (++i < sz)
         h = (h + (h << 5)) ^ buf[i];
     return h;
@@ -45,19 +42,18 @@ mcdb_findstart(struct mcdb * const restrict m,
                const char * const restrict key, const size_t klen)
 {
     const unsigned char * restrict ptr;
-    const uint32_t khash = mcdb_hash(key,klen);
+    const uint32_t khash = mcdb_hash(MCDB_HASH_INIT,key,klen);
 
   #ifdef _THREAD_SAFE
     (void) mcdb_refresh_thread(m);
     /* (ignore rc; continue with previous map in case of failure) */
   #endif
 
-    ptr = m->map->ptr + ((khash << 3) & 2047) + 4;
+    ptr = m->map->ptr + ((khash << 3) & MCDB_HEADER_MASK) + 4;
     m->hslots = mcdb_uint32_unpack_macro(ptr);
     if (!m->hslots)
         return false;
-    ptr -= 4;
-    m->hpos  = mcdb_uint32_unpack_macro(ptr);
+    m->hpos  = mcdb_uint32_unpack_macro(ptr-4);
     m->kpos  = m->hpos + (((khash >> 8) % m->hslots) << 3);
     m->khash = khash;
     m->loop  = 0;
@@ -77,8 +73,7 @@ mcdb_findnext(struct mcdb * const restrict m,
         vpos = mcdb_uint32_unpack_macro(ptr);
         if (!vpos)
             return false;
-        ptr -= 4;
-        khash = mcdb_uint32_unpack_macro(ptr);
+        khash = mcdb_uint32_unpack_macro(ptr-4);
         m->kpos += 8;
         if (m->kpos == m->hpos + (m->hslots << 3))
             m->kpos = m->hpos;
@@ -87,8 +82,7 @@ mcdb_findnext(struct mcdb * const restrict m,
             ptr = mptr + vpos;
             len = mcdb_uint32_unpack_macro(ptr);
             if (len == klen && memcmp(key, ptr+8, klen) == 0) {
-                ptr += 4;
-                m->dlen = mcdb_uint32_unpack_macro(ptr);
+                m->dlen = mcdb_uint32_unpack_macro(ptr+4);
                 m->dpos = vpos + 8 + len;
                 return true;
             }
@@ -115,7 +109,7 @@ mcdb_read(struct mcdb * const restrict m, const uint32_t pos,
 
 static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-bool
+bool  __attribute__((noinline))
 mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
                      const bool add)
 {
@@ -157,6 +151,9 @@ mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
 }
 
 static bool
+mcdb_mmap_reopen(struct mcdb_mmap * const restrict map);
+
+static bool  __attribute__((noinline))
 mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
 {
     struct mcdb_mmap *next;
@@ -185,16 +182,17 @@ mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
 
 #endif  /* _THREAD_SAFE */
 
-bool
+
+static bool  __attribute__((noinline))
 mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
 {
     int fd;
     bool rc;
 
   #if defined(__linux) || defined(__sun)
-    if ((fd = openat(map->dfd, map->fname, O_RDONLY, 0)) != -1)
+    if ((fd = openat(map->dfd, map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
   #else
-    if ((fd = open(map->fname, O_RDONLY, 0)) != -1)
+    if ((fd = open(map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
   #endif
         return false;
 
@@ -211,7 +209,7 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
  * caller may call mcdb_mmap_refresh() before mcdb_find() or mcdb_findstart(),
  * or at other scheduled intervals, or not at all, depending on program need.
  */
-bool
+bool  __attribute__((noinline))
 mcdb_mmap_refresh(struct mcdb_mmap * const restrict map)
 {
     struct stat st;
@@ -233,31 +231,7 @@ mcdb_mmap_refresh(struct mcdb_mmap * const restrict map)
   #endif
 }
 
-bool
-mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
-{
-    struct stat st;
-    void * restrict x;
-
-    mcdb_mmap_unmap(map);
-
-    if (fstat(fd,&st) == 0
-        && st.st_size <= UINT_MAX /*map->size is uint32_t; map only if it fits*/
-        && (x = mmap(0,st.st_size,PROT_READ,MAP_SHARED,fd,0)) != MAP_FAILED) {
-        posix_madvise(x, st.st_size, POSIX_MADV_RANDOM);
-        map->ptr   = (unsigned char *)x;
-        map->size  = (uint32_t)(st.st_size & 0xFFFFFFFF);
-        map->mtime = st.st_mtime;
-      #ifdef _THREAD_SAFE
-        map->next  = NULL;
-        map->refcnt= 0;
-      #endif
-        return true;
-    }
-    return false;
-}
-
-void
+static void  inline
 mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
 {
     if (map->ptr)
@@ -266,7 +240,7 @@ mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
     map->size = 0;    /* map->size initialization required for mcdb_read() */
 }
 
-void
+void  __attribute__((noinline))
 mcdb_mmap_free(struct mcdb_mmap * const restrict map)
 {
     mcdb_mmap_unmap(map);
@@ -274,7 +248,7 @@ mcdb_mmap_free(struct mcdb_mmap * const restrict map)
         map->fn_free(map);
 }
 
-void
+void  __attribute__((noinline))
 mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 {
     if (map->dfd > STDERR_FILENO) {
@@ -284,7 +258,7 @@ mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
     mcdb_mmap_free(map);
 }
 
-struct mcdb_mmap *
+struct mcdb_mmap *  __attribute__((noinline))
 mcdb_mmap_create(const char * const dname, const char * const fname,
                  void * (*fn_malloc)(size_t), void (*fn_free)(void *))
 {
@@ -320,10 +294,35 @@ mcdb_mmap_create(const char * const dname, const char * const fname,
         return map;
     }
     else {
-        /* error initializing in mcdb_mmap_refresh() */
+        /* error initializing in mcdb_mmap_reopen() */
         mcdb_mmap_destroy(map);
         return NULL;
     }
+}
+
+bool  __attribute__((noinline))
+mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
+{
+    const size_t psz = (size_t) sysconf(_SC_PAGESIZE);
+    struct stat st;
+    void * restrict x;
+
+    mcdb_mmap_unmap(map);
+
+    /* size of mcdb is limited to 4 GB minus difference needed to page-align */
+    if (fstat(fd,&st) != 0 || st.st_size > (UINT_MAX & (psz-1))) return false;
+    map->size = (uint32_t)(st.st_size & 0xFFFFFFFF & (psz-1));
+    if (st.st_size & (psz-1)) map->size += psz;
+    x = mmap(0,map->size,PROT_READ,MAP_SHARED,fd,0);
+    if (x == MAP_FAILED) return false;
+    posix_madvise(x, map->size, POSIX_MADV_RANDOM);
+    map->ptr = (unsigned char *)x;
+    map->mtime = st.st_mtime;
+  #ifdef _THREAD_SAFE
+    map->next  = NULL;
+    map->refcnt= 0;
+  #endif
+    return true;
 }
 
 
@@ -333,4 +332,7 @@ mcdb_mmap_create(const char * const dname, const char * const fname,
  *      document: thread: mcdb_mmap_refresh(m->map); mcdb_refresh_thread(m);
  *        (might be this in a macro)  Call to mcdb_refresh_thread() is needed
  *        to decrement reference count (and clean up) previous mmap.
+ */
+/* GPS: TODO portable __attribute__((noinline)) macro substitutions
+ * document the ((noinline)) for reducing code bloat for less frequent paths
  */
