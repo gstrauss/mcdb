@@ -48,10 +48,6 @@ extern void
 mcdb_make_addbuf_key(struct mcdb_make * restrict,const char * restrict,size_t);
 extern void
 mcdb_make_addbuf_data(struct mcdb_make * restrict,const char * restrict,size_t);
-extern int
-mcdb_make_addfdstream_key(struct mcdb_make * restrict, int, size_t);
-extern int
-mcdb_make_addfdstream_data(struct mcdb_make * restrict, int, size_t);
 #define mcdb_make_addend(m)    (++(m)->head->num)
 #define mcdb_make_addrevert(m) ((m)->pos = (m)->head->hp[(m)->head->num].p)
 

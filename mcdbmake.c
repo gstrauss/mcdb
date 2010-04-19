@@ -10,13 +10,22 @@
 #include <stdio.h>     /* fprintf(), rename() */
 #include <unistd.h>    /* read() */
 
+/* GPS: also write an interface to cdb_make that uses an mmap input file,
+ * hopefully sharing much of the same code here since we can initialize
+ * the 'mcdb_input.buf' to the mmap'd file, and initialize fd == -1 so that
+ * we don't attempt 'read' if we reach EOF without trailing newline
+ * ==> Will probably want to pass mcdb_input into routine, including
+ *     allocated in.buf so that caller can configure with a buffer or mmap.
+ *     Use fd == -1 to indicate that it is an mmap.
+ */
+
 enum {
-  MCDB_ERROR_USAGE = 1,
-  MCDB_ERROR_READFORMAT,
-  MCDB_ERROR_READ,
-  MCDB_ERROR_WRITE,
-  MCDB_ERROR_RENAME,
-  MCDB_ERROR_MALLOC
+  MCDB_MAKE_ERROR_USAGE = 1,
+  MCDB_MAKE_ERROR_READFORMAT,
+  MCDB_MAKE_ERROR_READ,
+  MCDB_MAKE_ERROR_WRITE,
+  MCDB_MAKE_ERROR_RENAME,
+  MCDB_MAKE_ERROR_MALLOC
 };
 
 struct mcdb_input {
@@ -29,9 +38,10 @@ struct mcdb_input {
 
 /* GPS: move much of this code into cdb_make.c or cdb_make_fd.c */
 
-static void
+static void  __attribute__((noinline))
 mcdb_bufrealign (struct mcdb_input * const restrict b)
 {
+    if (b->fd == -1) return;             /* we use fd == -1 as flag for mmap */
     if (b->datasz - b->pos < 256 && b->pos != 0) {
         if ((b->datasz -= b->pos))
             memmove(b->buf, b->buf + b->pos, b->datasz);
@@ -40,13 +50,11 @@ mcdb_bufrealign (struct mcdb_input * const restrict b)
     if (b->datasz == 0) b->buf[0] = '\0';  /* known char in buf when no data */
 }
 
-static ssize_t
+static ssize_t  __attribute__((noinline))
 mcdb_bufread (struct mcdb_input * const restrict b)
 {
     ssize_t r;
-/* GPS: need to store and pass separate fd for caller to be able to open
- * other socket or fd stream
- */
+    if (b->fd == -1) return (ssize_t)-1; /* we use fd == -1 as flag for mmap */
     do { r = read(b->fd, b->buf + b->datasz, b->bufsz - b->datasz);
     } while (r == -1 && errno == EINTR);
     return r;
@@ -59,8 +67,10 @@ mcdb_bufread_startline (struct mcdb_input * const restrict b)
     size_t pos;
     char * const buf = b->buf;
 
+    /* mcdbmake lines begin "+nnnn,mmmm:...."; max 23 chars with 32-bit nums */
+    if (b->datasz - b->pos >= 23)
+        return 0;
     mcdb_bufrealign(b);
-
     pos = b->pos;
     r = b->datasz - pos;       /* to search existing buf before reading more */
     /* mcdbmake lines begin "+nnnn,mmmm:...."; max 23 chars with 32-bit nums */
@@ -71,53 +81,65 @@ mcdb_bufread_startline (struct mcdb_input * const restrict b)
     return r;  /* -1 on error, any other value is success */
 }
 
-static int
+/* GPS: since this is the same code as mcdb_bufread_data, pass fn ptr as
+ * additional arg and use the same code */
+static ssize_t
 mcdb_bufread_key (struct mcdb_input * const restrict b, size_t len,
                   struct mcdb_make * const restrict m)
 {
-    size_t u = b->datasz - b->pos;
-    if (u != 0) {
-        u = (len < u ? len : u);
-        mcdb_make_addbuf_key(m, b->buf + b->pos, u);
-        b->pos += u;
-        len -= u;
-    }
-/* GPS: consistency in return values when I am defining the interface */
-    return (len == 0) ? 0 : mcdb_make_addfdstream_key(m, b->fd, len);
+    size_t u;
+    do {
+        if ((u = b->datasz - b->pos) != 0) {
+            u = (len < u ? len : u);
+            mcdb_make_addbuf_key(m, b->buf + b->pos, u);
+            b->pos += u;
+            len -= u;
+            mcdb_bufrealign(b);
+        }
+    } while (len != 0 && mcdb_bufread(b) != -1);
+    return (len == 0) ? 0 : -1;
 }
 
 static ssize_t
 mcdb_bufread_arrow (struct mcdb_input * const restrict b)
 {
     ssize_t r = 0;
-    mcdb_bufrealign(b);
     /* mcdbmake lines contain "->" between key and data */
+    if (b->datasz - b->pos >= 2)
+        return 0;
+    mcdb_bufrealign(b);
     while (b->datasz - b->pos < 2 && (r = mcdb_bufread(b)) > 0)
         b->datasz += r;
     return r;  /* -1 on error, any other value is success */
 }
 
-static int
+/* GPS: since this is the same code as mcdb_bufread_key, pass fn ptr as
+ * additional arg and use the same code */
+static ssize_t
 mcdb_bufread_data (struct mcdb_input * const restrict b, size_t len,
                    struct mcdb_make * const restrict m)
 {
-    size_t u = b->datasz - b->pos;
-    if (u != 0) {
-        u = (len < u ? len : u);
-        mcdb_make_addbuf_data(m, b->buf + b->pos, u);
-        b->pos += u;
-        len -= u;
-    }
-/* GPS: consistency in return values when I am defining the interface */
-    return (len == 0) ? 0 : mcdb_make_addfdstream_data(m, b->fd, len);
+    size_t u;
+    do {
+        if ((u = b->datasz - b->pos) != 0) {
+            u = (len < u ? len : u);
+            mcdb_make_addbuf_data(m, b->buf + b->pos, u);
+            b->pos += u;
+            len -= u;
+            mcdb_bufrealign(b);
+        }
+    } while (len != 0 && mcdb_bufread(b) != -1);
+    return (len == 0) ? 0 : -1;
 }
 
 static ssize_t
 mcdb_bufread_endline (struct mcdb_input * const restrict b)
 {
     ssize_t r = 0;
-    mcdb_bufrealign(b);
     /* mcdbmake lines must end in '\n' */
+    if (b->datasz - b->pos > 0)
+        return 0;
+    mcdb_bufrealign(b);
     if (b->datasz == b->pos && (r = mcdb_bufread(b)) > 0)
         b->datasz += r;
     return r;  /* -1 on error, any other value is success */
@@ -135,6 +157,7 @@ int mcdb_make_parse_fd (const int inputfd, const int outputfd)
     char *q;
     size_t klen;
     size_t dlen;
+    const size_t bufsz = BUFSZ;
     int rv = EXIT_SUCCESS;
 
     memset(&in, '\0', sizeof(struct mcdb_input));
@@ -142,12 +165,12 @@ int mcdb_make_parse_fd (const int inputfd, const int outputfd)
     in.bufsz = BUFSZ;
     in.buf = malloc(BUFSZ);  /* 64 KB buffer */
     if (in.buf == NULL)
-        return MCDB_ERROR_WRITE;
+        return MCDB_MAKE_ERROR_WRITE;
 
     memset(&m, '\0', sizeof(struct mcdb_make));
     if (mcdb_make_start(&m, outputfd, malloc, free) == -1) {
         free(in.buf);
-        return MCDB_ERROR_WRITE;
+        return MCDB_MAKE_ERROR_WRITE;
     }
 
     /* line format: "+nnnn,mmmm:xxxx->yyyy\n"
@@ -162,59 +185,61 @@ int mcdb_make_parse_fd (const int inputfd, const int outputfd)
 
         if (mcdb_bufread_startline(&in) != -1)
             p = in.buf + in.pos;
-        else { rv = MCDB_ERROR_READ; break; }
+        else { rv = MCDB_MAKE_ERROR_READ; break; }
 
         if (*p == '\n') {
-            rv = (mcdb_make_finish(&m) == 0) ? EXIT_SUCCESS : MCDB_ERROR_WRITE;
+            rv = (mcdb_make_finish(&m) == 0)
+              ? EXIT_SUCCESS
+              : MCDB_MAKE_ERROR_WRITE;
             break;
         }
 
         if (*p == '+')
             ++p;
-        else { rv = MCDB_ERROR_READFORMAT; break; }
+        else { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
 
         /* "keylen," */
         if ('0' <= *p && *p <= '9')
             klen = strtoul(p, &q, 10); /* mcdb_make_addbegin checks klen <2GB */
-        else { rv = MCDB_ERROR_READFORMAT; break; }
+        else { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
         if (*q == ',')
             p = q + 1;
-        else { rv = MCDB_ERROR_READFORMAT; break; }
+        else { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
 
         /* "datalen:" */
         if ('0' <= *p && *p <= '9')
             dlen = strtoul(p, &q, 10); /* mcdb_make_addbegin checks dlen <2GB */
-        else { rv = MCDB_ERROR_READFORMAT; break; }
+        else { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
         if (*q == ':')
             in.pos = q - in.buf + 1;
-        else { rv = MCDB_ERROR_READFORMAT; break; }
+        else { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
 
         /* shortcut if entire data line is buffered and available */
-        if (klen < BUFSZ && dlen < BUFSZ && in.datasz-in.pos >= klen+dlen+3) {
+        if (klen < bufsz && dlen < bufsz && in.datasz-in.pos >= klen+dlen+3) {
             p = in.buf + in.pos;
             if (p[klen] == '-' && p[klen+1] == '>' && p[klen+2+dlen] == '\n') {
                 if (mcdb_make_add(&m, p, klen, p+klen+2, dlen) == 0)
                     in.pos += klen + dlen + 3;
-                else { rv = MCDB_ERROR_WRITE; break; }
+                else { rv = MCDB_MAKE_ERROR_WRITE; break; }
             }
-            else { rv = MCDB_ERROR_READFORMAT; break; }
+            else { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
         }
         else { /* entire data line is not buffered; handle in parts */
 /* GPS: might extract to separate subroutine */
 /* GPS: instead of code duplication, set flag for key/data difference fns? */
             if (mcdb_make_addbegin(&m, klen, dlen) == -1)
-                { rv = MCDB_ERROR_WRITE; break; }
+                { rv = MCDB_MAKE_ERROR_WRITE; break; }
             if (mcdb_bufread_key(&in, klen, &m) == -1)
-                { rv = MCDB_ERROR_READFORMAT; break; }
+                { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
             if (mcdb_bufread_arrow(&in) == -1 || in.datasz - in.pos < 2
                 || in.buf[in.pos] != '-' || in.buf[in.pos+1] != '>')
-                { rv = MCDB_ERROR_READFORMAT; break; }
+                { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
             in.pos += 2;
             if (mcdb_bufread_data(&in, klen, &m) == -1)
-                { rv = MCDB_ERROR_READFORMAT; break; }
+                { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
             mcdb_make_addend(&m);
             if (mcdb_bufread_endline(&in) == -1 || in.buf[in.pos] != '\n')
-                { rv = MCDB_ERROR_READFORMAT; break; }
+                { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
             ++in.pos;
         }
 
@@ -254,10 +279,10 @@ main(const int argc, char ** restrict argv)
         if (rename(fntmp,fn) == 0)
             rv = EXIT_SUCCESS;
         else
-            rv = MCDB_ERROR_RENAME;
+            rv = MCDB_MAKE_ERROR_RENAME;
     }
     else if (rv == 0)
-        rv = MCDB_ERROR_WRITE;
+        rv = MCDB_MAKE_ERROR_WRITE;
 
 
     #define FATAL "cdbmake: fatal: "
@@ -265,25 +290,25 @@ main(const int argc, char ** restrict argv)
     switch (rv) {
       case EXIT_SUCCESS:
         return EXIT_SUCCESS;
-      case MCDB_ERROR_USAGE:
+      case MCDB_MAKE_ERROR_USAGE:
         fprintf(stderr, "cdbmake: usage: cdbmake f ftmp\n");
         return 100;
-      case MCDB_ERROR_READFORMAT:
+      case MCDB_MAKE_ERROR_READFORMAT:
         fprintf(stderr, "%sunable to read input: bad format\n", FATAL);
         return 111;
-      case MCDB_ERROR_READ:
+      case MCDB_MAKE_ERROR_READ:
         fprintf(stderr, "%sunable to read input: ", FATAL);
         perror(NULL);
         return 111;
-      case MCDB_ERROR_WRITE:
+      case MCDB_MAKE_ERROR_WRITE:
         fprintf(stderr, "%sunable to write output (%s): ", FATAL, fntmp);
         perror(NULL);
         return 111;
-      case MCDB_ERROR_RENAME:
+      case MCDB_MAKE_ERROR_RENAME:
         fprintf(stderr, "%sunable to rename %s to %s: ", FATAL, fntmp, fn);
         perror(NULL);
         return 111;
-      case MCDB_ERROR_MALLOC:
+      case MCDB_MAKE_ERROR_MALLOC:
         fprintf(stderr, "%sunable to malloc: ", FATAL);
         perror(NULL);
         return 111;

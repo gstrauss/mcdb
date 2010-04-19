@@ -112,40 +112,6 @@ mcdb_make_addbuf_key(struct mcdb_make * const restrict m,
     mcdb_make_addbuf_data(m, buf, len);
 }
 
-int
-mcdb_make_addfdstream_data(struct mcdb_make * const restrict m,
-                           const int fd, size_t len)
-{
-    /* len validated in mcdb_make_addbegin(); passing any other len is wrong. */
-    /* fd is expected to be opened blocking, i.e. -not- opened O_NONBLOCK */
-    ssize_t r;
-    size_t pos = m->pos;
-    char * const map = m->map;
-    do { r = read(fd, map + pos, len);
-    } while (r != -1 ? (pos += r, len -= r) : errno == EINTR);
-    m->pos = pos;
-    return (r != -1 ? 0 : -1);
-}
-
-int
-mcdb_make_addfdstream_key(struct mcdb_make * const restrict m,
-                          const int fd, size_t len)
-{
-    /* len validated in mcdb_make_addbegin(); passing any other len is wrong. */
-    /* fd is expected to be opened blocking, i.e. -not- opened O_NONBLOCK */
-    /* Note: same code as addfdstream_data plus inline calculation of hash */
-    /* (hash done inline for better chance of just-read pages still in memory)*/
-    ssize_t r;
-    size_t pos = m->pos;
-    char * const map = m->map;
-    uint32_t * const h = &m->head->hp[m->head->num].h;
-    while ((r = read(fd, map + pos, len)) != -1
-           ? (*h = mcdb_hash(*h, map + pos, (size_t)r), pos += r, len -= r)
-           : errno == EINTR) ;
-    m->pos = pos;
-    return (r != -1 ? 0 : -1);
-}
-
 int  __attribute__((noinline))
 mcdb_make_addbegin(struct mcdb_make * const restrict m,
                    const size_t keylen, const size_t datalen)
