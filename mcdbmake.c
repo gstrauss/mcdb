@@ -239,12 +239,9 @@ main(const int argc, char ** restrict argv)
     char * restrict buf;
     int errsave;
 
-    if (argc < 3 || !*(fn = *++argv) || !*(fntmp = *++argv)) {
-        fprintf(stderr,"cdbmake: usage: cdbmake f ftmp\n");
-        return 100;
-    }
-
-    if ((buf = malloc(BUFSZ)) != NULL
+    if (argc < 3 || !*(fn = *++argv) || !*(fntmp = *++argv))
+        rv = MCDB_MAKE_ERROR_USAGE;
+    else if ((buf = malloc(BUFSZ)) != NULL
         && (fd = open(fntmp, O_WRONLY | O_TRUNC | O_CREAT, 0644)) != -1
         && STDIN_FILENO != fd
         && (rv = mcdb_make_parse_fd(STDIN_FILENO,buf,BUFSZ,fd,malloc,free)) == 0
