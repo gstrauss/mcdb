@@ -24,7 +24,7 @@
  *   (i.e. large const db might fail to mmap into 32-bit process)
  * - mmap page alignment requirements and use of address space limits const db
  *   max size when created by 32-bit process.  Sizes approaching 4 GB may fail.
- * - arbitrary limit of each key or data to (2 GB - 8 bytes) in size
+ * - arbitrary limit of each key or data set to (INT_MAX - 8 bytes; almost 2 GB)
  *   (djb cdb doc states there is limit besides cdb fitting into 4 GB)
  */
 

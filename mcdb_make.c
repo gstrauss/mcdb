@@ -119,12 +119,12 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     /* validate/allocate space for next key/data pair */
     char * const p = m->map + m->pos;
     const size_t pos = m->pos;
-    const size_t len = 8 + keylen + datalen;
+    const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
     struct mcdb_hplist * const head =
       m->head->num < MCDB_HPLIST ? m->head : mcdb_hplist_alloc(m);
     if (head == NULL) return -1;
     head->hp[head->num].h = MCDB_HASH_INIT;
-    head->hp[head->num].p = (uint32_t)pos;
+    head->hp[head->num].p = (uint32_t)pos;  /* arbitrary ~2 GB limit for lens */
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
     if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
     if (m->fsz < pos+len && !mcdb_mmap_resize(m,pos+len))          return -1;
