@@ -186,11 +186,13 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
     m->fn_malloc = fn_malloc;
     m->fn_free = fn_free;
     if (mcdb_hplist_alloc(m) != NULL) {  /* init to skip NULL check every add */
-        m->head->hp[m->head->num].p = (uint32_t)m->pos;/*mcdb_make_addrevert()*/
+        m->head->hp[m->head->num].p = (uint32_t)m->pos;
         return 0;
     }
     else {
+        const int errsave = errno;
         mcdb_make_destroy(m);
+        errno = errsave;
         return -1;
     }
 }

@@ -3,6 +3,7 @@
 #define _XOPEN_SOURCE 500
 
 #include "mcdb_make.h"
+#include "mcdb_error.h"
 
 #include <sys/types.h>
 #include <errno.h>
@@ -10,7 +11,7 @@
 #include <stdbool.h>   /* bool */
 #include <stdlib.h>    /* malloc(), free(), mkstemp(), EXIT_SUCCESS */
 #include <string.h>    /* memcpy(), memmove(), memchr() */
-#include <stdio.h>     /* fprintf(), rename() */
+#include <stdio.h>     /* rename() */
 #include <unistd.h>    /* read(), unlink(), STDIN_FILENO */
 
 /* const db input line format: "+nnnn,mmmm:xxxx->yyyy\n"
@@ -22,15 +23,6 @@
  *
  * const db blank line ("\n") ends input
  */
-
-/* MCDB_MAKE_ERROR_* enum error values are expected to be < 0 */
-enum {
-  MCDB_MAKE_ERROR_READFORMAT = -1,
-  MCDB_MAKE_ERROR_READ       = -2,
-  MCDB_MAKE_ERROR_WRITE      = -3,
-  MCDB_MAKE_ERROR_MALLOC     = -4,
-  MCDB_MAKE_ERROR_USAGE      = -5
-};
 
 struct mcdb_input {
   char * restrict buf;
@@ -117,18 +109,18 @@ mcdb_bufread_preamble (struct mcdb_input * const restrict b,
     /* mcdbmake lines begin "+nnnn,mmmm:...."; max 23 chars with 32-bit nums */
     /* mcdbmake blank line ends input */
     if (b->datasz - b->pos < 23 && mcdb_bufread_preamble_fill(b) == -1)
-        return MCDB_MAKE_ERROR_READ;                /* -1  error read         */
+        return MCDB_ERROR_READ;                /* -1  error read         */
     switch (b->buf[b->pos++]) {
       case  '+': break;
-      case '\n': return EXIT_SUCCESS;               /*  0  done; EXIT_SUCCESS */
-      default:   return MCDB_MAKE_ERROR_READFORMAT; /* -2  error read format  */
+      case '\n': return EXIT_SUCCESS;          /*  0  done; EXIT_SUCCESS */
+      default:   return MCDB_ERROR_READFORMAT; /* -2  error read format  */
     }
     return (   mcdb_bufread_number(b,klen)
             && b->datasz - b->pos != 0 && b->buf[b->pos++] == ','
             && mcdb_bufread_number(b,dlen)
             && b->datasz - b->pos != 0 && b->buf[b->pos++] == ':')
-            ? true                                  /*  1  valid preamble     */
-            : MCDB_MAKE_ERROR_READFORMAT;           /* -2  error read format  */
+            ? true                             /*  1  valid preamble     */
+            : MCDB_ERROR_READFORMAT;           /* -2  error read format  */
 }
 
 static bool
@@ -184,7 +176,7 @@ mcdb_bufread_fds (const int inputfd, char * const buf, const size_t bufsz,
 
     memset(&m, '\0', sizeof(struct mcdb_make));
     if (mcdb_make_start(&m, outputfd, fn_malloc, fn_free) == -1)
-        return MCDB_MAKE_ERROR_WRITE;
+        return MCDB_ERROR_WRITE;
 
     while ((rv = mcdb_bufread_preamble(&in,&klen,&dlen)) > 0) {
 
@@ -195,21 +187,21 @@ mcdb_bufread_fds (const int inputfd, char * const buf, const size_t bufsz,
             if (p[klen] == '-' && p[klen+1] == '>' && p[klen+2+dlen] == '\n') {
                 if (mcdb_make_add(&m, p, klen, p+klen+2, dlen) == 0)
                     in.pos += klen + dlen + 3;
-                else { rv = MCDB_MAKE_ERROR_WRITE;      break; }
-            } else {   rv = MCDB_MAKE_ERROR_READFORMAT; break; }
+                else { rv = MCDB_ERROR_WRITE;      break; }
+            } else {   rv = MCDB_ERROR_READFORMAT; break; }
         }
         else { /* entire data line is not buffered; handle in parts */
             if (mcdb_make_addbegin(&m, klen, dlen) != -1) {
                 if (mcdb_bufread_rec(&m, klen, dlen, &in))
                     mcdb_make_addend(&m);
-                else { rv = MCDB_MAKE_ERROR_READFORMAT; break; }
-            } else {   rv = MCDB_MAKE_ERROR_WRITE;      break; }
+                else { rv = MCDB_ERROR_READFORMAT; break; }
+            } else {   rv = MCDB_ERROR_WRITE;      break; }
         }
 
     }
 
     if (rv == EXIT_SUCCESS)
-        rv = (mcdb_make_finish(&m) == 0) ? EXIT_SUCCESS : MCDB_MAKE_ERROR_WRITE;
+        rv = (mcdb_make_finish(&m) == 0) ? EXIT_SUCCESS : MCDB_ERROR_WRITE;
 
     if (rv != EXIT_SUCCESS) {
         const int errsave = errno;
@@ -222,7 +214,7 @@ mcdb_bufread_fds (const int inputfd, char * const buf, const size_t bufsz,
 
 static int
 close_nointr(const int fd)
-{ int r; do {r=close(fd);} while (r != 0 && errno==EINTR); return r; }
+{ int r; do { r = close(fd); } while (r != 0 && errno == EINTR); return r; }
 
 /* Examples:
  * - read from stdin:
@@ -231,7 +223,8 @@ close_nointr(const int fd)
  *     mcdb_make_from_fd(-1, mmap_ptr, mmap_sz, "fname.cdb", malloc, free);
  */
 int  __attribute__((noinline))
-mcdb_make_from_fd (const int inputfd, char * const buf, const size_t bufsz,
+mcdb_make_from_fd (const int inputfd,
+                   char * const restrict buf, const size_t bufsz,
                    const char * const restrict fname,
                    void * (* const fn_malloc)(size_t),
                    void (* const fn_free)(void *))
@@ -242,7 +235,7 @@ mcdb_make_from_fd (const int inputfd, char * const buf, const size_t bufsz,
     const size_t len = strlen(fname);
     char * const restrict fnametmp = fn_malloc(len + 8);
     if (fnametmp == NULL)
-        return MCDB_MAKE_ERROR_MALLOC;
+        return MCDB_ERROR_MALLOC;
     memcpy(fnametmp, fname, len);
     memcpy(fnametmp+len, ".XXXXXX", 8);
 
@@ -254,7 +247,7 @@ mcdb_make_from_fd (const int inputfd, char * const buf, const size_t bufsz,
     else {
         const int errsave = errno;
         if (rv == 0)
-            rv = MCDB_MAKE_ERROR_WRITE;
+            rv = MCDB_ERROR_WRITE;
         if (fd != -1) {                      /* (fd == -1 if mkstemp() fails) */
             unlink(fnametmp);
             if (fd >= 0)
@@ -268,52 +261,29 @@ mcdb_make_from_fd (const int inputfd, char * const buf, const size_t bufsz,
 }
 
 
+
+#include "mcdb_error.h"
+
+#include <libgen.h>  /* basename() */
+
 int
 main(const int argc, char ** restrict argv)
 {
     enum { BUFSZ = 65536 }; /* 64 KB buffer */
-    char * restrict buf   = NULL;
-    char * restrict fname = NULL;
-    int rv = 0;
-    int errsave;
+    char * restrict buf = NULL;
+    char *fname;
+    int rv;
 
-    if (argc < 2 || !*(fname = *++argv))
-        rv = MCDB_MAKE_ERROR_USAGE;
-    else if ((buf = malloc(BUFSZ)) == NULL)
-        rv = MCDB_MAKE_ERROR_MALLOC;
-    else
-        rv = mcdb_make_from_fd(STDIN_FILENO, buf, BUFSZ, fname, malloc, free);
+    mcdb_usage = "mcdbmake fname.cdb\n";
+
+    rv = (argc == 2 && *(fname = argv[1]))
+      ? ((buf = malloc(BUFSZ)) != NULL)
+          ? mcdb_make_from_fd(STDIN_FILENO, buf, BUFSZ, fname, malloc, free)
+          : MCDB_ERROR_MALLOC
+      : MCDB_ERROR_USAGE;
 
     free(buf);
-    errsave = errno;
-
-    #define FATAL "cdbmake: fatal: "
-
-    switch (rv) {
-      case EXIT_SUCCESS:
-        return EXIT_SUCCESS;
-      case MCDB_MAKE_ERROR_READFORMAT:
-        fprintf(stderr, "%sunable to read input: bad format\n", FATAL);
-        return 111;
-      case MCDB_MAKE_ERROR_READ:
-        fprintf(stderr, "%sunable to read input: ", FATAL);
-        errno = errsave; perror(NULL);
-        return 111;
-      case MCDB_MAKE_ERROR_WRITE:
-        fprintf(stderr, "%sunable to write output: ", FATAL);
-        errno = errsave; perror(NULL);
-        return 111;
-      case MCDB_MAKE_ERROR_MALLOC:
-        fprintf(stderr, "%sunable to malloc: ", FATAL);
-        errno = errsave; perror(NULL);
-        return 111;
-      case MCDB_MAKE_ERROR_USAGE:
-        fprintf(stderr, "mcdbmake: usage: mcdbmake fname\n");
-        return 100;
-      default:
-        fprintf(stderr, "%sunknown error\n", FATAL);
-        return 111;
-    }
+    return rv == EXIT_SUCCESS ? EXIT_SUCCESS : mcdb_error(rv,basename(argv[0]));
 }
 
 /* GPS: move much of this code into cdb_make.c or cdb_make_fd.c */
@@ -321,4 +291,3 @@ main(const int argc, char ** restrict argv)
  * Given filename, mmap and pass to mcdb_make_parse_fd () with -1 as fd, 
  * map, mapsz as args.
  */
-
