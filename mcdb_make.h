@@ -6,18 +6,8 @@
 #define MCDB_MAKE_H
 
 #include <sys/types.h> /* size_t   */
-#include <stdint.h>    /* uint32_t */
-#include <limits.h>    /* UINT_MAX */
 
-#define MCDB_HPLIST 1000
-
-struct mcdb_hp { uint32_t h; uint32_t p; };
-
-struct mcdb_hplist {
-  struct mcdb_hp hp[MCDB_HPLIST];
-  struct mcdb_hplist *next;
-  uint32_t num;
-};
+struct mcdb_hp;                        /* (private structure) */
 
 struct mcdb_make {
   size_t pos;
@@ -48,7 +38,9 @@ extern void
 mcdb_make_addbuf_key(struct mcdb_make * restrict,const char * restrict,size_t);
 extern void
 mcdb_make_addbuf_data(struct mcdb_make * restrict,const char * restrict,size_t);
-#define mcdb_make_addend(m)    (++(m)->head->num)
-#define mcdb_make_addrevert(m) ((m)->pos = (m)->head->hp[(m)->head->num].p)
+extern void
+mcdb_make_addend(struct mcdb_make * restrict);
+extern void
+mcdb_make_addrevert(struct mcdb_make * restrict);
 
 #endif

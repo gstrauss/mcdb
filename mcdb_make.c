@@ -20,6 +20,18 @@
 #include <errno.h>
 #include <stdlib.h>  /* malloc() */
 #include <string.h>  /* memcpy() */
+#include <stdint.h>  /* uint32_t */
+#include <limits.h>  /* UINT_MAX, INT_MAX */
+
+#define MCDB_HPLIST 1000
+
+struct mcdb_hp { uint32_t h; uint32_t p; };
+
+struct mcdb_hplist {
+  struct mcdb_hp hp[MCDB_HPLIST];
+  struct mcdb_hplist *next;
+  uint32_t num;
+};
 
 static struct mcdb_hplist *  __attribute__((noinline))
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
@@ -32,15 +44,10 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
     return (m->head = head);
 }
 
-static bool  __attribute__((noinline))
-mcdb_ftruncate_retry(const int fd, const size_t sz)
-{
-    int rv;
-    /* (compilation with large file support enables off_t max > 2 GB) */
-    while ((rv = ftruncate(fd, (off_t)sz)) != 0 && errno == EINTR)
-        ;
-    return (rv == 0);
-}
+/* (compilation with large file support enables off_t max > 2 GB in cast) */
+static int  __attribute__((noinline))
+mcdb_ftruncate_nointr(const int fd, const size_t sz)
+{ int r; do{r=ftruncate(fd,(off_t)sz);}while(r != 0 && errno==EINTR);return r; }
 
 static bool  __attribute__((noinline))
 mcdb_mmap_resize(struct mcdb_make * const restrict m, const size_t sz)
@@ -53,7 +60,7 @@ mcdb_mmap_resize(struct mcdb_make * const restrict m, const size_t sz)
     while (fsz < sz)
         fsz = (fsz < (UINT_MAX>>2) ? (fsz << 2) : UINT_MAX);
 
-    if (!mcdb_ftruncate_retry(m->fd, fsz)) return false;
+    if (mcdb_ftruncate_nointr(m->fd, fsz) != 0) return false;
 
   #ifdef __GLIBC__
 
@@ -81,7 +88,7 @@ mcdb_mmap_resize(struct mcdb_make * const restrict m, const size_t sz)
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m)
 {
-    if (!mcdb_ftruncate_retry(m->fd, m->pos)) return false;
+    if (mcdb_ftruncate_nointr(m->fd, m->pos) != 0) return false;
 
   #if defined(_POSIX_MAPPED_FILES) && _POSIX_MAPPED_FILES-0 \
    && defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO-0
@@ -89,6 +96,28 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m)
   #endif
 
     return true;
+}
+
+int
+mcdb_make_addbegin(struct mcdb_make * const restrict m,
+                   const size_t keylen, const size_t datalen)
+{
+    /* validate/allocate space for next key/data pair */
+    char * const p = m->map + m->pos;
+    const size_t pos = m->pos;
+    const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
+    struct mcdb_hplist * const head =
+      m->head->num < MCDB_HPLIST ? m->head : mcdb_hplist_alloc(m);
+    if (head == NULL) return -1;
+    head->hp[head->num].h = MCDB_HASH_INIT;
+    head->hp[head->num].p = (uint32_t)pos;  /* arbitrary ~2 GB limit for lens */
+    if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
+    if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
+    if (m->fsz < pos+len && !mcdb_mmap_resize(m,pos+len))          return -1;
+    mcdb_uint32_pack_macro(p,keylen);
+    mcdb_uint32_pack_macro(p+4,datalen);
+    m->pos += 8;
+    return 0;
 }
 
 void  inline
@@ -112,26 +141,16 @@ mcdb_make_addbuf_key(struct mcdb_make * const restrict m,
     mcdb_make_addbuf_data(m, buf, len);
 }
 
-int  __attribute__((noinline))
-mcdb_make_addbegin(struct mcdb_make * const restrict m,
-                   const size_t keylen, const size_t datalen)
+void  inline
+mcdb_make_addend(struct mcdb_make * restrict m)
 {
-    /* validate/allocate space for next key/data pair */
-    char * const p = m->map + m->pos;
-    const size_t pos = m->pos;
-    const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
-    struct mcdb_hplist * const head =
-      m->head->num < MCDB_HPLIST ? m->head : mcdb_hplist_alloc(m);
-    if (head == NULL) return -1;
-    head->hp[head->num].h = MCDB_HASH_INIT;
-    head->hp[head->num].p = (uint32_t)pos;  /* arbitrary ~2 GB limit for lens */
-    if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
-    if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
-    if (m->fsz < pos+len && !mcdb_mmap_resize(m,pos+len))          return -1;
-    mcdb_uint32_pack_macro(p,keylen);
-    mcdb_uint32_pack_macro(p+4,datalen);
-    m->pos += 8;
-    return 0;
+    ++m->head->num;
+}
+
+void  inline
+mcdb_make_addrevert(struct mcdb_make * restrict m)
+{
+    m->pos = m->head->hp[m->head->num].p;
 }
 
 int
@@ -155,7 +174,7 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
                 void * (*fn_malloc)(size_t), void (*fn_free)(void *))
 {
     /* MCDB_INITIAL_SZ is page-sized multiple for mmap convienence */
-    if (!mcdb_ftruncate_retry(fd, MCDB_INITIAL_SZ)) return -1;
+    if (mcdb_ftruncate_nointr(fd, MCDB_INITIAL_SZ) != 0) return -1;
     m->map = mmap(0, MCDB_INITIAL_SZ, PROT_WRITE, MAP_SHARED, fd, 0);
     if (m->map == MAP_FAILED) return -1;
     posix_madvise(m->map, MCDB_INITIAL_SZ, POSIX_MADV_SEQUENTIAL);
@@ -208,6 +227,10 @@ int mcdb_make_finish(struct mcdb_make * const restrict m)
         if (u > len)
             len = u;
     }
+
+/* GPS: for alignment efficiencies when decoding, should we add a few bytes to
+ * the string list so that the indexing hash tables are 8-byte aligned when the
+ * file is mmapped?  Will this "hole" matter to cdbdump and other tools? */
 
     /* check for integer overflow and that sufficient space allocated in file */
     if (cnt > (UINT_MAX>>4) || len > INT_MAX)  { errno = ENOMEM; return -1; }
