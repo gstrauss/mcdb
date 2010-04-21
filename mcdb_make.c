@@ -197,7 +197,8 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
     }
 }
 
-int mcdb_make_finish(struct mcdb_make * const restrict m)
+int
+mcdb_make_finish(struct mcdb_make * const restrict m)
 {
     uint32_t u;
     uint32_t i;
@@ -237,7 +238,7 @@ int mcdb_make_finish(struct mcdb_make * const restrict m)
     /* check for integer overflow and that sufficient space allocated in file */
     if (cnt > (UINT_MAX>>4) || len > INT_MAX)  { errno = ENOMEM; return -1; }
     u = cnt << 4; /* multiply by 2 and then by 8 (for 8 chars) */
-    if (m->pos <= (UINT_MAX-(u)))              { errno = ENOMEM; return -1; }
+    if (m->pos > (UINT_MAX-(u)))               { errno = ENOMEM; return -1; }
     u += m->pos;
     if (m->fsz < u && !mcdb_mmap_resize(m,u)) return -1;
     len += cnt; /* no overflow possible up to now */
