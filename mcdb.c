@@ -311,8 +311,9 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 
     /* size of mcdb is limited to 4 GB minus difference needed to page-align */
     if (fstat(fd,&st) != 0 || st.st_size > (UINT_MAX & (psz-1))) return false;
-    map->size = (uint32_t)(st.st_size & 0xFFFFFFFF & (psz-1));
-    if (st.st_size & (psz-1)) map->size += psz;
+    map->size = (st.st_size & (psz-1))
+      ? (st.st_size & ~(psz-1)) + psz
+      : st.st_size;
     x = mmap(0,map->size,PROT_READ,MAP_SHARED,fd,0);
     if (x == MAP_FAILED) return false;
     posix_madvise(x, map->size, POSIX_MADV_RANDOM);
