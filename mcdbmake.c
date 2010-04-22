@@ -13,6 +13,7 @@
 #include <string.h>    /* memcpy(), memmove(), memchr() */
 #include <stdio.h>     /* rename() */
 #include <unistd.h>    /* read(), unlink(), STDIN_FILENO */
+#include <sys/mman.h>  /* mmap(), munmap() */
 
 /* const db input line format: "+nnnn,mmmm:xxxx->yyyy\n"
  *   nnnn = key len
@@ -163,10 +164,10 @@ mcdb_bufread_rec (struct mcdb_make * const restrict m,
                && b->buf[b->pos++] == '\n'   );
 }
 
-int
-mcdb_bufread_fds (const int inputfd, char * const buf, const size_t bufsz,
-                  const int outputfd, void * (* const fn_malloc)(size_t),
-                  void (* const fn_free)(void *))
+int  __attribute__((noinline))
+mcdb_make_fdintofd (const int inputfd, char * const buf, const size_t bufsz,
+                    const int outputfd, void * (* const fn_malloc)(size_t),
+                    void (* const fn_free)(void *))
 {
     struct mcdb_input in = { buf, 0, 0, bufsz, inputfd };
     struct mcdb_make m;
@@ -223,11 +224,11 @@ close_nointr(const int fd)
  *     mcdb_make_from_fd(-1, mmap_ptr, mmap_sz, "fname.cdb", malloc, free);
  */
 int  __attribute__((noinline))
-mcdb_make_from_fd (const int inputfd,
-                   char * const restrict buf, const size_t bufsz,
-                   const char * const restrict fname,
-                   void * (* const fn_malloc)(size_t),
-                   void (* const fn_free)(void *))
+mcdb_make_fdintofile (const int inputfd,
+                      char * const restrict buf, const size_t bufsz,
+                      const char * const restrict fname,
+                      void * (* const fn_malloc)(size_t),
+                      void (* const fn_free)(void *))
 {
     int rv = 0;
     int fd;
@@ -240,7 +241,7 @@ mcdb_make_from_fd (const int inputfd,
     memcpy(fnametmp+len, ".XXXXXX", 8);
 
     if ((fd = mkstemp(fnametmp)) != -1
-        && (rv = mcdb_bufread_fds(inputfd,buf,bufsz,fd,fn_malloc,fn_free)) == 0
+        && (rv = mcdb_make_fdintofd(inputfd,buf,bufsz,fd,fn_malloc,fn_free))==0
         && close_nointr(fd) == 0        /* NFS might report write errors here */
         && (fd = -2, rename(fnametmp,fname) == 0)) /* (fd=-2 so not re-closed)*/
         rv = EXIT_SUCCESS;
@@ -260,6 +261,44 @@ mcdb_make_from_fd (const int inputfd,
     return rv;
 }
 
+static int
+open_nointr(const char * const restrict fn, const int flags, const mode_t mode)
+{ int r; do {r=open(fn,flags,mode);} while (r != 0 && errno==EINTR); return r; }
+
+int  __attribute__((noinline))
+mcdb_make_fileintofile (const char * const restrict infile,
+                        const char * const restrict fname,
+                        void * (* const fn_malloc)(size_t),
+                        void (* const fn_free)(void *))
+{
+    void * restrict x = MAP_FAILED;
+    size_t pgalignsz = 0;
+    int fd;
+    int rv;
+
+    if ((fd = open_nointr(infile, O_RDONLY, 0)) != -1) {
+        const size_t psz = (size_t)sysconf(_SC_PAGESIZE);
+        struct stat st;
+        if (fstat(fd, &st) != -1) {
+            pgalignsz = (st.st_size + psz - 1) & ~psz;
+            x = mmap(0, pgalignsz, PROT_READ, MAP_SHARED, fd, 0);
+        }
+    } else return MCDB_ERROR_READ;
+
+    if (close_nointr(fd) == -1) {
+        if (x != MAP_FAILED)
+            munmap(x, pgalignsz);
+        return MCDB_ERROR_READ;
+    }
+    if (x == MAP_FAILED)
+        return MCDB_ERROR_READ;
+
+    posix_madvise(x, pgalignsz, POSIX_MADV_SEQUENTIAL);
+    /* pass entire map and size as params; fd -1 prevents reads/remaps */
+    rv = mcdb_make_fdintofile(-1,x,pgalignsz,fname,fn_malloc,fn_free);
+    munmap(x, pgalignsz);
+    return rv;
+}
 
 
 #include "mcdb_error.h"
@@ -278,7 +317,7 @@ main(const int argc, char ** restrict argv)
 
     rv = (argc == 2 && *(fname = argv[1]))
       ? ((buf = malloc(BUFSZ)) != NULL)
-          ? mcdb_make_from_fd(STDIN_FILENO, buf, BUFSZ, fname, malloc, free)
+          ? mcdb_make_fdintofile(STDIN_FILENO, buf, BUFSZ, fname, malloc, free)
           : MCDB_ERROR_MALLOC
       : MCDB_ERROR_USAGE;
 
