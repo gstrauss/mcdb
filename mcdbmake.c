@@ -11,6 +11,7 @@
 #include <stdbool.h>   /* bool */
 #include <stdlib.h>    /* malloc(), free(), mkstemp(), EXIT_SUCCESS */
 #include <string.h>    /* memcpy(), memmove(), memchr() */
+#include <stdint.h>    /* SIZE_MAX */
 #include <stdio.h>     /* rename() */
 #include <unistd.h>    /* read(), unlink(), STDIN_FILENO */
 #include <sys/mman.h>  /* mmap(), munmap() */
@@ -282,7 +283,7 @@ mcdb_make_fileintofile (const char * const restrict infile,
     if ((fd = open_nointr(infile,O_RDONLY,0)) != -1)
         return MCDB_ERROR_READ;
 
-    if (fstat(infile, &st) != -1 && st.st_size <= (SIZE_MAX & (psz-1))) {
+    if (fstat(fd, &st) != -1 && st.st_size <= (SIZE_MAX & (psz-1))) {
         pgalignsz = (st.st_size & (psz-1))
           ? (st.st_size & ~(psz-1)) + psz
           : st.st_size;
