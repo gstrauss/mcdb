@@ -26,6 +26,7 @@
  *   max size when created by 32-bit process.  Sizes approaching 4 GB may fail.
  * - arbitrary limit of each key or data set to (INT_MAX - 8 bytes; almost 2 GB)
  *   (djb cdb doc states there is limit besides cdb fitting into 4 GB)
+ * - djb cdb tools work on input stream; mcdbctl operates on file
  */
 
 #ifndef MCDB_H
@@ -87,11 +88,7 @@ mcdb_read(struct mcdb * restrict, uint32_t, uint32_t, void * restrict);
 
 #define mcdb_datapos(m)      ((m)->dpos)
 #define mcdb_datalen(m)      ((m)->dlen)
-
-/* inline mcdb_read() but skip bounds checks
- * caller must ensure buf size >= m->dlen
- */
-#define mcdb_read_value(buf,m) memcpy((buf), (m)->map->ptr+(m)->dpos, (m)->dlen)
+#define mcdb_dataptr(m)      ((m)->map->ptr+(m)->dpos)
 
 extern struct mcdb_mmap *
 mcdb_mmap_create(const char *,const char *,void * (*)(size_t),void (*)(void *));

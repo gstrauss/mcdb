@@ -263,18 +263,19 @@ mcdb_mmap_create(const char * const dname, const char * const fname,
 {
     struct mcdb_mmap * map;
     const size_t len = strlen(fname);
-    int dfd;
+    int dfd = -1;
 
     if (len >= sizeof(map->fname))
         return NULL;
-    dfd = open(dname, O_RDONLY, 0);
-    if (dfd <= STDERR_FILENO) /* caller must have open STDIN, STDOUT, STDERR */
+    if ((map = fn_malloc(sizeof(struct mcdb_mmap))) == NULL)
         return NULL;
-    map = fn_malloc(sizeof(struct mcdb_mmap));
-    if (map == NULL) {
-        while (close(dfd) != 0 && errno == EINTR) ;
+  #if defined(__linux) || defined(__sun)
+    dfd = open(dname, O_RDONLY, 0);
+    if (dfd <= STDERR_FILENO) {/* caller must have open STDIN, STDOUT, STDERR */
+        fn_free(map);
         return NULL;
     }
+  #endif
 
     /* initialize */
     memset(map, '\0', sizeof(struct mcdb_mmap));
