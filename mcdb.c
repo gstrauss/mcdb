@@ -13,7 +13,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
-#include <stdlib.h>
 
 #ifdef _THREAD_SAFE
 #include <pthread.h>       /* pthread_mutex_t */
@@ -271,10 +270,6 @@ mcdb_mmap_create(const char * const dname, const char * const fname,
     dfd = open(dname, O_RDONLY, 0);
     if (dfd <= STDERR_FILENO) /* caller must have open STDIN, STDOUT, STDERR */
         return NULL;
-    if (fn_malloc == NULL)
-        fn_malloc = malloc;
-    if (fn_free == NULL)
-        fn_free = free;
     map = fn_malloc(sizeof(struct mcdb_mmap));
     if (map == NULL) {
         while (close(dfd) != 0 && errno == EINTR) ;

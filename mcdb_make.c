@@ -18,7 +18,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>
-#include <stdlib.h>  /* malloc() */
 #include <string.h>  /* memcpy() */
 #include <stdint.h>  /* uint32_t */
 #include <limits.h>  /* UINT_MAX, INT_MAX */

@@ -12,7 +12,7 @@
 #include <sys/stat.h>  /* fchmod(), umask() */
 #include <fcntl.h>     /* open() */
 #include <stdbool.h>   /* bool */
-#include <stdlib.h>    /* malloc(), free(), mkstemp(), EXIT_SUCCESS */
+#include <stdlib.h>    /* mkstemp(), EXIT_SUCCESS */
 #include <string.h>    /* memcpy(), memmove(), memchr() */
 #include <stdint.h>    /* SIZE_MAX */
 #include <stdio.h>     /* rename() */
