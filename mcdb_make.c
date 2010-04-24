@@ -301,7 +301,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 }
 
 /* caller should call mcdb_make_destroy() upon errors from mcdb_make_*() calls
- * (already called when cdb_make_finish() is successful)
+ * (already called when mcdb_make_finish() is successful)
  * m->fd is not closed here since mcdb_make_start() takes open file descriptor
  * (caller should cleanup m->fd)
  */

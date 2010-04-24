@@ -6,6 +6,10 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 uint32_t
 mcdb_uint32_unpack(const char s[4]);
 
@@ -33,5 +37,10 @@ mcdb_uint32_pack_big(char s[4], uint32_t);
 
 #define mcdb_uint32_pack_big_macro(s,u) \
   (s)[0]=(u>>24); (s)[1]=(u>>16) & 0xFF; (s)[2]=(u>>8) & 0xFF; (s)[3]=u & 0xFF
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

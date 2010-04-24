@@ -7,6 +7,10 @@
 
 #include <sys/types.h> /* size_t   */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct mcdb_hp;                        /* (private structure) */
 
 struct mcdb_make {
@@ -42,5 +46,9 @@ extern void
 mcdb_make_addend(struct mcdb_make * restrict);
 extern void
 mcdb_make_addrevert(struct mcdb_make * restrict);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -40,6 +40,10 @@
 #error "mcdb requires mmap support"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct mcdb_mmap {
   unsigned char *ptr;         /* mmap pointer */
   uint32_t size;              /* mmap size */
@@ -123,5 +127,9 @@ mcdb_register_access(struct mcdb_mmap **, bool);
  * for mmap sizes used by mcdb are already multiples of sysconf(_SC_PAGESIZE)
  */
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
