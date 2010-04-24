@@ -1,13 +1,15 @@
 #define _POSIX_C_SOURCE 200112L
-/* _XOPEN_SOURCE >= 500 needed on Linux for mkstemp() prototype */
+/* _XOPEN_SOURCE >= 500 needed on Linux for mkstemp(), fchmod() prototypes */
 #define _XOPEN_SOURCE 500
 
 #include "mcdb_makefmt.h"
 #include "mcdb_make.h"
 #include "mcdb_error.h"
 
-#include <sys/types.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/mman.h>  /* mmap(), munmap() */
+#include <sys/stat.h>  /* fchmod(), umask() */
 #include <fcntl.h>     /* open() */
 #include <stdbool.h>   /* bool */
 #include <stdlib.h>    /* malloc(), free(), mkstemp(), EXIT_SUCCESS */
@@ -15,7 +17,6 @@
 #include <stdint.h>    /* SIZE_MAX */
 #include <stdio.h>     /* rename() */
 #include <unistd.h>    /* read(), unlink(), STDIN_FILENO */
-#include <sys/mman.h>  /* mmap(), munmap() */
 
 /* const db input line format: "+nnnn,mmmm:xxxx->yyyy\n"
  *   nnnn = key len
@@ -249,6 +250,7 @@ mcdb_makefmt_fdintofile (const int inputfd,
 
     const size_t len = strlen(fname);
     char * const restrict fnametmp = fn_malloc(len + 8);
+    const mode_t mask = umask(0); umask(mask);
     if (fnametmp == NULL)
         return MCDB_ERROR_MALLOC;
     memcpy(fnametmp, fname, len);
@@ -256,6 +258,7 @@ mcdb_makefmt_fdintofile (const int inputfd,
 
     if ((fd = mkstemp(fnametmp)) != -1
         && (rv=mcdb_makefmt_fdintofd(inputfd,buf,bufsz,fd,fn_malloc,fn_free))==0
+        && fchmod(fd, (0666 & ~mask)) == 0
         && close_nointr(fd) == 0        /* NFS might report write errors here */
         && (fd = -2, rename(fnametmp,fname) == 0)) /* (fd=-2 so not re-closed)*/
         rv = EXIT_SUCCESS;
