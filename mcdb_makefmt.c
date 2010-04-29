@@ -193,6 +193,9 @@ mcdb_makefmt_fdintofd (const int inputfd,
     if (mcdb_make_start(&m, outputfd, fn_malloc, fn_free) == -1)
         return MCDB_ERROR_WRITE;
 
+    if (b.fd == -1)  /* we use fd == -1 as flag for mmap */
+        b.datasz = b.bufsz;
+
     while ((rv = mcdb_bufread_preamble(&b,&klen,&dlen)) > 0) {
 
         /* optimized frequent path: entire data line buffered and available */
@@ -296,7 +299,7 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
     struct stat st;
     int errsave = 0;
 
-    if ((fd = open_nointr(infile,O_RDONLY,0)) != -1)
+    if ((fd = open_nointr(infile,O_RDONLY,0)) == -1)
         return MCDB_ERROR_READ;
 
     if (fstat(fd, &st) != -1 && st.st_size <= (SIZE_MAX & (psz-1))) {

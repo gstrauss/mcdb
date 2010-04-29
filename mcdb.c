@@ -49,10 +49,10 @@ mcdb_findstart(struct mcdb * const restrict m,
   #endif
 
     ptr = m->map->ptr + ((khash << 3) & MCDB_HEADER_MASK) + 4;
-    m->hslots = mcdb_uint32_unpack_macro(ptr);
+    m->hslots = mcdb_uint32_unpack_bigendian_aligned_macro(ptr);
     if (!m->hslots)
         return false;
-    m->hpos  = mcdb_uint32_unpack_macro(ptr-4);
+    m->hpos  = mcdb_uint32_unpack_bigendian_aligned_macro(ptr-4);
     m->kpos  = m->hpos + (((khash >> 8) % m->hslots) << 3);
     m->khash = khash;
     m->loop  = 0;
@@ -69,19 +69,19 @@ mcdb_findnext(struct mcdb * const restrict m,
 
     while (m->loop < m->hslots) {
         ptr = mptr + m->kpos + 4;
-        vpos = mcdb_uint32_unpack_macro(ptr);
+        vpos = mcdb_uint32_unpack_bigendian_aligned_macro(ptr);
         if (!vpos)
             return false;
-        khash = mcdb_uint32_unpack_macro(ptr-4);
+        khash = mcdb_uint32_unpack_bigendian_aligned_macro(ptr-4);
         m->kpos += 8;
         if (m->kpos == m->hpos + (m->hslots << 3))
             m->kpos = m->hpos;
         m->loop += 1;
         if (khash == m->khash) {
             ptr = mptr + vpos;
-            len = mcdb_uint32_unpack_macro(ptr);
+            len = mcdb_uint32_unpack_bigendian_macro(ptr);
             if (len == klen && memcmp(key, ptr+8, klen) == 0) {
-                m->dlen = mcdb_uint32_unpack_macro(ptr+4);
+                m->dlen = mcdb_uint32_unpack_bigendian_macro(ptr+4);
                 m->dpos = vpos + 8 + len;
                 return true;
             }
@@ -92,6 +92,7 @@ mcdb_findnext(struct mcdb * const restrict m,
 
 /* read value from mmap const db into buffer and return pointer to buffer
  * (return NULL if position (offset) or length to read will be out-of-bounds)
+ * Note: caller must terminate with '\0' if desired, i.e. buf[len] = '\0';
  */
 void *
 mcdb_read(struct mcdb * const restrict m, const uint32_t pos,

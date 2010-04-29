@@ -113,8 +113,8 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
     if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
     if (m->fsz < pos+len && !mcdb_mmap_resize(m,pos+len))          return -1;
-    mcdb_uint32_pack_macro(p,keylen);
-    mcdb_uint32_pack_macro(p+4,datalen);
+    mcdb_uint32_pack_bigendian_macro(p,keylen);
+    mcdb_uint32_pack_bigendian_macro(p+4,datalen);
     m->pos += 8;
     return 0;
 }
@@ -212,7 +212,6 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     char *p;
     uint32_t count[MCDB_SLOTS];
     uint32_t start[MCDB_SLOTS];
-    char final[MCDB_HEADER_SZ];
 
     memset(count, '\0', sizeof(count));
 
@@ -230,17 +229,16 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
             len = u;
     }
 
-/* GPS: for alignment efficiencies when decoding, should we add a few bytes to
- * the string list so that the indexing hash tables are 8-byte aligned when the
- * file is mmapped?  Will this "hole" matter to cdbdump and other tools? */
-
     /* check for integer overflow and that sufficient space allocated in file */
+    d = (8 - (m->pos & 7)) & 7; /* padding to align hash tables to 8 bytes */
+    if (m->pos > (UINT_MAX-d))                 { errno = ENOMEM; return -1; }
+    m->pos += d;  /* add "hole" for alignment; incompatible with djb cdbdump */
     if (cnt > (UINT_MAX>>4) || len > INT_MAX)  { errno = ENOMEM; return -1; }
     u = cnt << 4; /* multiply by 2 and then by 8 (for 8 chars) */
-    if (m->pos > (UINT_MAX-(u)))               { errno = ENOMEM; return -1; }
+    if (m->pos > (UINT_MAX-u))                 { errno = ENOMEM; return -1; }
     u += m->pos;
     if (m->fsz < u && !mcdb_mmap_resize(m,u)) return -1;
-    len += cnt; /* no overflow possible up to now */
+    len += cnt;
     if (len > UINT_MAX/sizeof(struct mcdb_hp)) { errno = ENOMEM; return -1; }
 
     split = (struct mcdb_hp *) m->fn_malloc(len * sizeof(struct mcdb_hp));
@@ -262,11 +260,13 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     for (i = 0; i < MCDB_SLOTS; ++i) {
         cnt = count[i];
 
-        p = final + (i << 3);  /* (i << 3) == (i * 8) */
+        /* write constant header directly to map
+         * (space was allocated for header when mmap created; can not fail) */
+        p = m->map + (i << 3);  /* (i << 3) == (i * 8) */
         u = m->pos;
-        mcdb_uint32_pack_macro(p,u);
+        mcdb_uint32_pack_bigendian_aligned_macro(p,u);
         len = cnt << 1; /* no overflow possible */
-        mcdb_uint32_pack_macro(p+4,len);
+        mcdb_uint32_pack_bigendian_aligned_macro(p+4,len);
 
         for (u = 0; u < len; ++u)
             hash[u].h = hash[u].p = 0;
@@ -285,16 +285,12 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
             p = m->map + m->pos;
             m->pos += 8;
             d = hash[u].h;
-            mcdb_uint32_pack_macro(p,d);
+            mcdb_uint32_pack_bigendian_aligned_macro(p,d);
             d = hash[u].p;
-            mcdb_uint32_pack_macro(p+4,d);
+            mcdb_uint32_pack_bigendian_aligned_macro(p+4,d);
         }
     }
     m->fn_free(split);
-
-    /* write constant header directly to map
-     * (space was allocated for header when mmap created; can not fail) */
-    memcpy(m->map, final, sizeof(final));
 
     return mcdb_mmap_commit(m) ? mcdb_make_destroy(m) : -1;
 }

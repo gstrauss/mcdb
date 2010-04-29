@@ -27,6 +27,16 @@
  * - arbitrary limit of each key or data set to (INT_MAX - 8 bytes; almost 2 GB)
  *   (djb cdb doc states there is limit besides cdb fitting into 4 GB)
  * - djb cdb tools work on input stream; mcdbctl operates on file
+ *   The ability to work on an input stream forced certain design choices that
+ *   might not be relevant to working on an mmap'd file, but mcdb preserve the
+ *   same format for compatibility.
+ *
+ * Incompatibilities with djb cdb
+ * - padding added at the end of key,value data to 8-byte align hash tables
+ *   (incompatible with djb cdbdump)
+ * - packing of integral lengths into char strings is done bigendian for
+ *   performance in packing/unpacking integer data in 4-byte (or better)
+ *   aligned addresses.  (incompatible with all djb cdb* tools)
  */
 
 #ifndef MCDB_H
