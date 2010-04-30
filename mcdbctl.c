@@ -13,6 +13,67 @@
 #include <unistd.h>  /* STDIN_FILENO */
 #include <libgen.h>  /* basename() */
 
+/* read and dump data section of mcdb
+ * start of hash tables is end of key/data section (eod)
+ * subtract 7 for maximal added alignment between data and hash table
+ * (each record key,len,keystr,datastr is at least 8 bytes) */
+static int
+mcdbctl_dump(struct mcdb * const restrict m)
+{
+    /* (If higher performance needed, allocate iovecs and use writev) */
+    unsigned char * restrict p = m->map->ptr;
+    uint32_t klen;
+    uint32_t dlen;
+    unsigned char * const eod =
+      p + mcdb_uint32_unpack_bigendian_aligned_macro(p) - 7;
+    setvbuf(stdout, NULL, _IOFBF, 0); /* attempt to use fully buffered I/O */
+    for (p += MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
+        klen = mcdb_uint32_unpack_bigendian_macro(p);
+        dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
+        printf("+%u,%u:%.*s->%.*s\n",klen,dlen,klen,p+8,dlen,p+8+klen);
+    }
+    puts(""); /* append blank line ("\n") to indicate end of data */
+    fflush(stdout);
+    return EXIT_SUCCESS;
+}
+static int
+mcdbctl_stats(struct mcdb * const restrict m)
+{
+/* GPS: TODO add some checks and document that 'stats' and cdbtest are same */
+    unsigned char * const map_ptr = m->map->ptr;
+    unsigned char *p;
+    uint32_t klen;
+    uint32_t dlen;
+    unsigned char * const eod =
+      map_ptr + mcdb_uint32_unpack_bigendian_aligned_macro(map_ptr) - 7;
+    unsigned long nrec = 0;
+    unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
+    unsigned int rv;
+    bool rc;
+    for (p = map_ptr+MCDB_HEADER_SZ; p < eod; p += klen+dlen) {
+        klen = mcdb_uint32_unpack_bigendian_macro(p);
+        dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
+        /* Search for key,data and track number of tries before found.
+         * Technically, passing m (which contains m->map->ptr) and an
+         * alias into the map (p+8) as key is violation of C99 restrict
+         * pointers, but is inconsequential since it is all read-only */
+        p += 8;
+        if ((rc = mcdb_findstart(m, (char *)p, klen))) {
+            do { rc = mcdb_findnext(m, (char *)p, klen);
+            } while (rc && map_ptr+m->dpos != p+klen);
+        }
+        if (!rc) return MCDB_ERROR_READFORMAT;
+        ++nrec;
+        ++numd[ ((m->loop < 11) ? m->loop - 1 : 10) ];
+    }
+    printf("records %lu\n", nrec);
+    for (rv = 0; rv < 10; ++rv)
+        printf("d%d      %lu\n", rv, numd[rv]);
+    printf(">9      %lu\n", numd[10]);
+    fflush(stdout);
+    return EXIT_SUCCESS;
+}
+
 static int
 mcdbctl_query(const int argc, char ** restrict argv)
 {
@@ -35,54 +96,11 @@ mcdbctl_query(const int argc, char ** restrict argv)
 
     switch (argc) {
       case 3:
-        /* read and dump data section of mcdb
-         * start of hash tables is end of key/data section (eod)
-         * subtract 7 for maximal added alignment between data and hash table
-         * (each record key,len,keystr,datastr is at least 8 bytes) */
         if (0 == strcmp(argv[1], "dump")) {
-            /* (If higher performance needed, allocate iovecs and use writev) */
-            unsigned char * restrict p;
-            uint32_t klen;
-            uint32_t dlen;
-            unsigned char * const eod =
-              map.ptr + mcdb_uint32_unpack_bigendian_aligned_macro(map.ptr) - 7;
-            setvbuf(stdout, NULL, _IOFBF, 0); /* attempt to use full buffered */
-            for (p = map.ptr+MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
-                klen = mcdb_uint32_unpack_bigendian_macro(p);
-                dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
-                printf("+%u,%u:%.*s->%.*s\n",klen,dlen,klen,p+8,dlen,p+8+klen);
-            }
-            puts(""); /* append blank line ("\n") to indicate end of data */
-            fflush(stdout);
-            rv = 0;
+            rv = mcdbctl_dump(&m);
         }
         else if (0 == strcmp(argv[1], "stats")) {
-            unsigned char * restrict p;
-            uint32_t klen;
-            uint32_t dlen;
-            unsigned char * const eod =
-              map.ptr + mcdb_uint32_unpack_bigendian_aligned_macro(map.ptr) - 7;
-            unsigned long nrec = 0;
-            unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
-            bool rc;
-            for (p = map.ptr+MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
-                klen = mcdb_uint32_unpack_bigendian_macro(p);
-                dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
-                /* search for key,data and track number of tries before found */
-                if ((rc = mcdb_findstart(&m, (char *)p+8, klen))) {
-                    do { rc = mcdb_findnext(&m, (char *)p+8, klen);
-                    } while (rc && map.ptr+m.dpos != p+8+klen);
-                }
-                if (!rc) return MCDB_ERROR_READFORMAT;
-                ++nrec;
-                ++numd[ ((m.loop < 11) ? m.loop - 1 : 10) ];
-            }
-            printf("records %lu\n", nrec);
-            for (rv = 0; rv < 10; ++rv)
-                printf("d%d      %lu\n", rv, numd[rv]);
-            printf(">9      %lu\n", numd[10]);
-            fflush(stdout);
-            rv = 0;
+            rv = mcdbctl_stats(&m);
         }
         break;
       case 5:
