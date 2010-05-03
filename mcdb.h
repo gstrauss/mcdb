@@ -34,9 +34,10 @@
  * Incompatibilities with djb cdb
  * - padding added at the end of key,value data to 8-byte align hash tables
  *   (incompatible with djb cdbdump)
- * - packing of integral lengths into char strings is done bigendian for
+ * - packing of integral lengths into char strings is done big-endian for
  *   performance in packing/unpacking integer data in 4-byte (or better)
- *   aligned addresses.  (incompatible with all djb cdb* tools)
+ *   aligned addresses.  (incompatible with all djb cdb* tools and cdb's)
+ *   (djb cdb documents all 32-bit quantities stored in little-endian form)
  */
 
 #ifndef MCDB_H

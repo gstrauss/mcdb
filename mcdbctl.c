@@ -36,10 +36,10 @@ mcdbctl_dump(struct mcdb * const restrict m)
     fflush(stdout);
     return EXIT_SUCCESS;
 }
+/* Note: mcdbctl_stats() is equivalent test to pass/fail of djb cdbtest */
 static int
 mcdbctl_stats(struct mcdb * const restrict m)
 {
-/* GPS: TODO add some checks and document that 'stats' and cdbtest are same */
     unsigned char * const map_ptr = m->map->ptr;
     unsigned char *p;
     uint32_t klen;
@@ -55,7 +55,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
         dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
         /* Search for key,data and track number of tries before found.
          * Technically, passing m (which contains m->map->ptr) and an
-         * alias into the map (p+8) as key is violation of C99 restrict
+         * alias into the map (p+8) as key is in violation of C99 restrict
          * pointers, but is inconsequential since it is all read-only */
         p += 8;
         if ((rc = mcdb_findstart(m, (char *)p, klen))) {
@@ -73,20 +73,61 @@ mcdbctl_stats(struct mcdb * const restrict m)
     fflush(stdout);
     return EXIT_SUCCESS;
 }
+static int
+mcdbctl_getseq(struct mcdb * const restrict m,
+               const char * const restrict key, unsigned long seq)
+{
+    const size_t klen = strlen(key);
+    if (mcdb_findstart(m, key, klen)) {
+        bool rc;
+        while ((rc = mcdb_findnext(m, key, klen)) && seq--)
+            ;
+        if (rc) {
+            printf("%.*s\n",mcdb_datalen(m),mcdb_dataptr(m));
+            fflush(stdout);
+            return EXIT_SUCCESS;
+        }
+    }
+    return EXIT_FAILURE;
+}
 
 static int
 mcdbctl_query(const int argc, char ** restrict argv)
 {
-    /* assert(argc >= 3); *//* must be checked by caller */
     struct mcdb m;
     struct mcdb_mmap map;
-    int rv = MCDB_ERROR_USAGE;
-    /* Note: not retrying open() and close() on EINTR here
-     * since the program is not catching any signals */
-    char * const fname = argv[2];
-    const int fd = open(fname, O_RDONLY, 0);
-    if (fd == -1) return MCDB_ERROR_READ;
+    int rv;
+    int fd;
+    unsigned long seq = 0;
+    enum { MCDBCTL_BAD_QUERY_TYPE, MCDBCTL_GET, MCDBCTL_DUMP, MCDBCTL_STATS }
+      query_type = MCDBCTL_BAD_QUERY_TYPE;
 
+    /* validate args  (query type string == argv[1]) */
+    if (0 == strcmp(argv[1], "get")) {
+        if (argc == 5) {
+            char *endptr;
+            seq = strtoul(argv[4], &endptr, 10);
+            if (seq != ULONG_MAX && argv[4] != endptr && *endptr == '\0')
+                query_type = MCDBCTL_GET;
+        }
+        else if (argc == 4)
+            query_type = MCDBCTL_GET;
+    }
+    else if (argc == 3) {
+        if (0 == strcmp(argv[1], "dump"))
+            query_type = MCDBCTL_DUMP;
+        else if (0 == strcmp(argv[1], "stats"))
+            query_type = MCDBCTL_STATS;
+    }
+
+    if (query_type == MCDBCTL_BAD_QUERY_TYPE)
+        return MCDB_ERROR_USAGE;
+
+    /* open mcdb
+     * Note: not retrying open() and close() on EINTR here
+     * since the program is not catching any signals */
+    fd = open(argv[2], O_RDONLY, 0);  /* fname = argv[2] */
+    if (fd == -1) return MCDB_ERROR_READ;
     memset(&map, '\0', sizeof(map));
     rv = mcdb_mmap_init(&map, fd);
     close(fd);
@@ -94,35 +135,21 @@ mcdbctl_query(const int argc, char ** restrict argv)
     memset(&m, '\0', sizeof(m));
     m.map = &map;
 
-    switch (argc) {
-      case 3:
-        if (0 == strcmp(argv[1], "dump")) {
-            rv = mcdbctl_dump(&m);
-        }
-        else if (0 == strcmp(argv[1], "stats")) {
-            rv = mcdbctl_stats(&m);
-        }
+    /* run query */
+    switch (query_type) {
+      case MCDBCTL_GET:
+        rv = mcdbctl_getseq(&m, argv[3], seq);  /* key = argv[3] */
+        if (rv != EXIT_SUCCESS)
+            exit(100); /* not found: exit nonzero without errmsg */
         break;
-      case 5:
-        if (0 == strcmp(argv[1], "get")) {
-            char *endptr;
-            char * const restrict key = argv[3];
-            const size_t klen = strlen(key);
-            unsigned long seq = strtoul(argv[4], &endptr, 10);
-            if (seq != ULONG_MAX && argv[4] != endptr && *endptr == '\0') {
-                bool rc;
-                if ((rc = mcdb_findstart(&m, key, klen))) {
-                    while ((rc = mcdb_findnext(&m, key, klen)) && seq--)
-                        ;
-                    if (rc) printf("%.*s\n",mcdb_datalen(&m),mcdb_dataptr(&m));
-                }
-                if (!rc) exit(100); /* not found: exit nonzero without errmsg */
-                fflush(stdout);
-                rv = EXIT_SUCCESS;
-            }
-        }
+      case MCDBCTL_DUMP:
+        rv = mcdbctl_dump(&m);
         break;
-      default:
+      case MCDBCTL_STATS:
+        rv = mcdbctl_stats(&m);
+        break;
+      default: /* should not happen */
+        rv = MCDB_ERROR_USAGE;
         break;
     }
 
@@ -131,7 +158,7 @@ mcdbctl_query(const int argc, char ** restrict argv)
 }
 
 static int
-mcdbctl_make(const int argc, char ** restrict argv)
+mcdbctl_make(const int argc, char ** const restrict argv)
 {
     /* assert(argc == 4); */                   /* must be checked by caller */
     /* assert(0 == strcmp(argv[1], "make")); *//* must be checked by caller */
@@ -155,18 +182,16 @@ mcdbctl_make(const int argc, char ** restrict argv)
  * mcdbctl make  <mcdb> <input-file>
  */
 int
-main(const int argc, char ** restrict argv)
+main(const int argc, char ** const restrict argv)
 {
     const int rv = (argc == 4 && 0 == strcmp(argv[1], "make"))
       ? mcdbctl_make(argc, argv)
-      : (argc >= 3)
-          ? mcdbctl_query(argc, argv)
-          : MCDB_ERROR_USAGE;
+      : mcdbctl_query(argc, argv);
 
     mcdb_usage = "mcdbctl make  <fname.mcdb> < input.txt | - >\n"
                  "mcdbctl dump  <fname.mcdb>\n"
                  "mcdbctl stats <fname.mcdb>\n"
-                 "mcdbctl get   <fname.mcdb> <key> <seq>\n";
+                 "mcdbctl get   <fname.mcdb> <key> [seq]\n";
 
     return rv == EXIT_SUCCESS ? EXIT_SUCCESS : mcdb_error(rv,basename(argv[0]));
 }
