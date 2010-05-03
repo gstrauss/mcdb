@@ -307,7 +307,7 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     mcdb_mmap_unmap(map);
 
     /* size of mcdb is limited to 4 GB minus difference needed to page-align */
-    if (fstat(fd,&st) != 0 || st.st_size > (UINT_MAX & (psz-1))) return false;
+    if (fstat(fd,&st) != 0 || st.st_size > (UINT_MAX & ~(psz-1))) return false;
     map->size = (st.st_size & (psz-1))
       ? (st.st_size & ~(psz-1)) + psz
       : st.st_size;

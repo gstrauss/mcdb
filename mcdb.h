@@ -4,7 +4,7 @@
  * License: GPLv3
  * Originally based upon the Public Domain 'cdb-0.75' by Dan Bernstein
  *
- * - updated to C99 and POSIX.1-2001
+ * - updated to C99 and POSIX.1-2001 (not available/portable when djb wrote cdb)
  * - optimized for mmap access to constant db (and avoid double buffering)
  * - redesigned for use in threaded programs
  * - convenience routines to check for updated constant db and to refresh mmap
@@ -26,6 +26,7 @@
  *   max size when created by 32-bit process.  Sizes approaching 4 GB may fail.
  * - arbitrary limit of each key or data set to (INT_MAX - 8 bytes; almost 2 GB)
  *   (djb cdb doc states there is limit besides cdb fitting into 4 GB)
+ *   (writev() on some platforms in 32-bit exe might also have 2 GB limit)
  * - djb cdb tools work on input stream; mcdbctl operates on file
  *   The ability to work on an input stream forced certain design choices that
  *   might not be relevant to working on an mmap'd file, but mcdb preserve the

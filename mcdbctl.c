@@ -1,3 +1,6 @@
+#define _XOPEN_SOURCE 500
+/* need to define _XOPEN_SOURCE to get IOV_MAX */
+
 #include "mcdb.h"
 #include "mcdb_makefmt.h"
 #include "mcdb_error.h"
@@ -7,11 +10,34 @@
 #include <sys/stat.h>
 #include <fcntl.h>   /* open(), O_RDONLY */
 #include <stdbool.h> /* bool */
-#include <stdio.h>   /* printf() */
+#include <stdio.h>   /* printf(), IOV_MAX */
 #include <stdlib.h>  /* malloc(), free(), EXIT_SUCCESS */
 #include <string.h>  /* strlen() */
-#include <unistd.h>  /* STDIN_FILENO */
+#include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO */
+#include <sys/uio.h> /* writev() */
 #include <libgen.h>  /* basename() */
+#include <limits.h>  /* SSIZE_MAX */
+
+static bool
+writev_loop(const int fd, struct iovec * restrict iov, int iovcnt)
+{
+    /* Note: unlike writev(), this routine might modify the iovecs */
+    ssize_t len;
+    while (iovcnt && (len = writev(fd, iov, iovcnt)) != -1) {
+        while (len != 0) {
+            if (len >= iov[0].iov_len) {
+                len -= iov[0].iov_len;
+                --iovcnt;
+                ++iov;
+            }
+            else {
+                iov[0].iov_len -= len;
+                iov[0].iov_base = ((char *)iov[0].iov_base) + len;
+            }
+        }
+    }
+    return (iovcnt == 0);
+}
 
 /* read and dump data section of mcdb
  * start of hash tables is end of key/data section (eod)
@@ -20,22 +46,89 @@
 static int
 mcdbctl_dump(struct mcdb * const restrict m)
 {
-    /* (If higher performance needed, allocate iovecs and use writev) */
     unsigned char * restrict p = m->map->ptr;
     uint32_t klen;
     uint32_t dlen;
     unsigned char * const eod =
       p + mcdb_uint32_unpack_bigendian_aligned_macro(p) - 7;
-    setvbuf(stdout, NULL, _IOFBF, 0); /* attempt to use fully buffered I/O */
+    int    iovcnt = 0;
+    size_t iovlen = 0;
+    size_t buflen = 0;
+    enum { MCDB_IOVNUM = IOV_MAX };/* assert(IOV_MAX >= 7) */
+    struct iovec iov[MCDB_IOVNUM]; /* each db entry uses 7 iovecs */
+    char buf[(MCDB_IOVNUM * 3)];   /* each db entry might use (2) * 10 chars */
+      /* oversized buffer since all num strings must add up to less than max */
+
     for (p += MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
+
         klen = mcdb_uint32_unpack_bigendian_macro(p);
         dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
-        printf("+%u,%u:%.*s->%.*s\n",klen,dlen,klen,p+8,dlen,p+8+klen);
+
+        /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
+        /* klen, dlen each limited to (2GB - 8); space for extra tokens exists*/
+        if (iovlen + klen + 5 > SSIZE_MAX || iovcnt + 7 > MCDB_IOVNUM) {
+            if (!writev_loop(STDOUT_FILENO, iov, iovcnt))
+                return MCDB_ERROR_WRITE;
+            iovcnt = 0;
+            iovlen = 0;
+            buflen = 0;
+        }
+
+        iov[iovcnt].iov_base = "+";
+        iov[iovcnt].iov_len  = 1;
+        ++iovcnt;
+
+        iov[iovcnt].iov_base = buf+buflen;
+        buflen += iov[iovcnt].iov_len = snprintf(buf+buflen, 11, "%u", klen);
+        ++iovcnt;
+
+        iov[iovcnt].iov_base = ",";
+        iov[iovcnt].iov_len  = 1;
+        ++iovcnt;
+
+        iov[iovcnt].iov_base = buf+buflen;
+        buflen += iov[iovcnt].iov_len = snprintf(buf+buflen, 11, "%u", dlen);
+        ++iovcnt;
+
+        iov[iovcnt].iov_base = ":";
+        iov[iovcnt].iov_len  = 1;
+        ++iovcnt;
+
+        iov[iovcnt].iov_base = p+8;
+        iov[iovcnt].iov_len  = klen;
+        ++iovcnt;
+
+        iov[iovcnt].iov_base = "->";
+        iov[iovcnt].iov_len  = 2;
+        ++iovcnt;
+
+        iovlen += klen + 5;
+
+        if (iovlen + dlen + 1 > SSIZE_MAX) {
+            if (!writev_loop(STDOUT_FILENO, iov, iovcnt))
+                return MCDB_ERROR_WRITE;
+            iovcnt = 0;
+            iovlen = 0;
+            buflen = 0;
+        }
+
+        iov[iovcnt].iov_base = p+8+klen;
+        iov[iovcnt].iov_len  = dlen;
+        ++iovcnt;
+
+        iov[iovcnt].iov_base = "\n";
+        iov[iovcnt].iov_len  = 1;
+        ++iovcnt;
+
+        iovlen += dlen + 1;
+
     }
-    puts(""); /* append blank line ("\n") to indicate end of data */
-    fflush(stdout);
-    return EXIT_SUCCESS;
+
+    return (writev_loop(STDOUT_FILENO, iov, iovcnt)
+            && write(STDOUT_FILENO, "\n", 1)) ? EXIT_SUCCESS : MCDB_ERROR_WRITE;
+            /* append blank line ("\n") to indicate end of data */
 }
+
 /* Note: mcdbctl_stats() is equivalent test to pass/fail of djb cdbtest */
 static int
 mcdbctl_stats(struct mcdb * const restrict m)
@@ -73,19 +166,27 @@ mcdbctl_stats(struct mcdb * const restrict m)
     fflush(stdout);
     return EXIT_SUCCESS;
 }
+
 static int
 mcdbctl_getseq(struct mcdb * const restrict m,
                const char * const restrict key, unsigned long seq)
 {
     const size_t klen = strlen(key);
+    struct iovec iov[2];
     if (mcdb_findstart(m, key, klen)) {
         bool rc;
         while ((rc = mcdb_findnext(m, key, klen)) && seq--)
             ;
         if (rc) {
-            printf("%.*s\n",mcdb_datalen(m),mcdb_dataptr(m));
-            fflush(stdout);
-            return EXIT_SUCCESS;
+            /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
+            iov[0].iov_base = mcdb_dataptr(m);
+            iov[0].iov_len  = mcdb_datalen(m);
+            iov[0].iov_base = "\n";
+            iov[0].iov_len  = 1;
+            return
+              writev_loop(STDOUT_FILENO, iov, sizeof(iov)/sizeof(struct iovec))
+              ? EXIT_SUCCESS
+              : MCDB_ERROR_WRITE;
         }
     }
     return EXIT_FAILURE;

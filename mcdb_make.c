@@ -239,6 +239,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     if (m->pos > (UINT_MAX-u))                 { errno = ENOMEM; return -1; }
     u += m->pos;
     if (m->fsz < u && !mcdb_mmap_resize(m,u)) return -1;
+    if (d) memset(m->map+m->pos-d, '\0', d);  /* clear hole for binary diffs */
     len += cnt;
     if (len > UINT_MAX/sizeof(struct mcdb_hp)) { errno = ENOMEM; return -1; }
 
