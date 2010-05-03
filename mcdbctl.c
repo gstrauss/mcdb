@@ -188,7 +188,7 @@ main(const int argc, char ** const restrict argv)
       ? mcdbctl_make(argc, argv)
       : mcdbctl_query(argc, argv);
 
-    mcdb_usage = "mcdbctl make  <fname.mcdb> < input.txt | - >\n"
+    mcdb_usage = "mcdbctl make  <fname.mcdb> <input.txt|->\n"
                  "mcdbctl dump  <fname.mcdb>\n"
                  "mcdbctl stats <fname.mcdb>\n"
                  "mcdbctl get   <fname.mcdb> <key> [seq]\n";

@@ -302,14 +302,17 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
     if ((fd = open_nointr(infile,O_RDONLY,0)) == -1)
         return MCDB_ERROR_READ;
 
-    if (fstat(fd, &st) != -1 && st.st_size <= (SIZE_MAX & (psz-1))) {
+    if (fstat(fd, &st) != -1 && st.st_size <= (SIZE_MAX & ~(psz-1))) {
         pgalignsz = (st.st_size & (psz-1))
           ? (st.st_size & ~(psz-1)) + psz
           : st.st_size;
         if ((x = mmap(0, pgalignsz, PROT_READ, MAP_SHARED, fd, 0))==MAP_FAILED)
             errsave = errno;
     }
-    else errsave = errno;
+    else {
+        if ((errsave = errno) == 0)
+            errsave = EOVERFLOW;
+    }
 
     /* close fd after mmap (no longer needed),check mmap succeeded,create cdb */
     if (close_nointr(fd) != -1 && x != MAP_FAILED) {

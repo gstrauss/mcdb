@@ -102,7 +102,7 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
                    const size_t keylen, const size_t datalen)
 {
     /* validate/allocate space for next key/data pair */
-    char * const p = m->map + m->pos;
+    char *p;
     const size_t pos = m->pos;
     const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
     struct mcdb_hplist * const head =
@@ -113,6 +113,7 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
     if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
     if (m->fsz < pos+len && !mcdb_mmap_resize(m,pos+len))          return -1;
+    p = m->map + m->pos;
     mcdb_uint32_pack_bigendian_macro(p,keylen);
     mcdb_uint32_pack_bigendian_macro(p+4,datalen);
     m->pos += 8;
