@@ -19,20 +19,22 @@
 #include <limits.h>  /* SSIZE_MAX */
 
 static bool
-writev_loop(const int fd, struct iovec * restrict iov, int iovcnt)
+writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
 {
     /* Note: unlike writev(), this routine might modify the iovecs */
     ssize_t len;
     while (iovcnt && (len = writev(fd, iov, iovcnt)) != -1) {
+        if ((sz -= len) == 0)
+            return true;
         while (len != 0) {
-            if (len >= iov[0].iov_len) {
-                len -= iov[0].iov_len;
+            if (len >= iov->iov_len) {
+                len -= iov->iov_len;
                 --iovcnt;
                 ++iov;
             }
             else {
-                iov[0].iov_len -= len;
-                iov[0].iov_base = ((char *)iov[0].iov_base) + len;
+                iov->iov_len -= len;
+                iov->iov_base = ((char *)(iov->iov_base)) + len;
             }
         }
     }
@@ -67,7 +69,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
         /* klen, dlen each limited to (2GB - 8); space for extra tokens exists*/
         if (iovlen + klen + 5 > SSIZE_MAX || iovcnt + 7 > MCDB_IOVNUM) {
-            if (!writev_loop(STDOUT_FILENO, iov, iovcnt))
+            if (!writev_loop(STDOUT_FILENO, iov, iovcnt, (ssize_t)iovlen))
                 return MCDB_ERROR_WRITE;
             iovcnt = 0;
             iovlen = 0;
@@ -105,7 +107,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         iovlen += klen + 5;
 
         if (iovlen + dlen + 1 > SSIZE_MAX) {
-            if (!writev_loop(STDOUT_FILENO, iov, iovcnt))
+            if (!writev_loop(STDOUT_FILENO, iov, iovcnt, (ssize_t)iovlen))
                 return MCDB_ERROR_WRITE;
             iovcnt = 0;
             iovlen = 0;
@@ -124,9 +126,11 @@ mcdbctl_dump(struct mcdb * const restrict m)
 
     }
 
-    return (writev_loop(STDOUT_FILENO, iov, iovcnt)
-            && write(STDOUT_FILENO, "\n", 1)) ? EXIT_SUCCESS : MCDB_ERROR_WRITE;
-            /* append blank line ("\n") to indicate end of data */
+    /* write out iovecs and append blank line ("\n") to indicate end of data */
+    return (writev_loop(STDOUT_FILENO, iov, iovcnt, (ssize_t)iovlen)
+            && write(STDOUT_FILENO, "\n", 1) == 1)
+      ? EXIT_SUCCESS
+      : MCDB_ERROR_WRITE;
 }
 
 /* Note: mcdbctl_stats() is equivalent test to pass/fail of djb cdbtest */
@@ -181,10 +185,9 @@ mcdbctl_getseq(struct mcdb * const restrict m,
             /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
             iov[0].iov_base = mcdb_dataptr(m);
             iov[0].iov_len  = mcdb_datalen(m);
-            iov[0].iov_base = "\n";
-            iov[0].iov_len  = 1;
-            return
-              writev_loop(STDOUT_FILENO, iov, sizeof(iov)/sizeof(struct iovec))
+            iov[1].iov_base = "\n";
+            iov[1].iov_len  = 1;
+            return writev_loop(STDOUT_FILENO,iov,2,(ssize_t)(iov[0].iov_len+1))
               ? EXIT_SUCCESS
               : MCDB_ERROR_WRITE;
         }
