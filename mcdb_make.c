@@ -54,10 +54,15 @@ mcdb_mmap_resize(struct mcdb_make * const restrict m, const size_t sz)
     size_t fsz = (m->fsz < sz ? m->fsz : sz);
     void *x;
 
-    /* assert(sz <= UINT_MAX); *//* caller must check or else infinite loop */
+    while (fsz < sz && fsz < (UINT_MAX>>2))
+        fsz <<= 2;
 
-    while (fsz < sz)
-        fsz = (fsz < (UINT_MAX>>2) ? (fsz << 2) : UINT_MAX);
+    if (fsz < sz) { /* then sz >= (UINT_MAX>>2) */
+        size_t incr = 1<<31;
+        while (fsz > UINT_MAX-incr) incr >>= 1;
+        do { fsz += incr; incr >>= 1; } while (fsz < sz && incr != 0);
+        if (fsz < sz) { errno = EOVERFLOW; return false; }
+    }
 
     if (mcdb_ftruncate_nointr(m->fd, fsz) != 0) return false;
 
@@ -87,7 +92,8 @@ mcdb_mmap_resize(struct mcdb_make * const restrict m, const size_t sz)
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m)
 {
-    if (mcdb_ftruncate_nointr(m->fd, m->pos) != 0) return false;
+    if (m->fsz != m->pos
+        && mcdb_ftruncate_nointr(m->fd, m->pos) != 0) return false;
 
   #if defined(_POSIX_MAPPED_FILES) && _POSIX_MAPPED_FILES-0 \
    && defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO-0
