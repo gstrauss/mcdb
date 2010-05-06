@@ -189,7 +189,6 @@ mcdb_makefmt_fdintofd (const int inputfd,
     size_t dlen;
     int rv;
 
-    memset(&m, '\0', sizeof(struct mcdb_make));
     if (mcdb_make_start(&m, outputfd, fn_malloc, fn_free) == -1)
         return MCDB_ERROR_WRITE;
 
