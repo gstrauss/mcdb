@@ -119,7 +119,7 @@ mcdb_mmap_destroy(struct mcdb_mmap * restrict);
 extern bool
 mcdb_register_access(struct mcdb_mmap **, bool);
 
-#define mcdb_refresh_thread(mcdb) \
+#define mcdb_thread_refresh(mcdb) \
   ((mcdb)->map->next == NULL || mcdb_register_access(&((mcdb)->map), true))
 
 #endif
@@ -130,11 +130,6 @@ mcdb_register_access(struct mcdb_mmap **, bool);
 #define MCDB_HEADER_SZ (MCDB_SLOTS<<3)      /* MCDB_SLOTS * 8  (256*8 = 2048) */
 #define MCDB_HEADER_MASK (MCDB_HEADER_SZ-1) /* bitmask */
 #define MCDB_INITIAL_SZ (1<<12) /* 4 MB; must be larger than MCDB_HEADER_SZ */
-/* MCDB_INITIAL_SZ must be a multiple of page size, and so 64 KB or larger on
- * modern systems (e.g. AIX supports setting system-wide 64 KB page size)
- * This is done for efficiency of I/O and for convenience, so that calculations
- * for mmap sizes used by mcdb are already multiples of sysconf(_SC_PAGESIZE)
- */
 
 
 #ifdef __cplusplus

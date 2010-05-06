@@ -44,7 +44,7 @@ mcdb_findstart(struct mcdb * const restrict m,
     const uint32_t khash = mcdb_hash(MCDB_HASH_INIT,key,klen);
 
   #ifdef _THREAD_SAFE
-    (void) mcdb_refresh_thread(m);
+    (void) mcdb_thread_refresh(m);
     /* (ignore rc; continue with previous map in case of failure) */
   #endif
 
@@ -300,21 +300,18 @@ mcdb_mmap_create(const char * const dname, const char * const fname,
 bool  __attribute__((noinline))
 mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 {
-    const size_t psz = (size_t) sysconf(_SC_PAGESIZE);
     struct stat st;
     void * restrict x;
 
     mcdb_mmap_unmap(map);
 
     /* size of mcdb is limited to 4 GB minus difference needed to page-align */
-    if (fstat(fd,&st) != 0 || st.st_size > (UINT_MAX & ~(psz-1))) return false;
-    map->size = (st.st_size & (psz-1))
-      ? (st.st_size & ~(psz-1)) + psz
-      : st.st_size;
-    x = mmap(0,map->size,PROT_READ,MAP_SHARED,fd,0);
+    if (fstat(fd,&st) != 0) return false;
+    x = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (x == MAP_FAILED) return false;
-    posix_madvise(x, map->size, POSIX_MADV_RANDOM);
-    map->ptr = (unsigned char *)x;
+    posix_madvise(x, st.st_size, POSIX_MADV_RANDOM);
+    map->ptr   = (unsigned char *)x;
+    map->size  = st.st_size;
     map->mtime = st.st_mtime;
   #ifdef _THREAD_SAFE
     map->next  = NULL;
@@ -325,10 +322,13 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 
 
 /* GPS: document: thread: update and munmap only upon initiation of new search
- *      Threads should call mcdb_refresh_thread(mcdb) at regular intervals to
+ *      Any long-running program should run mcdb_mmap_refresh(m->map) at
+ *      periodic intervals to check if the file on disk has been replaced
+ *      and needs to be re-mapped to obtain the new map.
+ *      Threads should call mcdb_thread_refresh(mcdb) at regular intervals to
  *      help free up resources sooner.
- *      document: thread: mcdb_mmap_refresh(m->map); mcdb_refresh_thread(m);
- *        (might be this in a macro)  Call to mcdb_refresh_thread() is needed
+ *      document: thread: mcdb_mmap_refresh(m->map); mcdb_thread_refresh(m);
+ *        (might be this in a macro)  Call to mcdb_thread_refresh() is needed
  *        to decrement reference count (and clean up) previous mmap.
  */
 /* GPS: TODO portable __attribute__((noinline)) macro substitutions

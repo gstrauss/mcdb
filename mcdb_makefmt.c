@@ -294,35 +294,25 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
     void * restrict x = MAP_FAILED;
     int rv = MCDB_ERROR_READ;
     int fd;
-    const size_t psz = (size_t)sysconf(_SC_PAGESIZE);
-    size_t pgalignsz = 0;
     struct stat st;
     int errsave = 0;
 
     if ((fd = open_nointr(infile,O_RDONLY,0)) == -1)
         return MCDB_ERROR_READ;
 
-    if (fstat(fd, &st) != -1 && st.st_size <= (SIZE_MAX & ~(psz-1))) {
-        pgalignsz = (st.st_size & (psz-1))
-          ? (st.st_size & ~(psz-1)) + psz
-          : st.st_size;
-        if ((x = mmap(0, pgalignsz, PROT_READ, MAP_SHARED, fd, 0))==MAP_FAILED)
-            errsave = errno;
-    }
-    else {
-        if ((errsave = errno) == 0)
-            errsave = EOVERFLOW;
-    }
+    if (fstat(fd, &st) == -1
+        || ((x = mmap(0,st.st_size,PROT_READ,MAP_SHARED,fd,0)) == MAP_FAILED))
+        errsave = errno;
 
     /* close fd after mmap (no longer needed),check mmap succeeded,create cdb */
     if (close_nointr(fd) != -1 && x != MAP_FAILED) {
-        posix_madvise(x, pgalignsz, POSIX_MADV_SEQUENTIAL);
+        posix_madvise(x, st.st_size, POSIX_MADV_SEQUENTIAL);
         /* pass entire map and size as params; fd -1 elides read()/remaps */
-        rv = mcdb_makefmt_fdintofile(-1,x,pgalignsz,fname,fn_malloc,fn_free);
+        rv = mcdb_makefmt_fdintofile(-1,x,st.st_size,fname,fn_malloc,fn_free);
     }
 
     if (x != MAP_FAILED)
-        munmap(x, pgalignsz);
+        munmap(x, st.st_size);
     else if (errsave != 0)
         errno = errsave;
 
