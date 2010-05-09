@@ -29,7 +29,7 @@
  *   (writev() on some platforms in 32-bit exe might also have 2 GB limit)
  * - djb cdb tools work on input stream; mcdbctl operates on file
  *   The ability to work on an input stream forced certain design choices that
- *   might not be relevant to working on an mmap'd file, but mcdb preserve the
+ *   might not be relevant to working on an mmap'd file, but mcdb preserves the
  *   same format for compatibility.
  *
  * Incompatibilities with djb cdb
