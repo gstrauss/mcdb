@@ -49,8 +49,9 @@
 #include <unistd.h>   /* size_t   */
 #include <sys/time.h> /* time_t   */
 
-#if !defined(_POSIX_MAPPED_FILES) || !(_POSIX_MAPPED_FILES-0)
-#error "mcdb requires mmap support"
+#if !defined(_POSIX_MAPPED_FILES) || !(_POSIX_MAPPED_FILES-0) \
+ || !defined(_POSIX_SYNCHRONIZED_IO) || !(_POSIX_SYNCHRONIZED_IO-0)
+#error "mcdb requires mmap() and msync() support"
 #endif
 
 #ifdef __cplusplus
@@ -129,7 +130,7 @@ mcdb_register_access(struct mcdb_mmap **, bool);
 #define MCDB_SLOT_MASK (MCDB_SLOTS-1)       /* bitmask */
 #define MCDB_HEADER_SZ (MCDB_SLOTS<<3)      /* MCDB_SLOTS * 8  (256*8 = 2048) */
 #define MCDB_HEADER_MASK (MCDB_HEADER_SZ-1) /* bitmask */
-#define MCDB_INITIAL_SZ (1<<12) /* 4 MB; must be larger than MCDB_HEADER_SZ */
+#define MCDB_MMAP_SZ (1<<19)     /* 512KB; must be larger than MCDB_HEADER_SZ */
 
 
 #ifdef __cplusplus

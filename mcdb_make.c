@@ -3,9 +3,12 @@
  */
 
 #define _POSIX_C_SOURCE 200112L
-/* _GNU_SOURCE needed for mremap() */
-#define _GNU_SOURCE
-/* large file support needed for ftruncate() on cdb larger than 2 GB */
+#define _XOPEN_SOURCE 600
+/* _XOPEN_SOURCE 600 needed for posix_fallocate() */
+#define _BSD_SOURCE
+/* gcc -std=c99 hides MAP_ANONYMOUS
+ * _BSD_SOURCE or _SVID_SOURCE needed for mmap MAP_ANONYMOUS on Linux */
+/* large file support needed for mmap() offset,ftruncate() on cdb > 2 GB */
 #define _FILE_OFFSET_BITS 64
 /* GPS: TODO add large file support for other operating systems */
 
@@ -20,6 +23,8 @@
 #include <errno.h>
 #include <string.h>  /* memcpy() */
 #include <stdint.h>  /* uint32_t */
+#include <stdlib.h>  /* posix_fallocate() */
+#include <fcntl.h>   /* posix_fallocate() */
 #include <limits.h>  /* UINT_MAX, INT_MAX */
 
 #define MCDB_HPLIST 1000
@@ -43,63 +48,70 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
     return (m->head = head);
 }
 
+static ssize_t  __attribute__((noinline))
+mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
+{
+    ssize_t w;
+    do { w = write(fd,buf,sz); } while (w!=-1 ? (buf+=w,sz-=w) : errno==EINTR);
+    return w;
+}
+
 /* (compilation with large file support enables off_t max > 2 GB in cast) */
 static int  __attribute__((noinline))
 mcdb_ftruncate_nointr(const int fd, const size_t sz)
 { int r; do{r=ftruncate(fd,(off_t)sz);}while(r != 0 && errno==EINTR);return r; }
 
-static bool  __attribute__((noinline))
-mcdb_mmap_resize(struct mcdb_make * const restrict m, const size_t sz)
+static bool  inline
+mcdb_mmap_commit(struct mcdb_make * const restrict m,
+                 char header[MCDB_HEADER_SZ])
 {
-    size_t fsz = (m->fsz < sz ? m->fsz : sz);
-    void *x;
+    if (m->fd == -1) return true; /*(m->fd == -1 during large mcdb size tests)*/
 
-    while (fsz < sz && fsz < (UINT_MAX>>2))
-        fsz <<= 2;
-
-    if (fsz < sz) { /* then sz >= (UINT_MAX>>2) */
-        size_t incr = 1<<31;
-        while (fsz > UINT_MAX-incr) incr >>= 1;
-        do { fsz += incr; incr >>= 1; } while (fsz < sz && incr != 0);
-        if (fsz < sz) { errno = EOVERFLOW; return false; }
-    }
-
-    if (mcdb_ftruncate_nointr(m->fd, fsz) != 0) return false;
-
-  #ifdef __GLIBC__
-
-    x = mremap(m->map, m->fsz, fsz, MREMAP_MAYMOVE); /*fsz page-sized multiple*/
-    if (x == MAP_FAILED) return false;
-
-  #else
-
-  #if defined(_POSIX_MAPPED_FILES) && _POSIX_MAPPED_FILES-0 \
-   && defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO-0
-    if (msync(m->map, m->pos, MS_SYNC) != 0) return false;
-  #endif
-    if (munmap(m->map, m->fsz) != 0) return false;
-    x = mmap(0,fsz,PROT_WRITE,MAP_SHARED,fd,0);      /*fsz page-sized multiple*/
-    if (x == MAP_FAILED) return false;
-    posix_madvise(x, fsz, POSIX_MADV_SEQUENTIAL);
-
-  #endif
-
-    m->map = (char *)x;
-    m->fsz = fsz;
-    return true;
+    return (    0 == mcdb_ftruncate_nointr(m->fd, m->pos)
+            &&  0 == posix_fallocate(m->fd, m->offset, m->pos - m->offset)
+            &&  0 == msync(m->map, m->pos - m->offset, MS_SYNC)
+            && -1 != lseek(m->fd, 0, SEEK_SET)
+            && -1 != mcdb_write_nointr(m->fd, header, MCDB_HEADER_SZ));
 }
 
-static bool  inline
-mcdb_mmap_commit(struct mcdb_make * const restrict m)
+static bool  __attribute__((noinline))
+mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
 {
-    if (m->fsz != m->pos
-        && mcdb_ftruncate_nointr(m->fd, m->pos) != 0) return false;
+    size_t offset;
+    size_t msz;
 
-  #if defined(_POSIX_MAPPED_FILES) && _POSIX_MAPPED_FILES-0 \
-   && defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO-0
-    if (msync(m->map, m->pos, MS_SYNC) != 0) return false;
-  #endif
+    /* flush and munmap prior mmap */
+    if (m->map != MAP_FAILED) {
+        if (m->fd != -1) { /* (m->fd == -1 during some large mcdb size tests) */
+            /* msync MS_ASYNC, except MS_SYNC for mmap containing mcdb header */
+            if (posix_fallocate(m->fd, m->offset, m->pos - m->offset) != 0
+                || msync(m->map, m->pos - m->offset,
+                         m->offset >= MCDB_HEADER_SZ ? MS_ASYNC : MS_SYNC) != 0)
+                return false;
+        }
+        if (munmap(m->map, m->msz) != 0) return false;
+        m->map = MAP_FAILED;
+    }
 
+    /* limit max size of mcdb to (4GB - pagesize) */
+    if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
+
+    offset = m->offset + ((m->pos - m->offset) & m->pgalign);
+    msz = (MCDB_MMAP_SZ > sz - offset) ? MCDB_MMAP_SZ : sz - offset;
+    if (offset > (UINT_MAX & m->pgalign) - msz)
+        msz = (UINT_MAX & m->pgalign) - offset;
+
+    m->fsz = offset + msz; /* (mcdb_make mmap region is always to end of file)*/
+    if (m->fd != -1 && mcdb_ftruncate_nointr(m->fd, m->fsz) != 0) return false;
+
+    /* (compilation with large file support enables off_t max > 2 GB in cast) */
+    m->map = (m->fd != -1) /* (m->fd == -1 during some large mcdb size tests) */
+      ? (char *)mmap(0, msz, PROT_WRITE, MAP_SHARED, m->fd, (off_t)offset)
+      : (char *)mmap(0, msz, PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    if (m->map == MAP_FAILED) return false;
+    posix_madvise(m->map, msz, POSIX_MADV_SEQUENTIAL);
+    m->offset = offset;
+    m->msz = msz;
     return true;
 }
 
@@ -107,7 +119,8 @@ int
 mcdb_make_addbegin(struct mcdb_make * const restrict m,
                    const size_t keylen, const size_t datalen)
 {
-    /* validate/allocate space for next key/data pair */
+    /* validate/allocate space for next key/data pair
+     * (could cause swap thrash if key and data are larger than available mem)*/
     char *p;
     const size_t pos = m->pos;
     const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
@@ -118,8 +131,8 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     head->hp[head->num].p = (uint32_t)pos;  /* arbitrary ~2 GB limit for lens */
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
     if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
-    if (m->fsz < pos+len && !mcdb_mmap_resize(m,pos+len))          return -1;
-    p = m->map + m->pos;
+    if (m->fsz < pos+len && !mcdb_mmap_upsize(m,pos+len))          return -1;
+    p = m->map + pos - m->offset;
     mcdb_uint32_pack_bigendian_macro(p,keylen);
     mcdb_uint32_pack_bigendian_macro(p+4,datalen);
     m->pos += 8;
@@ -132,7 +145,7 @@ mcdb_make_addbuf_data(struct mcdb_make * const restrict m,
 {
     /* len validated in mcdb_make_addbegin(); passing any other len is wrong,
      * unless the len is shorter from partial contents of buf. */
-    memcpy(m->map + m->pos, buf, len);
+    memcpy(m->map + m->pos - m->offset, buf, len);
     m->pos += len;
 }
 
@@ -179,19 +192,17 @@ int
 mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
                 void * (*fn_malloc)(size_t), void (*fn_free)(void *))
 {
-    /* MCDB_INITIAL_SZ is page-sized multiple for mmap convienence */
-    if (mcdb_ftruncate_nointr(fd, MCDB_INITIAL_SZ) != 0) return -1;
-    m->map = mmap(0, MCDB_INITIAL_SZ, PROT_WRITE, MAP_SHARED, fd, 0);
-    if (m->map == MAP_FAILED) return -1;
-    posix_madvise(m->map, MCDB_INITIAL_SZ, POSIX_MADV_SEQUENTIAL);
-
-    m->pos = MCDB_HEADER_SZ;
-    m->fsz = MCDB_INITIAL_SZ;
-    m->head = NULL;
-    m->fd = fd;
+    m->map       = MAP_FAILED;
+    m->pos       = MCDB_HEADER_SZ;
+    m->offset    = 0;
+    m->head      = NULL;
+    m->fd        = fd;
     m->fn_malloc = fn_malloc;
-    m->fn_free = fn_free;
-    if (mcdb_hplist_alloc(m) != NULL) {  /* init to skip NULL check every add */
+    m->fn_free   = fn_free;
+    m->pgalign   = ~( ((size_t)sysconf(_SC_PAGESIZE)) - 1 );
+
+    if (mcdb_mmap_upsize(m, MCDB_MMAP_SZ)  /* MCDB_MMAP_SZ >= MCDB_HEADER_SZ */
+        && mcdb_hplist_alloc(m) != NULL) { /*init to skip NULL check every add*/
         m->head->hp[m->head->num].p = (uint32_t)m->pos;
         return 0;
     }
@@ -219,6 +230,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     char *p;
     uint32_t count[MCDB_SLOTS];
     uint32_t start[MCDB_SLOTS];
+    char header[MCDB_HEADER_SZ];
 
     memset(count, '\0', sizeof(count));
 
@@ -237,17 +249,18 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     }
 
     /* check for integer overflow and that sufficient space allocated in file */
-    d = (8 - (m->pos & 7)) & 7; /* padding to align hash tables to 8 bytes */
-    if (m->pos > (UINT_MAX-d))                 { errno = ENOMEM; return -1; }
-    m->pos += d;  /* add "hole" for alignment; incompatible with djb cdbdump */
     if (cnt > (UINT_MAX>>4) || len > INT_MAX)  { errno = ENOMEM; return -1; }
-    u = cnt << 4; /* multiply by 2 and then by 8 (for 8 chars) */
-    if (m->pos > (UINT_MAX-u))                 { errno = ENOMEM; return -1; }
-    u += m->pos;
-    if (m->fsz < u && !mcdb_mmap_resize(m,u)) return -1;
-    if (d) memset(m->map+m->pos-d, '\0', d);  /* clear hole for binary diffs */
     len += cnt;
     if (len > UINT_MAX/sizeof(struct mcdb_hp)) { errno = ENOMEM; return -1; }
+    u = cnt << 4; /* multiply by 2 and then by 8 (for 8 chars) */
+    if (m->pos > (UINT_MAX-u))                 { errno = ENOMEM; return -1; }
+
+    /* add "hole" for alignment; incompatible with djb cdbdump */
+    d = (8 - (m->pos & 7)) & 7; /* padding to align hash tables to 8 bytes */
+    if (d > (UINT_MAX-(m->pos+u)))             { errno = ENOMEM; return -1; }
+    if (m->fsz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d)) return -1;
+    if (d) memset(m->map + m->pos - m->offset, '\0', d);
+    m->pos += d;                     /* clear hole for binary cmp of mcdbs */
 
     split = (struct mcdb_hp *) m->fn_malloc(len * sizeof(struct mcdb_hp));
     if (!split) return -1;
@@ -267,18 +280,20 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
     for (i = 0; i < MCDB_SLOTS; ++i) {
         cnt = count[i];
-
-        /* write constant header directly to map
-         * (space was allocated for header when mmap created; can not fail) */
-        p = m->map + (i << 3);  /* (i << 3) == (i * 8) */
-        u = m->pos;
-        mcdb_uint32_pack_bigendian_aligned_macro(p,u);
         len = cnt << 1; /* no overflow possible */
+        u   = m->pos;
+
+        /* check for sufficient space in mmap to write hash table for this slot
+         * (integer overflow not possible: total size checked outside loop) */
+        if (m->fsz < u+(len<<3) && !mcdb_mmap_upsize(m,u+(len<<3))) break;
+
+        /* constant header (8 bytes per header slot, so multiply by 8) */
+        p = header + (i << 3);  /* (i << 3) == (i * 8) */
+        mcdb_uint32_pack_bigendian_aligned_macro(p,u);
         mcdb_uint32_pack_bigendian_aligned_macro(p+4,len);
 
-        for (u = 0; u < len; ++u)
-            hash[u].h = hash[u].p = 0;
-
+        /* generate hash table for this slot */
+        memset(hash, 0, len * sizeof(struct mcdb_hp));
         hp = split + start[i];
         for (u = 0; u < cnt; ++u) {
             where = (hp->h >> 8) % len;
@@ -288,9 +303,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
             hash[where] = *hp++;
         }
 
+        /* write hash table directly to map; allocated space checked above */
         for (u = 0; u < len; ++u) {
-            /* write directly to map; allocated space checked above outer loop*/
-            p = m->map + m->pos;
+            p = m->map + m->pos - m->offset;
             m->pos += 8;
             d = hash[u].h;
             mcdb_uint32_pack_bigendian_aligned_macro(p,d);
@@ -300,7 +315,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     }
     m->fn_free(split);
 
-    return mcdb_mmap_commit(m) ? mcdb_make_destroy(m) : -1;
+    return (i == MCDB_SLOTS) && mcdb_mmap_commit(m, header)
+        ? mcdb_make_destroy(m)
+        : -1;
 }
 
 /* caller should call mcdb_make_destroy() upon errors from mcdb_make_*() calls
@@ -320,5 +337,5 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
     }
     m->head = NULL;
     m->map = MAP_FAILED;
-    return (map != MAP_FAILED) ? munmap(map, m->fsz) : 0;
+    return (map != MAP_FAILED) ? munmap(map, m->msz) : 0;
 }

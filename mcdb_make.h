@@ -15,8 +15,11 @@ struct mcdb_hp;                        /* (private structure) */
 
 struct mcdb_make {
   size_t pos;
-  size_t fsz;
+  size_t offset;
   char * restrict map;
+  size_t fsz;
+  size_t msz;
+  size_t pgalign;
   struct mcdb_hplist *head;
   int fd;
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */

@@ -7,6 +7,9 @@
 extern "C" {
 #endif
 
+/* Note: ensure output file is open() O_RDWR if calling mcdb_makefmt_fdintofd()
+ * or else mmap() may fail */
+
 int
 mcdb_makefmt_fdintofd (int, char * restrict, size_t,
                        int, void * (*)(size_t), void (*)(void *));
