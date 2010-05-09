@@ -270,7 +270,7 @@ mcdbctl_make(const int argc, char ** const restrict argv)
     char * restrict buf = NULL;
     char * const fname = argv[2];
     char * const input = argv[3];
-    const int rv = (0 == strcmp(input,"-"))
+    const int rv = (input[0] == '-' && input[1] == '\0')
       ? ((buf = malloc(BUFSZ)) != NULL)
         ? mcdb_makefmt_fdintofile(STDIN_FILENO, buf, BUFSZ, fname, malloc, free)
         : MCDB_ERROR_MALLOC
@@ -284,6 +284,9 @@ mcdbctl_make(const int argc, char ** const restrict argv)
  * mcdbctl dump  <mcdb>
  * mcdbctl stats <mcdb>
  * mcdbctl make  <mcdb> <input-file>
+ *
+ * mcdbctl tools require mcdb filename be specified on the command line.
+ * djb cdb tools take cdb on stdin, since able to mmap stdin backed by file.
  */
 int
 main(const int argc, char ** const restrict argv)
