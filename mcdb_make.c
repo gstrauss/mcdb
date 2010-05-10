@@ -4,7 +4,7 @@
 
 #define _POSIX_C_SOURCE 200112L
 #define _XOPEN_SOURCE 600
-/* _XOPEN_SOURCE 600 needed for posix_fallocate() */
+/* _XOPEN_SOURCE 600 needed for posix_fallocate(), >= 500 for fdatasync() */
 #define _BSD_SOURCE
 /* gcc -std=c99 hides MAP_ANONYMOUS
  * _BSD_SOURCE or _SVID_SOURCE needed for mmap MAP_ANONYMOUS on Linux */
@@ -71,7 +71,12 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
             &&  0 == posix_fallocate(m->fd, m->offset, m->pos - m->offset)
             &&  0 == msync(m->map, m->pos - m->offset, MS_SYNC)
             && -1 != lseek(m->fd, 0, SEEK_SET)
-            && -1 != mcdb_write_nointr(m->fd, header, MCDB_HEADER_SZ));
+            && -1 != mcdb_write_nointr(m->fd, header, MCDB_HEADER_SZ)
+            &&  0 == fdatasync(m->fd));
+    /* fdatasync() on Linux happens to ensure prior msync() MS_ASYNC complete.
+     * If there is no way on other platforms to ensure this, then use MS_SYNC
+     * unconditionally in mcdb_mmap_upsize() call to msync().  Most (all?)
+     * modern UNIX use a unified page cache, which should fsync as we expect. */
 }
 
 static bool  __attribute__((noinline))
