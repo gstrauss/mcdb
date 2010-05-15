@@ -64,12 +64,10 @@ struct mcdb_mmap {
   unsigned char *ptr;         /* mmap pointer */
   uint32_t size;              /* mmap size */
   time_t mtime;               /* mmap file mtime */
-  /* #ifdef _THREAD_SAFE */
   struct mcdb_mmap * volatile next;    /* updated (new) mcdb_mmap */
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
   void (*fn_free)(void *);             /* fn ptr to free() */
   volatile uint32_t refcnt;            /* registered access reference count */
-  /* #endif */
   int dfd;                    /* fd open to dir in which mmap file resides */
   char fname[64];             /* basename of mmap file, relative to dir fd */
 };
@@ -107,7 +105,7 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
 
 extern void *
 mcdb_read(struct mcdb * restrict, uint32_t, uint32_t, void * restrict)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 #define mcdb_datapos(m)      ((m)->dpos)
 #define mcdb_datalen(m)      ((m)->dlen)
@@ -129,17 +127,13 @@ extern void
 mcdb_mmap_destroy(struct mcdb_mmap * restrict)
   __attribute_nonnull__;
 
-
-#ifdef _THREAD_SAFE
-
 extern bool
 mcdb_register_access(struct mcdb_mmap **, bool)
   __attribute_nonnull__;
 
 #define mcdb_thread_refresh(mcdb) \
-  ((mcdb)->map->next == NULL || mcdb_register_access(&((mcdb)->map), true))
-
-#endif
+  (__builtin_expect((mcdb)->map->next == NULL, true) \
+   || __builtin_expect(mcdb_register_access(&((mcdb)->map),true), true))
 
 
 #define MCDB_SLOTS 256                      /* must be power-of-2 */

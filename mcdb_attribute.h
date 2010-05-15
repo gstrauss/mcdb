@@ -1,5 +1,9 @@
 /* TODO: portability to non-GCC compilers and earlier versions of GCC */
 
+#ifndef __GNUC__
+#define __builtin_expect(x,y) (x)
+#endif
+
 #ifdef __linux
 #include <features.h>
 #endif

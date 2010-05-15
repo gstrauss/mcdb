@@ -16,8 +16,13 @@
 #include <string.h>
 
 #ifdef _THREAD_SAFE
-#include <pthread.h>       /* pthread_mutex_t */
+#include <pthread.h>       /* pthread_mutex_t, pthread_mutex_{lock,unlock}() */
+static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
+#else
+#define pthread_mutex_lock(mutexp) 0
+#define pthread_mutex_unlock(mutexp) (void)0
 #endif
+
 
 uint32_t
 mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
@@ -29,6 +34,8 @@ mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
     return h;
 }
 
+/* Note: tagc of 0 ('\0') is reserved to indicate no tag */
+
 bool
 mcdb_findtagstart(struct mcdb * const restrict m,
                   const char * const restrict key, const size_t klen,
@@ -39,10 +46,8 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     const uint32_t khash = mcdb_hash(khash_init, key, klen);
     const unsigned char * restrict ptr;
 
-  #ifdef _THREAD_SAFE
     (void) mcdb_thread_refresh(m);
     /* (ignore rc; continue with previous map in case of failure) */
-  #endif
 
     ptr = m->map->ptr + ((khash << 3) & MCDB_HEADER_MASK) + 4;
     m->hslots = mcdb_uint32_unpack_bigendian_aligned_macro(ptr);
@@ -104,14 +109,12 @@ mcdb_read(struct mcdb * const restrict m, const uint32_t pos,
 }
 
 
-static bool
-mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
 
+/* Note: __attribute_noinline__ is used to mark less frequent code paths
+ * to prevent inlining of seldoms used paths, hopefully improving instruction
+ * cache hits.
+ */
 
-#ifdef _THREAD_SAFE
-
-static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 bool  __attribute_noinline__
 mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
@@ -123,16 +126,16 @@ mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
     if (pthread_mutex_lock(&mcdb_global_mutex) != 0)
         return false;
 
-    map = *mcdb_mmap;                   /* ? need memory barrier after mutex ?*/
+    map = *mcdb_mmap;
     next = map->next;
 
     if (add && next != NULL) {
         while (next->next != NULL)
             next = next->next;
-        ++next->refcnt;                 /* ? need atomic incr to L2 cache ? */
+        ++next->refcnt;
         *mcdb_mmap = next;
     }
-                                        /* ? need atomic decr to L2 cache ? */
+
     if (map != NULL && !(add && next == NULL) && --map->refcnt == 0) {
         /*(not efficient (n!) if lots of maps updated between accesses)*/
         while (map->next != NULL && map->next->refcnt == 0) {
@@ -155,38 +158,8 @@ mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
 }
 
 static bool  __attribute_noinline__
-mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
+mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-
-static bool  __attribute_noinline__
-mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
-{
-    struct mcdb_mmap *next;
-    bool rc = false;
-
-    if (pthread_mutex_lock(&mcdb_global_mutex) != 0)
-        return false;
-                              /* ? need StoreLoad memory barrier ? */
-    if (map->next != NULL) {  /* map->next already updated */
-        pthread_mutex_unlock(&mcdb_global_mutex);
-        return true;
-    }
-
-    if ((next = map->fn_malloc(sizeof(struct mcdb_mmap))) != NULL) {
-        memcpy(next, map, sizeof(struct mcdb_mmap));
-        next->ptr = NULL;
-        if ((rc = mcdb_mmap_reopen(next)))
-            map->next = next;
-        else
-            map->fn_free(next);
-    }
-
-    pthread_mutex_unlock(&mcdb_global_mutex);
-    return rc;
-}
-
-#endif  /* _THREAD_SAFE */
-
 
 static bool  __attribute_noinline__
 mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
@@ -210,7 +183,40 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
     return rc;
 }
 
+static bool  __attribute_noinline__
+mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+
+static bool  __attribute_noinline__
+mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
+{
+    struct mcdb_mmap *next;
+    bool rc = false;
+
+    if (pthread_mutex_lock(&mcdb_global_mutex) != 0)
+        return false;
+
+    if (map->next != NULL) {  /* map->next already updated */
+        pthread_mutex_unlock(&mcdb_global_mutex);
+        return true;
+    }
+
+    if ((next = map->fn_malloc(sizeof(struct mcdb_mmap))) != NULL) {
+        memcpy(next, map, sizeof(struct mcdb_mmap));
+        next->ptr = NULL;
+        if ((rc = mcdb_mmap_reopen(next)))
+            map->next = next;
+        else
+            map->fn_free(next);
+    }
+
+    pthread_mutex_unlock(&mcdb_global_mutex);
+    return rc;
+}
+
 /* check if constant db has been updated and refresh mmap
+ * (for use with mcdb mmaps held open for any period of time)
+ * (i.e. for any use other than mcdb_mmap_create(), query, mcdb_mmap_destroy())
  * caller may call mcdb_mmap_refresh() before mcdb_find() or mcdb_findstart(),
  * or at other scheduled intervals, or not at all, depending on program need.
  */
@@ -229,11 +235,7 @@ mcdb_mmap_refresh(struct mcdb_mmap * const restrict map)
     if (map->mtime == st.st_mtime)
         return true;
 
-  #ifndef _THREAD_SAFE
-    return mcdb_mmap_reopen(map);
-  #else
     return mcdb_mmap_reopen_thread(map);
-  #endif
 }
 
 static void  inline
@@ -294,9 +296,7 @@ mcdb_mmap_create(const char * const dname, const char * const fname,
     map->dfd       = dfd;
     memcpy(map->fname, fname, len+1);
     if (mcdb_mmap_reopen(map)) {
-      #ifdef _THREAD_SAFE
         ++map->refcnt;
-      #endif
         return map;
     }
     else {
@@ -322,25 +322,21 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     map->ptr   = (unsigned char *)x;
     map->size  = st.st_size;
     map->mtime = st.st_mtime;
-  #ifdef _THREAD_SAFE
     map->next  = NULL;
     map->refcnt= 0;
-  #endif
     return true;
 }
 
 
-/* GPS: document: tag '\0' not permitted; will result in undefined behavior */
-/* GPS: document: thread: update and munmap only upon initiation of new search
+/* GPS: document: persistent open mcdb with multiple references
+ *        (not just use in threads)
+ *      thread: update and munmap only upon initiation of new search
  *      Any long-running program should run mcdb_mmap_refresh(m->map) at
  *      periodic intervals to check if the file on disk has been replaced
  *      and needs to be re-mapped to obtain the new map.
  *      Threads should call mcdb_thread_refresh(mcdb) at regular intervals to
  *      help free up resources sooner.
  *      document: thread: mcdb_mmap_refresh(m->map); mcdb_thread_refresh(m);
- *        (might be this in a macro)  Call to mcdb_thread_refresh() is needed
+ *        (might put this in a macro)  Call to mcdb_thread_refresh() is needed
  *        to decrement reference count (and clean up) previous mmap.
- */
-/* GPS: TODO
- * document the ((noinline)) for reducing code bloat for less frequent paths
  */
