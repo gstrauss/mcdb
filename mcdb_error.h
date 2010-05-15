@@ -1,6 +1,8 @@
 #ifndef INCLUDED_MCDB_ERROR_H
 #define INCLUDED_MCDB_ERROR_H
 
+#include "mcdb_attribute.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,7 +19,8 @@ enum {
 extern const char *mcdb_usage;
 
 extern int
-mcdb_error (int, const char * restrict);
+mcdb_error (int, const char * restrict)
+  __attribute_nonnull__  __attribute_cold__;
 
 #ifdef __cplusplus
 }

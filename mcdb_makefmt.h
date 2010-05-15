@@ -3,6 +3,8 @@
 
 #include <sys/types.h>  /* size_t */
 
+#include "mcdb_attribute.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -12,15 +14,18 @@ extern "C" {
 
 int
 mcdb_makefmt_fdintofd (int, char * restrict, size_t,
-                       int, void * (*)(size_t), void (*)(void *));
+                       int, void * (*)(size_t), void (*)(void *))
+  __attribute_nonnull__;
 
 int
 mcdb_makefmt_fdintofile (const int, char * restrict, size_t,
                          const char * restrict,
-                         void * (*)(size_t), void (*)(void *));
+                         void * (*)(size_t), void (*)(void *))
+  __attribute_nonnull__;
 int
 mcdb_makefmt_fileintofile (const char * restrict, const char * restrict,
-                           void * (*)(size_t), void (*)(void *));
+                           void * (*)(size_t), void (*)(void *))
+  __attribute_nonnull__;
 
 #ifdef __cplusplus
 }

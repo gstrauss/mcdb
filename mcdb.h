@@ -54,6 +54,8 @@
 #error "mcdb requires mmap() and msync() support"
 #endif
 
+#include "mcdb_attribute.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -86,39 +88,57 @@ struct mcdb {
 #define MCDB_HASH_INIT 5381
 
 extern uint32_t
-mcdb_hash(uint32_t, const void *, size_t);
+mcdb_hash(uint32_t, const void *, size_t)
+  __attribute_nonnull__;
 
+extern bool
+mcdb_findtagstart(struct mcdb * restrict, const char * restrict, size_t,
+                  unsigned char) /* note: must be cast to (unsigned char) */
+  __attribute_nonnull__;
+extern bool
+mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
+                 unsigned char)  /* note: must be cast to (unsigned char) */
+  __attribute_nonnull__;
+
+extern bool
+mcdb_findstart(struct mcdb * restrict, const char * restrict, size_t)
+  __attribute_nonnull__;
+
+#define mcdb_findstart(m,key,klen) mcdb_findtagstart((m),(key),(klen),0)
+#define mcdb_findnext(m,key,klen)  mcdb_findtagnext((m),(key),(klen),0)
 #define mcdb_find(m,key,klen) \
   (mcdb_findstart((m),(key),(klen)) && mcdb_findnext((m),(key),(klen)))
 
-extern bool
-mcdb_findstart(struct mcdb * restrict, const char * restrict, size_t);
-extern bool
-mcdb_findnext(struct mcdb * restrict, const char * restrict, size_t);
-
 extern void *
-mcdb_read(struct mcdb * restrict, uint32_t, uint32_t, void * restrict);
+mcdb_read(struct mcdb * restrict, uint32_t, uint32_t, void * restrict)
+  __attribute_nonnull__;
 
 #define mcdb_datapos(m)      ((m)->dpos)
 #define mcdb_datalen(m)      ((m)->dlen)
 #define mcdb_dataptr(m)      ((m)->map->ptr+(m)->dpos)
 
-extern struct mcdb_mmap *
-mcdb_mmap_create(const char *,const char *,void * (*)(size_t),void (*)(void *));
+extern struct mcdb_mmap *  __attribute_malloc__
+mcdb_mmap_create(const char *,const char *,void * (*)(size_t),void (*)(void *))
+  __attribute_nonnull__;
 extern bool
-mcdb_mmap_init(struct mcdb_mmap * restrict, int);
+mcdb_mmap_init(struct mcdb_mmap * restrict, int)
+  __attribute_nonnull__;
 extern bool
-mcdb_mmap_refresh(struct mcdb_mmap * restrict);
+mcdb_mmap_refresh(struct mcdb_mmap * restrict)
+  __attribute_nonnull__;
 extern void
-mcdb_mmap_free(struct mcdb_mmap * restrict);
+mcdb_mmap_free(struct mcdb_mmap * restrict)
+  __attribute_nonnull__;
 extern void
-mcdb_mmap_destroy(struct mcdb_mmap * restrict);
+mcdb_mmap_destroy(struct mcdb_mmap * restrict)
+  __attribute_nonnull__;
 
 
 #ifdef _THREAD_SAFE
 
 extern bool
-mcdb_register_access(struct mcdb_mmap **, bool);
+mcdb_register_access(struct mcdb_mmap **, bool)
+  __attribute_nonnull__;
 
 #define mcdb_thread_refresh(mcdb) \
   ((mcdb)->map->next == NULL || mcdb_register_access(&((mcdb)->map), true))

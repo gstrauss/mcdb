@@ -15,6 +15,7 @@
 #include "mcdb_make.h"
 #include "mcdb.h"
 #include "mcdb_uint32.h"
+#include "mcdb_attribute.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -37,7 +38,10 @@ struct mcdb_hplist {
   uint32_t num;
 };
 
-static struct mcdb_hplist *  __attribute__((noinline))
+static struct mcdb_hplist *  __attribute_noinline__  __attribute_malloc__
+mcdb_hplist_alloc(struct mcdb_make * const restrict m)
+  __attribute_nonnull__;
+static struct mcdb_hplist *
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
 {
     struct mcdb_hplist * const restrict head =
@@ -48,7 +52,10 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
     return (m->head = head);
 }
 
-static ssize_t  __attribute__((noinline))
+static ssize_t  __attribute_noinline__
+mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
+  __attribute_nonnull__;
+static ssize_t
 mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
 {
     ssize_t w;
@@ -57,10 +64,14 @@ mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
 }
 
 /* (compilation with large file support enables off_t max > 2 GB in cast) */
-static int  __attribute__((noinline))
+static int  __attribute_noinline__
 mcdb_ftruncate_nointr(const int fd, const size_t sz)
 { int r; do{r=ftruncate(fd,(off_t)sz);}while(r != 0 && errno==EINTR);return r; }
 
+static bool  inline
+mcdb_mmap_commit(struct mcdb_make * const restrict m,
+                 char header[MCDB_HEADER_SZ])
+  __attribute_nonnull__;
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
                  char header[MCDB_HEADER_SZ])
@@ -79,7 +90,10 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
      * modern UNIX use a unified page cache, which should fsync as we expect. */
 }
 
-static bool  __attribute__((noinline))
+static bool  __attribute_noinline__
+mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
+  __attribute_nonnull__;
+static bool  __attribute_noinline__
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
 {
     size_t offset;
@@ -330,7 +344,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
  * m->fd is not closed here since mcdb_make_start() takes open file descriptor
  * (caller should cleanup m->fd)
  */
-int __attribute__((noinline))
+int __attribute_noinline__
 mcdb_make_destroy(struct mcdb_make * const restrict m)
 {
     void * const map = m->map;

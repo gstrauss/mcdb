@@ -7,6 +7,8 @@
 
 #include <sys/types.h> /* size_t   */
 
+#include "mcdb_attribute.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,27 +30,36 @@ struct mcdb_make {
 
 extern int
 mcdb_make_start(struct mcdb_make * restrict, int,
-                void * (*)(size_t), void (*)(void *));
+                void * (*)(size_t), void (*)(void *))
+  __attribute_nonnull__;
 extern int
 mcdb_make_add(struct mcdb_make * restrict,
               const char * restrict, size_t,
-              const char * restrict, size_t);
+              const char * restrict, size_t)
+  __attribute_nonnull__;
 extern int
-mcdb_make_finish(struct mcdb_make * restrict);
+mcdb_make_finish(struct mcdb_make * restrict)
+  __attribute_nonnull__;
 extern int
-mcdb_make_destroy(struct mcdb_make * restrict);
+mcdb_make_destroy(struct mcdb_make * restrict)
+  __attribute_nonnull__;
 
 /* support for adding entries from input stream, instead of fully in memory */
 extern int
-mcdb_make_addbegin(struct mcdb_make * restrict, size_t, size_t);
+mcdb_make_addbegin(struct mcdb_make * restrict, size_t, size_t)
+  __attribute_nonnull__;
 extern void
-mcdb_make_addbuf_key(struct mcdb_make * restrict,const char * restrict,size_t);
+mcdb_make_addbuf_key(struct mcdb_make * restrict,const char * restrict,size_t)
+  __attribute_nonnull__;
 extern void
-mcdb_make_addbuf_data(struct mcdb_make * restrict,const char * restrict,size_t);
+mcdb_make_addbuf_data(struct mcdb_make * restrict,const char * restrict,size_t)
+  __attribute_nonnull__;
 extern void
-mcdb_make_addend(struct mcdb_make * restrict);
+mcdb_make_addend(struct mcdb_make * restrict)
+  __attribute_nonnull__;
 extern void
-mcdb_make_addrevert(struct mcdb_make * restrict);
+mcdb_make_addrevert(struct mcdb_make * restrict)
+  __attribute_nonnull__;
 
 #ifdef __cplusplus
 }

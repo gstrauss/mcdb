@@ -5,6 +5,7 @@
 
 #include "mcdb.h"
 #include "mcdb_uint32.h"
+#include "mcdb_attribute.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -28,20 +29,15 @@ mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
     return h;
 }
 
-/* document: read mmap directly (for efficiency) instead of using mcdb_read for
- * bounds checks.  Assume contents of struct mcdb are sane and that contents of
- * cdb are sane.  Validate a cdb before putting it into place to be loaded.
- * Since the cdb should be consistent, the numbers pulled from it should be
- * sane, and we can avoid overhead of not trusting something that is already
- * consistent.
- */
-
 bool
-mcdb_findstart(struct mcdb * const restrict m,
-               const char * const restrict key, const size_t klen)
+mcdb_findtagstart(struct mcdb * const restrict m,
+                  const char * const restrict key, const size_t klen,
+                  const unsigned char tagc)
 {
+    const uint32_t khash_init = /* inline mcdb_hash() for tag char */
+      (tagc != 0) ? (MCDB_HASH_INIT+(MCDB_HASH_INIT<<5))^tagc : MCDB_HASH_INIT;
+    const uint32_t khash = mcdb_hash(khash_init, key, klen);
     const unsigned char * restrict ptr;
-    const uint32_t khash = mcdb_hash(MCDB_HASH_INIT,key,klen);
 
   #ifdef _THREAD_SAFE
     (void) mcdb_thread_refresh(m);
@@ -60,8 +56,9 @@ mcdb_findstart(struct mcdb * const restrict m,
 }
 
 bool
-mcdb_findnext(struct mcdb * const restrict m,
-              const char * const restrict key, const size_t klen)
+mcdb_findtagnext(struct mcdb * const restrict m,
+                 const char * const restrict key, const size_t klen,
+                 const unsigned char tagc)
 {
     const unsigned char * ptr;
     const unsigned char * const restrict mptr = m->map->ptr;
@@ -80,7 +77,9 @@ mcdb_findnext(struct mcdb * const restrict m,
         if (khash == m->khash) {
             ptr = mptr + vpos;
             len = mcdb_uint32_unpack_bigendian_macro(ptr);
-            if (len == klen && memcmp(key, ptr+8, klen) == 0) {
+            if (tagc != 0
+                ? len == klen+1 && tagc == ptr[8] && memcmp(key,ptr+9,klen) == 0
+                : len == klen && memcmp(key,ptr+8,klen) == 0) {
                 m->dlen = mcdb_uint32_unpack_bigendian_macro(ptr+4);
                 m->dpos = vpos + 8 + len;
                 return true;
@@ -105,11 +104,16 @@ mcdb_read(struct mcdb * const restrict m, const uint32_t pos,
 }
 
 
+static bool
+mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
+  __attribute_nonnull__;
+
+
 #ifdef _THREAD_SAFE
 
 static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-bool  __attribute__((noinline))
+bool  __attribute_noinline__
 mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
                      const bool add)
 {
@@ -150,10 +154,11 @@ mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
     return true;
 }
 
-static bool
-mcdb_mmap_reopen(struct mcdb_mmap * const restrict map);
+static bool  __attribute_noinline__
+mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
+  __attribute_nonnull__;
 
-static bool  __attribute__((noinline))
+static bool  __attribute_noinline__
 mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
 {
     struct mcdb_mmap *next;
@@ -183,7 +188,7 @@ mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
 #endif  /* _THREAD_SAFE */
 
 
-static bool  __attribute__((noinline))
+static bool  __attribute_noinline__
 mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
 {
     int fd;
@@ -209,7 +214,7 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
  * caller may call mcdb_mmap_refresh() before mcdb_find() or mcdb_findstart(),
  * or at other scheduled intervals, or not at all, depending on program need.
  */
-bool  __attribute__((noinline))
+bool  __attribute_noinline__
 mcdb_mmap_refresh(struct mcdb_mmap * const restrict map)
 {
     struct stat st;
@@ -233,6 +238,10 @@ mcdb_mmap_refresh(struct mcdb_mmap * const restrict map)
 
 static void  inline
 mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
+  __attribute_nonnull__;
+
+static void  inline
+mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
 {
     if (map->ptr)
         munmap(map->ptr, map->size);
@@ -240,7 +249,7 @@ mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
     map->size = 0;    /* map->size initialization required for mcdb_read() */
 }
 
-void  __attribute__((noinline))
+void  __attribute_noinline__
 mcdb_mmap_free(struct mcdb_mmap * const restrict map)
 {
     mcdb_mmap_unmap(map);
@@ -248,7 +257,7 @@ mcdb_mmap_free(struct mcdb_mmap * const restrict map)
         map->fn_free(map);
 }
 
-void  __attribute__((noinline))
+void  __attribute_noinline__
 mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 {
     if (map->dfd > STDERR_FILENO) {
@@ -258,7 +267,7 @@ mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
     mcdb_mmap_free(map);
 }
 
-struct mcdb_mmap *  __attribute__((noinline))
+struct mcdb_mmap *  __attribute_noinline__
 mcdb_mmap_create(const char * const dname, const char * const fname,
                  void * (*fn_malloc)(size_t), void (*fn_free)(void *))
 {
@@ -297,7 +306,7 @@ mcdb_mmap_create(const char * const dname, const char * const fname,
     }
 }
 
-bool  __attribute__((noinline))
+bool  __attribute_noinline__
 mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 {
     struct stat st;
@@ -321,6 +330,7 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 }
 
 
+/* GPS: document: tag '\0' not permitted; will result in undefined behavior */
 /* GPS: document: thread: update and munmap only upon initiation of new search
  *      Any long-running program should run mcdb_mmap_refresh(m->map) at
  *      periodic intervals to check if the file on disk has been replaced
@@ -331,6 +341,6 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
  *        (might be this in a macro)  Call to mcdb_thread_refresh() is needed
  *        to decrement reference count (and clean up) previous mmap.
  */
-/* GPS: TODO portable __attribute__((noinline)) macro substitutions
+/* GPS: TODO
  * document the ((noinline)) for reducing code bloat for less frequent paths
  */

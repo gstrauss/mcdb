@@ -5,6 +5,7 @@
 #include "mcdb_makefmt.h"
 #include "mcdb_make.h"
 #include "mcdb_error.h"
+#include "mcdb_attribute.h"
 
 #include <errno.h>
 #include <sys/types.h>
@@ -36,12 +37,15 @@ struct mcdb_input {
   int fd;
 };
 
-/* Note: __attribute__((noinline)) is used to mark less frequent code paths
+/* Note: __attribute_noinline__ is used to mark less frequent code paths
  * to prevent inlining of seldoms used paths, hopefully improving instruction
  * cache hits.
  */
 
-static void  __attribute__((noinline))
+static void  __attribute_noinline__
+mcdb_bufread_align (struct mcdb_input * const restrict b)
+  __attribute_nonnull__;
+static void
 mcdb_bufread_align (struct mcdb_input * const restrict b)
 {
     if (b->fd == -1) return;             /* we use fd == -1 as flag for mmap */
@@ -53,7 +57,10 @@ mcdb_bufread_align (struct mcdb_input * const restrict b)
     if (b->datasz == 0) b->buf[0] = '\0';  /* known char in buf when no data */
 }
 
-static ssize_t  __attribute__((noinline))
+static ssize_t  __attribute_noinline__
+mcdb_bufread_fd (struct mcdb_input * const restrict b)
+  __attribute_nonnull__;
+static ssize_t
 mcdb_bufread_fd (struct mcdb_input * const restrict b)
 {
     ssize_t r;
@@ -64,7 +71,10 @@ mcdb_bufread_fd (struct mcdb_input * const restrict b)
 }
 
 /* (separate routine from mcdb_bufread_preamble for less frequent code path) */
-static ssize_t  __attribute__((noinline))
+static ssize_t  __attribute_noinline__
+mcdb_bufread_preamble_fill (struct mcdb_input * const restrict b)
+  __attribute_nonnull__;
+static ssize_t
 mcdb_bufread_preamble_fill (struct mcdb_input * const restrict b)
 {
     /* mcdbmake lines begin "+nnnn,mmmm:...."; max 23 chars with 32-bit nums */
@@ -81,6 +91,10 @@ mcdb_bufread_preamble_fill (struct mcdb_input * const restrict b)
     return r;  /* >= 0 is success; -1 is read error */
 }
 
+static bool
+mcdb_bufread_number (struct mcdb_input * const restrict b,
+                     size_t * const restrict rv)
+  __attribute_nonnull__;
 static bool
 mcdb_bufread_number (struct mcdb_input * const restrict b,
                      size_t * const restrict rv)
@@ -109,6 +123,11 @@ static int
 mcdb_bufread_preamble (struct mcdb_input * const restrict b,
                        size_t * const restrict klen,
                        size_t * const restrict dlen)
+  __attribute_nonnull__;
+static int
+mcdb_bufread_preamble (struct mcdb_input * const restrict b,
+                       size_t * const restrict klen,
+                       size_t * const restrict dlen)
 {
     /* mcdbmake lines begin "+nnnn,mmmm:...."; max 23 chars with 32-bit nums */
     /* mcdbmake blank line ends input */
@@ -132,6 +151,12 @@ mcdb_bufread_str (struct mcdb_input * const restrict b, size_t len,
                   struct mcdb_make * const restrict m,
                   void (* const fn_addbuf)(struct mcdb_make * restrict,
                                            const char * restrict, size_t))
+  __attribute_nonnull__;
+static bool
+mcdb_bufread_str (struct mcdb_input * const restrict b, size_t len,
+                  struct mcdb_make * const restrict m,
+                  void (* const fn_addbuf)(struct mcdb_make * restrict,
+                                           const char * restrict, size_t))
 {
     size_t u;
     do {
@@ -144,7 +169,10 @@ mcdb_bufread_str (struct mcdb_input * const restrict b, size_t len,
     return (len == 0);
 }
 
-static bool  __attribute__((noinline))
+static bool  __attribute_noinline__
+mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
+  __attribute_nonnull__;
+static bool
 mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
 {
     ssize_t r = 0;
@@ -154,7 +182,12 @@ mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
     return (b->datasz - b->pos >= len);
 }
 
-static bool  __attribute__((noinline))
+static bool  __attribute_noinline__
+mcdb_bufread_rec (struct mcdb_make * const restrict m,
+                  const size_t klen, const size_t dlen,
+                  struct mcdb_input * const restrict b)
+  __attribute_nonnull__;
+static bool
 mcdb_bufread_rec (struct mcdb_make * const restrict m,
                   const size_t klen, const size_t dlen,
                   struct mcdb_input * const restrict b)
@@ -175,7 +208,7 @@ mcdb_bufread_rec (struct mcdb_make * const restrict m,
  */ 
 
 
-int  __attribute__((noinline))
+int  __attribute_noinline__
 mcdb_makefmt_fdintofd (const int inputfd,
                        char * const restrict buf,
                        const size_t bufsz,
@@ -240,7 +273,7 @@ close_nointr(const int fd)
  * - read from mmap:  (see mcdb_makefmt_fileintofile())
  *     mcdb_makefmt_fdintofile(-1,mmap_ptr,mmap_sz,"fname.cdb",malloc,free);
  */
-int  __attribute__((noinline))
+int  __attribute_noinline__
 mcdb_makefmt_fdintofile (const int inputfd,
                          char * const restrict buf, const size_t bufsz,
                          const char * const restrict fname,
@@ -282,9 +315,12 @@ mcdb_makefmt_fdintofile (const int inputfd,
 
 static int
 open_nointr(const char * const restrict fn, const int flags, const mode_t mode)
+  __attribute_nonnull__;
+static int
+open_nointr(const char * const restrict fn, const int flags, const mode_t mode)
 { int r; do {r=open(fn,flags,mode);} while (r != 0 && errno==EINTR); return r; }
 
-int  __attribute__((noinline))
+int  __attribute_noinline__
 mcdb_makefmt_fileintofile (const char * const restrict infile,
                            const char * const restrict fname,
                            void * (* const fn_malloc)(size_t),
