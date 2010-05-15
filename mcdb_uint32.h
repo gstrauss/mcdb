@@ -11,10 +11,12 @@ extern "C" {
 #endif
 
 uint32_t
-mcdb_uint32_unpack(const char s[4]);
+mcdb_uint32_unpack(const char s[4])
+  __attribute_warn_unused_result__;
 
 uint32_t
-mcdb_uint32_unpack_bigendian(const char s[4]);
+mcdb_uint32_unpack_bigendian(const char s[4])
+  __attribute_warn_unused_result__;
 
 void
 mcdb_uint32_pack(char s[4], uint32_t);

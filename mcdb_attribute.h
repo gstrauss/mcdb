@@ -19,3 +19,7 @@
 #ifndef __attribute_cold__
 #define __attribute_cold__  __attribute__((cold))
 #endif
+
+#ifndef __attribute_warn_unused_result__
+#define __attribute_warn_unused_result__  __attribute__((warn_unused_result))
+#endif

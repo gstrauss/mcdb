@@ -40,7 +40,7 @@ struct mcdb_hplist {
 
 static struct mcdb_hplist *  __attribute_noinline__  __attribute_malloc__
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 static struct mcdb_hplist *
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
 {
@@ -54,7 +54,7 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
 
 static ssize_t  __attribute_noinline__
 mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 static ssize_t
 mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
 {
@@ -66,12 +66,15 @@ mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
 /* (compilation with large file support enables off_t max > 2 GB in cast) */
 static int  __attribute_noinline__
 mcdb_ftruncate_nointr(const int fd, const size_t sz)
+  __attribute_warn_unused_result__;
+static int  __attribute_noinline__
+mcdb_ftruncate_nointr(const int fd, const size_t sz)
 { int r; do{r=ftruncate(fd,(off_t)sz);}while(r != 0 && errno==EINTR);return r; }
 
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
                  char header[MCDB_HEADER_SZ])
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
                  char header[MCDB_HEADER_SZ])
@@ -92,7 +95,7 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
 
 static bool  __attribute_noinline__
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 static bool  __attribute_noinline__
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
 {

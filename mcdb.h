@@ -89,20 +89,16 @@ struct mcdb {
 
 extern uint32_t
 mcdb_hash(uint32_t, const void *, size_t)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 extern bool
 mcdb_findtagstart(struct mcdb * restrict, const char * restrict, size_t,
                   unsigned char) /* note: must be cast to (unsigned char) */
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 extern bool
 mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
                  unsigned char)  /* note: must be cast to (unsigned char) */
-  __attribute_nonnull__;
-
-extern bool
-mcdb_findstart(struct mcdb * restrict, const char * restrict, size_t)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 #define mcdb_findstart(m,key,klen) mcdb_findtagstart((m),(key),(klen),0)
 #define mcdb_findnext(m,key,klen)  mcdb_findtagnext((m),(key),(klen),0)
@@ -119,10 +115,10 @@ mcdb_read(struct mcdb * restrict, uint32_t, uint32_t, void * restrict)
 
 extern struct mcdb_mmap *  __attribute_malloc__
 mcdb_mmap_create(const char *,const char *,void * (*)(size_t),void (*)(void *))
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 extern bool
 mcdb_mmap_init(struct mcdb_mmap * restrict, int)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 extern bool
 mcdb_mmap_refresh(struct mcdb_mmap * restrict)
   __attribute_nonnull__;

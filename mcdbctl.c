@@ -20,6 +20,9 @@
 
 static bool
 writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+static bool
+writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
 {
     /* Note: unlike writev(), this routine might modify the iovecs */
     ssize_t len;
@@ -45,6 +48,9 @@ writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
  * start of hash tables is end of key/data section (eod)
  * subtract 7 for maximal added alignment between data and hash table
  * (each record key,len,keystr,datastr is at least 8 bytes) */
+static int
+mcdbctl_dump(struct mcdb * const restrict m)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 static int
 mcdbctl_dump(struct mcdb * const restrict m)
 {
@@ -136,6 +142,9 @@ mcdbctl_dump(struct mcdb * const restrict m)
 /* Note: mcdbctl_stats() is equivalent test to pass/fail of djb cdbtest */
 static int
 mcdbctl_stats(struct mcdb * const restrict m)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+static int
+mcdbctl_stats(struct mcdb * const restrict m)
 {
     unsigned char * const map_ptr = m->map->ptr;
     unsigned char *p;
@@ -174,6 +183,10 @@ mcdbctl_stats(struct mcdb * const restrict m)
 static int
 mcdbctl_getseq(struct mcdb * const restrict m,
                const char * const restrict key, unsigned long seq)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+static int
+mcdbctl_getseq(struct mcdb * const restrict m,
+               const char * const restrict key, unsigned long seq)
 {
     const size_t klen = strlen(key);
     struct iovec iov[2];
@@ -195,6 +208,9 @@ mcdbctl_getseq(struct mcdb * const restrict m,
     return EXIT_FAILURE;
 }
 
+static int
+mcdbctl_query(const int argc, char ** restrict argv)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 static int
 mcdbctl_query(const int argc, char ** restrict argv)
 {
@@ -261,6 +277,9 @@ mcdbctl_query(const int argc, char ** restrict argv)
     return rv;
 }
 
+static int
+mcdbctl_make(const int argc, char ** const restrict argv)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 static int
 mcdbctl_make(const int argc, char ** const restrict argv)
 {

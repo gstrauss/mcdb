@@ -15,17 +15,17 @@ extern "C" {
 int
 mcdb_makefmt_fdintofd (int, char * restrict, size_t,
                        int, void * (*)(size_t), void (*)(void *))
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 int
 mcdb_makefmt_fdintofile (const int, char * restrict, size_t,
                          const char * restrict,
                          void * (*)(size_t), void (*)(void *))
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 int
 mcdb_makefmt_fileintofile (const char * restrict, const char * restrict,
                            void * (*)(size_t), void (*)(void *))
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 #ifdef __cplusplus
 }

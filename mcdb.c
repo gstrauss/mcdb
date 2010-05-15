@@ -106,7 +106,7 @@ mcdb_read(struct mcdb * const restrict m, const uint32_t pos,
 
 static bool
 mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
 #ifdef _THREAD_SAFE
@@ -156,7 +156,7 @@ mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
 
 static bool  __attribute_noinline__
 mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 static bool  __attribute_noinline__
 mcdb_mmap_reopen_thread(struct mcdb_mmap * const restrict map)

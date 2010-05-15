@@ -20,7 +20,7 @@ extern const char *mcdb_usage;
 
 extern int
 mcdb_error (int, const char * restrict)
-  __attribute_nonnull__  __attribute_cold__;
+  __attribute_nonnull__  __attribute_cold__  __attribute_warn_unused_result__;
 
 #ifdef __cplusplus
 }
