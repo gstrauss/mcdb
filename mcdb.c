@@ -168,9 +168,9 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
     bool rc;
 
   #if defined(__linux) || defined(__sun)
-    if ((fd = openat(map->dfd, map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
+    if ((fd = openat(map->dfd, map->fname, O_RDONLY|O_NONBLOCK, 0)) == -1)
   #else
-    if ((fd = open(map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
+    if ((fd = open(map->fname, O_RDONLY|O_NONBLOCK, 0)) == -1)
   #endif
         return false;
 
@@ -225,6 +225,9 @@ mcdb_mmap_refresh(struct mcdb_mmap * const restrict map)
 {
     struct stat st;
 
+    if (map->fn_malloc == NULL) /*caller misconfigured mcdb_mmap; no fn_malloc*/
+        return false;
+
   #if defined(__linux) || defined(__sun)
     if (fstatat(map->dfd, map->fname, &st, 0) != 0)
   #else
@@ -270,10 +273,11 @@ mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 }
 
 struct mcdb_mmap *  __attribute_noinline__
-mcdb_mmap_create(const char * const dname, const char * const fname,
+mcdb_mmap_create(const char * const dname  __attribute_unused__,
+                 const char * const fname,
                  void * (*fn_malloc)(size_t), void (*fn_free)(void *))
 {
-    struct mcdb_mmap * map;
+    struct mcdb_mmap * restrict map;
     const size_t len = strlen(fname);
     int dfd = -1;
 
@@ -330,6 +334,9 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 
 /* GPS: document: persistent open mcdb with multiple references
  *        (not just use in threads)
+ *      cloning (struct mcdb_mmap) requires a call to mcdb_register()
+ *        to increment refcnt.  We probably want to create a convenience routine
+ *        to encapsulate some of this.
  *      thread: update and munmap only upon initiation of new search
  *      Any long-running program should run mcdb_mmap_refresh(m->map) at
  *      periodic intervals to check if the file on disk has been replaced

@@ -21,7 +21,16 @@
 #endif
 
 #ifndef __attribute_cold__
+#if defined(__GNUC_PREREQ) && __GNUC_PREREQ(4,3)
 #define __attribute_cold__  __attribute__((cold))
+#endif
+#endif
+#ifndef __attribute_cold__
+#define __attribute_cold__
+#endif
+
+#ifndef __attribute_unused__
+#define __attribute_unused__  __attribute__((unused))
 #endif
 
 #ifndef __attribute_warn_unused_result__

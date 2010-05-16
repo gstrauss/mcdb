@@ -9,8 +9,13 @@
 /* gcc -std=c99 hides MAP_ANONYMOUS
  * _BSD_SOURCE or _SVID_SOURCE needed for mmap MAP_ANONYMOUS on Linux */
 /* large file support needed for mmap() offset,ftruncate() on cdb > 2 GB */
+#if defined(_AIX)
+#define _LARGE_FILES
+#else /*#elif defined(__linux) || defined(__sun) || defined(__hpux)*/
 #define _FILE_OFFSET_BITS 64
-/* GPS: TODO add large file support for other operating systems */
+#define _LARGEFILE_SOURCE 1
+#define _LARGEFILE64_SOURCE 1
+#endif
 
 #include "mcdb_make.h"
 #include "mcdb.h"

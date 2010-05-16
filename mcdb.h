@@ -68,7 +68,7 @@ struct mcdb_mmap {
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
   void (*fn_free)(void *);             /* fn ptr to free() */
   volatile uint32_t refcnt;            /* registered access reference count */
-  int dfd;                    /* fd open to dir in which mmap file resides */
+  volatile int dfd;           /* fd open to dir in which mmap file resides */
   char fname[64];             /* basename of mmap file, relative to dir fd */
 };
 
@@ -131,9 +131,11 @@ extern bool
 mcdb_register_access(struct mcdb_mmap **, bool)
   __attribute_nonnull__;
 
+#define mcdb_register(map)    mcdb_register_access(&(map), true)
+#define mcdb_unregister(map)  mcdb_register_access(&(map), false)
 #define mcdb_thread_refresh(mcdb) \
   (__builtin_expect((mcdb)->map->next == NULL, true) \
-   || __builtin_expect(mcdb_register_access(&((mcdb)->map),true), true))
+   || __builtin_expect(mcdb_register((mcdb)->map), true))
 
 
 #define MCDB_SLOTS 256                      /* must be power-of-2 */
