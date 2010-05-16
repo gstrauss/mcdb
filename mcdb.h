@@ -68,7 +68,7 @@ struct mcdb_mmap {
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
   void (*fn_free)(void *);             /* fn ptr to free() */
   volatile uint32_t refcnt;            /* registered access reference count */
-  volatile int dfd;           /* fd open to dir in which mmap file resides */
+  int dfd;                    /* fd open to dir in which mmap file resides */
   char fname[64];             /* basename of mmap file, relative to dir fd */
 };
 

@@ -126,7 +126,7 @@ mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
     if (pthread_mutex_lock(&mcdb_global_mutex) != 0)
         return false;
 
-    map = *mcdb_mmap;
+    map = *mcdb_mmap;  /*(ought to be preceded by StoreLoad memory barrier)*/
     next = map->next;
 
     if (add && next != NULL) {
