@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <errno.h>
 #include <limits.h>
@@ -23,6 +24,9 @@ static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define pthread_mutex_unlock(mutexp) (void)0
 #endif
 
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
 
 uint32_t
 mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
@@ -120,6 +124,12 @@ bool  __attribute_noinline__
 mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
                      const bool add)
 {
+/* GPS: FIXME need a better interface, or two.
+ * Extra flag to indicate that lock should remain held
+ *   (unlock following shortly -- need another routine to provide that)
+ * Callers should be able to register without needing to play tricks with
+ *   the next pointer.
+ */
     struct mcdb_mmap *map;
     struct mcdb_mmap *next;
 
@@ -286,8 +296,13 @@ mcdb_mmap_create(const char * const dname  __attribute_unused__,
     if ((map = fn_malloc(sizeof(struct mcdb_mmap))) == NULL)
         return NULL;
   #if defined(__linux) || defined(__sun)
-    dfd = open(dname, O_RDONLY, 0);
-    if (dfd <= STDERR_FILENO) {/* caller must have open STDIN, STDOUT, STDERR */
+    /* caller must have open STDIN, STDOUT, STDERR */
+    if ((dfd = open(dname, O_RDONLY | O_CLOEXEC, 0)) > STDERR_FILENO) {
+      #if O_CLOEXEC == 0
+        (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
+      #endif
+    }
+    else {
         fn_free(map);
         return NULL;
     }
