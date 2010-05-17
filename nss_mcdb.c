@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <nss.h> /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
+#include <nss.h>    /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
 
 #ifdef _THREAD_SAFE
 #include <pthread.h>       /* pthread_mutex_t, pthread_mutex_{lock,unlock}() */
@@ -409,6 +409,206 @@ _nss_files_getgrgid_r(const gid_t gid,
 
 
 #include <netdb.h>
+#include <sys/socket.h>  /* AF_INET */
+
+/* GPS: TODO check for each get*ent if buflen is size_t or int
+ * and document if we choose to use size_t anyway */
+/* GPS: some sethostent() calls have a 'stayopen' parameter.
+ * Is nss looking for this?  Check */
+/* GPS: document which routines are POSIX-1.2001 and which are GNU extensions */
+
+
+/*  ??? (struct hostent *)   */
+enum nss_status
+_nss_files_gethostent_r(struct hostent * const restrict hostbuf,
+                       char * const restrict buf, const size_t buflen,
+                       struct hostent ** const restrict hostbufp,
+                       int * const restrict h_errnop)
+{
+    struct mcdb * const m = &nss_mcdb_st[NSS_DBTYPE_HOSTS];
+    enum nss_status status =
+      _nss_mcdb_getent(m, NSS_DBTYPE_HOSTS, (unsigned char)'=');
+    if (status != NSS_STATUS_SUCCESS)
+        return status;
+
+    /* TODO: decode into struct hostent */
+    /* fail ERANGE only if insufficient buffer space supplied */
+    /* else return NSS_STATUS_SUCCESS */
+
+    return status;
+}
+
+/* GPS: TODO
+ * POSIX.1-2001  marks  gethostbyaddr()  and  gethostbyname() obsolescent.
+ * See getaddrinfo(), getnameinfo(), gai_strerror() and see if we can implement
+ * the parsing and lookups according to those interfaces.
+ */
+
+/*  ??? (struct hostent *)   */
+enum nss_status
+_nss_files_gethostbyname2_r(const char * const restrict name, const int type,
+                            struct hostent * const restrict hostbuf,
+                            char * const restrict buf, const size_t buflen,
+                            struct hostent ** const restrict hostbufp,
+                            int * const restrict h_errnop)
+{
+    struct mcdb m;
+    size_t nlen;
+    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_HOSTS);
+    if (__builtin_expect(m.map == NULL, false))
+        return NSS_STATUS_UNAVAIL;
+    nlen = strlen(name);
+/* GPS: FIXME: must parse name str and see if it is already an address */
+/* GPS: FIXME: should we look for HOSTALIASES environment variable
+ * and parse that?  Do other get* types look for environment overrides?  Check*/
+    if (  mcdb_findtagstart(&m, name, nlen, (unsigned char)'=')
+        && mcdb_findtagnext(&m, name, nlen, (unsigned char)'=')  ) {
+/* GPS: FIXME: check type match: mcdb_findtagnext() until match */
+
+        /* TODO: decode into struct hostent */
+        /* fail ERANGE only if insufficient buffer space supplied */
+
+        mcdb_unregister(m.map);
+        return NSS_STATUS_SUCCESS;
+    }
+    mcdb_unregister(m.map);
+    return NSS_STATUS_NOTFOUND;
+}
+
+enum nss_status
+_nss_files_gethostbyname_r(const char * const restrict name,
+                           struct hostent * const restrict hostbuf,
+                           char * const restrict buf, const size_t buflen,
+                           struct hostent ** const restrict hostbufp,
+                           int * const restrict h_errnop)
+{
+    return _nss_files_gethostbyname2_r(name, AF_INET, hostbuf,
+                                       buf, buflen, hostbufp, h_errnop);
+}
+
+/*  ??? (struct hostent *)   */
+enum nss_status
+_nss_files_gethostbyaddr_r(const void * const restrict addr,
+                           const socklen_t len, const int type,
+                           struct hostent * const restrict hostbuf,
+                           char * const restrict buf, const size_t buflen,
+                           struct hostent ** const restrict hostbufp,
+                           int * const restrict h_errnop)
+{
+    struct mcdb m;
+    char hexstr[8];
+    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_HOSTS);
+    if (__builtin_expect(m.map == NULL, false))
+        return NSS_STATUS_UNAVAIL;
+/* GPS: FIXME: do we need 16 char buffer for addr? */
+    uint32_to_ascii8uphex((uint32_t)len, hexstr); /* TODO from cdbauthz.c */
+    if (  mcdb_findtagstart(&m, hexstr, sizeof(hexstr), (unsigned char)'x')
+        && mcdb_findtagnext(&m, hexstr, sizeof(hexstr), (unsigned char)'x')  ) {
+/* GPS: FIXME: check addr,len,type match: mcdb_findtagnext() until match */
+
+        /* TODO: decode into struct hostent */
+        /* fail ERANGE only if insufficient buffer space supplied */
+
+        mcdb_unregister(m.map);
+        return NSS_STATUS_SUCCESS;
+    }
+    mcdb_unregister(m.map);
+    return NSS_STATUS_NOTFOUND;
+}
+
+
+enum nss_status
+_nss_files_getnetgrent_r(char ** const restrict host,
+                         char ** const restrict user,
+                         char ** const restrict domain,
+                         char * const restrict buf, const size_t buflen)
+{
+    struct mcdb * const m = &nss_mcdb_st[NSS_DBTYPE_NETGROUP];
+    enum nss_status status =
+      _nss_mcdb_getent(m, NSS_DBTYPE_NETGROUP, (unsigned char)'=');
+    if (status != NSS_STATUS_SUCCESS)
+        return status;
+/* GPS: should we also provide an efficient innetgr()? */
+
+    /* TODO: decode into host, user, domain pointers (with copy into buf) */
+
+    return NSS_STATUS_SUCCESS;
+}
+
+
+/*  ??? (struct netent *)   */
+enum nss_status
+_nss_files_getnetent_r(struct netent * const restrict netbuf,
+                       char * const restrict buf, const size_t buflen,
+                       struct netent ** const restrict netbufp)
+{
+    struct mcdb * const m = &nss_mcdb_st[NSS_DBTYPE_NETWORKS];
+    enum nss_status status =
+      _nss_mcdb_getent(m, NSS_DBTYPE_NETWORKS, (unsigned char)'=');
+    if (status != NSS_STATUS_SUCCESS)
+        return status;
+
+    /* TODO: decode into struct netent */
+    /* fail ERANGE only if insufficient buffer space supplied */
+    /* else return NSS_STATUS_SUCCESS */
+
+    return status;
+}
+
+/*  ??? (struct netent *)   */
+enum nss_status
+_nss_files_getnetbyname_r(const char * const restrict name,
+                          struct netent * const restrict netbuf,
+                          char * const restrict buf, const size_t buflen,
+                          struct netent ** const restrict netbufp)
+{
+    struct mcdb m;
+    size_t nlen;
+    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_NETWORKS);
+    if (__builtin_expect(m.map == NULL, false))
+        return NSS_STATUS_UNAVAIL;
+    nlen = strlen(name);
+    if (  mcdb_findtagstart(&m, name, nlen, (unsigned char)'=')
+        && mcdb_findtagnext(&m, name, nlen, (unsigned char)'=')  ) {
+
+        /* TODO: decode into struct netent */
+        /* fail ERANGE only if insufficient buffer space supplied */
+
+        mcdb_unregister(m.map);
+        return NSS_STATUS_SUCCESS;
+    }
+    mcdb_unregister(m.map);
+    return NSS_STATUS_NOTFOUND;
+}
+
+/*  ??? (struct netent *)   */
+enum nss_status
+_nss_files_getnetbyaddr_r(const long net, const int type,
+                          struct netent * const restrict netbuf,
+                          char * const restrict buf, const size_t buflen,
+                          struct netent ** const restrict netbufp)
+{
+    struct mcdb m;
+    char hexstr[8];
+    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_NETWORKS);
+    if (__builtin_expect(m.map == NULL, false))
+        return NSS_STATUS_UNAVAIL;
+/* GPS: FIXME: do we need 16 char buffer for 'long'? */
+    uint32_to_ascii8uphex((uint32_t)net, hexstr); /* TODO from cdbauthz.c */
+    if (  mcdb_findtagstart(&m, hexstr, sizeof(hexstr), (unsigned char)'x')
+        && mcdb_findtagnext(&m, hexstr, sizeof(hexstr), (unsigned char)'x')  ) {
+/* GPS: FIXME: check net -and- type match: mcdb_findtagnext() until match */
+
+        /* TODO: decode into struct netent */
+        /* fail ERANGE only if insufficient buffer space supplied */
+
+        mcdb_unregister(m.map);
+        return NSS_STATUS_SUCCESS;
+    }
+    mcdb_unregister(m.map);
+    return NSS_STATUS_NOTFOUND;
+}
+
 
 /*  ??? (struct protoent *)   */
 enum nss_status
@@ -677,6 +877,54 @@ _nss_files_getaliasbyname_r(const char * const restrict name,
 }
 
 
+#include <shadow.h>
+
+/*  ??? (struct spwd *)   */
+enum nss_status
+_nss_files_getspent_r(struct spwd * const restrict spbuf,
+                      char * const restrict buf, const size_t buflen,
+                      struct spwd ** const restrict spbufp)
+{
+    struct mcdb * const m = &nss_mcdb_st[NSS_DBTYPE_SHADOW];
+    enum nss_status status =
+      _nss_mcdb_getent(m, NSS_DBTYPE_SHADOW, (unsigned char)'=');
+    if (status != NSS_STATUS_SUCCESS)
+        return status;
+
+    /* TODO: decode into struct spwd */
+    /* fail ERANGE only if insufficient buffer space supplied */
+    /* else return NSS_STATUS_SUCCESS */
+
+    return status;
+}
+
+/*  ??? (struct spwd *)   */
+enum nss_status
+_nss_files_getspnam_r(const char * const restrict name,
+                      struct spwd * const restrict spbuf,
+                      char * const restrict buf, const size_t buflen,
+                      struct spwd ** const restrict spbufp)
+{
+    struct mcdb m;
+    size_t nlen;
+    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_SHADOW);
+    if (__builtin_expect(m.map == NULL, false))
+        return NSS_STATUS_UNAVAIL;
+    nlen = strlen(name);
+    if (  mcdb_findtagstart(&m, name, nlen, (unsigned char)'=')
+        && mcdb_findtagnext(&m, name, nlen, (unsigned char)'=')  ) {
+
+        /* TODO: decode into struct spwd */
+        /* fail ERANGE only if insufficient buffer space supplied */
+
+        mcdb_unregister(m.map);
+        return NSS_STATUS_SUCCESS;
+    }
+    mcdb_unregister(m.map);
+    return NSS_STATUS_NOTFOUND;
+}
+
+
 
 
 
@@ -716,38 +964,38 @@ _nss_files_getaliasbyname_r(const char * const restrict name,
 
 
 
+/* GPS: FIXME FIXME FIXME
+ * mcdb_unregister() calls down to mcdb_mmap_free() if there are no other
+ * references.  mcdb_mmap_free() calls mcdb_mmap_unmap() which will set
+ * map->ptr to be NULL.  We either need to detect this to reopen mmap on
+ * every usage, or we need to provide a persistence mechanism which checks
+ * if map needs to be reopened.  (Yes, add a stat()) */
 
 
 #if 0
+
+
+To save some code size, use dispatch table for parse functions?
+(i.e. have all get*ent() call generic function which parses through
+ dispatch table)  Might see if we can use dipatch table for other
+ similar types, but not all have similar prototype.  Consolidate into
+ single arg container struct that can be passed as void through to the
+ parsing.  However, the matching still needs to be separate, so it might
+ not be worth it for other types.
+
 To avoid conflicts, prepend *all* types with a char indicating type
 (Do not trust user input that might otherwise match a different type)
 
-/* also netdb.h */  /* need #include <sys/socket.h> for AF_INET */
-_nss_files_gethostbyaddr_r
-_nss_files_gethostbyname2_r
-_nss_files_gethostbyname_r
-_nss_files_gethostent_r
 
-
-/* also netdb.h */
-_nss_files_getnetgrent_r
-
-/* also netdb.h */
-_nss_files_getnetbyaddr_r
-_nss_files_getnetbyname_r
-_nss_files_getnetent_r
-
-netinet/ether.h
+#include <netinet/ether.h>
 _nss_files_getetherent_r
 _nss_files_gethostton_r  ether_hostton  netinet/ether.h  struct ether_addr
 _nss_files_getntohost_r  ether_ntohost  netinet/ether.h
 
-#include <shadow.h>
-_nss_files_getspent_r  struct spwd
-_nss_files_getspnam_r
 
 _nss_files_getpublickey
 _nss_files_getsecretkey
+
 
 _nss_files_parse_etherent
 _nss_files_parse_grent@@GLIBC_PRIVATE
