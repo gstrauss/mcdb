@@ -15,6 +15,9 @@
 #ifndef __attribute_nonnull__
 #define __attribute_nonnull__  __attribute__((nonnull))
 #endif
+#ifndef __attribute_nonnull_x__
+#define __attribute_nonnull_x__(x)  __attribute__((nonnull(x)))
+#endif
 
 #ifndef __attribute_malloc__
 #define __attribute_malloc__  __attribute__((malloc))
