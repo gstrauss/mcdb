@@ -26,6 +26,8 @@
 #include <aliases.h>
 #include <shadow.h>
 #include <netinet/ether.h>
+#include <netinet/in.h>    /* htonl() htons() ntohl() ntohs() */
+#include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() */
 
 #ifdef _THREAD_SAFE
 #include <pthread.h>       /* pthread_mutex_t, pthread_mutex_{lock,unlock}() */
@@ -59,7 +61,7 @@ enum nss_dbtype {
 #endif
 
 /* path to db must match up to enum nss_dbtype index */
-/* NOTE: string must fit into map->fname array (i.e. currently 64 bytes) */
+/* NOTE: string must fit into map->fname array (currently 64 bytes) */
 static const char * const restrict nss_dbnames[] = {
     "aliases.mcdb",
     "ethers.mcdb",
@@ -115,7 +117,7 @@ struct _nss_kinfo {
 };
 
 struct _nss_vinfo {
-  /* fail ERANGE if insufficient buf space supplied */
+  /* fail with errno = ERANGE if insufficient buf space supplied */
   enum nss_status (*decode)(struct mcdb * restrict,
                             const struct _nss_kinfo * restrict,
                             const struct _nss_vinfo * restrict);
@@ -124,6 +126,37 @@ struct _nss_vinfo {
   size_t buflen;
   union _nss_entp p;
 };
+
+
+/* TODO take pipelined versions from cdbauthz.c */
+static char *  __attribute_noinline__
+uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
+  __attribute_nonnull__;
+static char *  __attribute_noinline__
+uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
+{
+    uint32_t nibble;
+    uint32_t i = 0;
+    do {
+        nibble = (n << (i<<2)) >> 28; /* isolate 4 bits */
+        *buf++ = nibble + (nibble < 10 ? '0': 'A'-10);
+    } while (++i < 8);
+    return buf;
+}
+static char *  __attribute_noinline__
+uint32_to_ascii4uphex(const uint32_t n, char * restrict buf)
+  __attribute_nonnull__;
+static char *  __attribute_noinline__
+uint32_to_ascii4uphex(const uint32_t n, char * restrict buf)
+{
+    uint32_t nibble;
+    uint32_t i = 4;
+    do {
+        nibble = (n << (i<<2)) >> 28; /* isolate 4 bits */
+        *buf++ = nibble + (nibble < 10 ? '0': 'A'-10);
+    } while (++i < 8);
+    return buf;
+}
 
 
 /* custom free for mcdb_mmap_create() to not free initial static storage */
@@ -399,6 +432,8 @@ _nss_files_decode_servent(struct mcdb * restrict,
                           const struct _nss_kinfo * restrict,
                           const struct _nss_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+  /* TODO: check proto in buf != "" and mcdb_findtagnext() until match 
+   *   (buf = "" and take first match) */
 enum nss_status
 _nss_files_decode_aliasent(struct mcdb * restrict,
                            const struct _nss_kinfo * restrict,
@@ -414,7 +449,7 @@ _nss_files_decode_ether_addr(struct mcdb * restrict,
                              const struct _nss_kinfo * restrict,
                              const struct _nss_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-    /* TODO: decode into struct ether_addr and hostname; both in buf (!) */
+    /* TODO: decode into struct ether_addr and hostname in buf, if not NULL */
 
 
 enum nss_status
@@ -463,7 +498,7 @@ _nss_files_getpwuid_r(const uid_t uid,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .passwd = pwbufp } };
-    uint32_to_ascii8uphex((uint32_t)uid, hexstr);/* TODO take from cdbauthz.c */
+    uint32_to_ascii8uphex((uint32_t)uid, hexstr);
     return _nss_files_get_generic(NSS_DBTYPE_PASSWD, &kinfo, &vinfo);
 }
 
@@ -514,7 +549,7 @@ _nss_files_getgrgid_r(const gid_t gid,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .group = grbufp } };
-    uint32_to_ascii8uphex((uint32_t)gid, hexstr);/* TODO take from cdbauthz.c */
+    uint32_to_ascii8uphex((uint32_t)gid, hexstr);
     return _nss_files_get_generic(NSS_DBTYPE_GROUP, &kinfo, &vinfo);
 }
 
@@ -636,7 +671,8 @@ _nss_files_gethostbyaddr_r(const void * const restrict addr,
     if (__builtin_expect(m.map == NULL, false))
         return NSS_STATUS_UNAVAIL;
 /* GPS: FIXME: do we need 16 char buffer for addr? */
-    uint32_to_ascii8uphex((uint32_t)len, hexstr); /* TODO from cdbauthz.c */
+/* GPS: FIXME: do we need to canonicalize addr? */
+    uint32_to_ascii8uphex((uint32_t)len, hexstr);
     if (  mcdb_findtagstart(&m, hexstr, sizeof(hexstr), (unsigned char)'x')
         && mcdb_findtagnext(&m, hexstr, sizeof(hexstr), (unsigned char)'x')  ) {
 /* GPS: FIXME: check addr,len,type match: mcdb_findtagnext() until match */
@@ -712,12 +748,12 @@ _nss_files_getnetbyname_r(const char * const restrict name,
 }
 
 enum nss_status
-_nss_files_getnetbyaddr_r(const long net, const int type,
+_nss_files_getnetbyaddr_r(const uint32_t net, const int type,
                           struct netent * const restrict netbuf,
                           char * const restrict buf, const size_t buflen,
                           struct netent ** const restrict netbufp)
 {
-    char hexstr[8];
+    char hexstr[16];
     const struct _nss_kinfo kinfo = { .key    = hexstr,
                                       .klen   = sizeof(hexstr),
                                       .tagc   = (unsigned char)'x' };
@@ -726,9 +762,8 @@ _nss_files_getnetbyaddr_r(const long net, const int type,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .netent = netbufp } };
-/* GPS: FIXME: do we need 16 char buffer for 'long'?  longer to encode type? */
-/* or pass type in buf to decoding routine? */
-    uint32_to_ascii8uphex((uint32_t)net, hexstr); /* TODO from cdbauthz.c */
+    uint32_to_ascii8uphex(net, hexstr);
+    uint32_to_ascii8uphex((uint32_t)type, hexstr+8);
     return _nss_files_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
 }
 
@@ -779,7 +814,7 @@ _nss_files_getprotobynumber_r(const int proto,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .protoent = protobufp } };
-    uint32_to_ascii8uphex((uint32_t)proto, hexstr); /* TODO from cdbauthz.c */
+    uint32_to_ascii8uphex((uint32_t)proto, hexstr);
     return _nss_files_get_generic(NSS_DBTYPE_PROTOCOLS, &kinfo, &vinfo);
 }
 
@@ -830,7 +865,7 @@ _nss_files_getrpcbynumber_r(const int number,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .rpcent = rpcbufp } };
-    uint32_to_ascii8uphex((uint32_t)number, hexstr); /* TODO from cdbauthz.c */
+    uint32_to_ascii8uphex((uint32_t)number, hexstr);
     return _nss_files_get_generic(NSS_DBTYPE_RPC, &kinfo, &vinfo);
 }
 
@@ -845,8 +880,15 @@ _nss_files_getservent_r(struct servent * const restrict servbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .servent = servbufp } };
-    return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_SERVICES],
-                                         NSS_DBTYPE_SERVICES, &vinfo);
+    if (buflen > 0) {
+        *buf = '\0';
+        return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_SERVICES],
+                                             NSS_DBTYPE_SERVICES, &vinfo);
+    }
+    else {
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
 
 enum nss_status
@@ -856,24 +898,26 @@ _nss_files_getservbyname_r(const char * const restrict name,
                            char * const restrict buf, const size_t buflen,
                            struct servent ** const restrict servbufp)
 {
-    struct mcdb m;
-    size_t nlen;
-    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_SERVICES);
-    if (__builtin_expect(m.map == NULL, false))
-        return NSS_STATUS_UNAVAIL;
-    nlen = strlen(name);
-    if (  mcdb_findtagstart(&m, name, nlen, (unsigned char)'=')
-        && mcdb_findtagnext(&m, name, nlen, (unsigned char)'=')  ) {
-/* GPS: FIXME: check proto != NULL and mcdb_findtagnext() until match */
-
-        /* TODO: decode into struct servent */
-        /* fail ERANGE only if insufficient buffer space supplied */
-
-        mcdb_unregister(m.map);
-        return NSS_STATUS_SUCCESS;
+    const struct _nss_kinfo kinfo = { .key    = name,
+                                      .klen   = strlen(name),
+                                      .tagc   = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode = _nss_files_decode_servent,
+                                      .u      = { .servent = servbuf },
+                                      .buf    = buf,
+                                      .buflen = buflen,
+                                      .p      = { .servent = servbufp } };
+    const size_t plen = proto != NULL ? strlen(proto) : 0;
+    if (buflen > plen) {
+        if (plen)  /*copy proto for later match in _nss_files_decode_servent()*/
+            memcpy(buf, proto, plen+1);
+        else
+            *buf = '\0';
+        return _nss_files_get_generic(NSS_DBTYPE_SERVICES, &kinfo, &vinfo);
     }
-    mcdb_unregister(m.map);
-    return NSS_STATUS_NOTFOUND;
+    else {
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
 
 enum nss_status
@@ -882,24 +926,28 @@ _nss_files_getservbyport_r(const int port, const char * const restrict proto,
                            char * const restrict buf, const size_t buflen,
                            struct servent ** const restrict servbufp)
 {
-    struct mcdb m;
     char hexstr[8];
-    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_SERVICES);
-    if (__builtin_expect(m.map == NULL, false))
-        return NSS_STATUS_UNAVAIL;
-    uint32_to_ascii8uphex((uint32_t)port, hexstr); /* TODO from cdbauthz.c */
-    if (  mcdb_findtagstart(&m, hexstr, sizeof(hexstr), (unsigned char)'x')
-        && mcdb_findtagnext(&m, hexstr, sizeof(hexstr), (unsigned char)'x')  ) {
-/* GPS: FIXME: check proto != NULL and mcdb_findtagnext() until match */
-
-        /* TODO: decode into struct servent */
-        /* fail ERANGE only if insufficient buffer space supplied */
-
-        mcdb_unregister(m.map);
-        return NSS_STATUS_SUCCESS;
+    const struct _nss_kinfo kinfo = { .key    = hexstr,
+                                      .klen   = sizeof(hexstr),
+                                      .tagc   = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode = _nss_files_decode_servent,
+                                      .u      = { .servent = servbuf },
+                                      .buf    = buf,
+                                      .buflen = buflen,
+                                      .p      = { .servent = servbufp } };
+    const size_t plen = proto != NULL ? strlen(proto) : 0;
+    if (buflen > plen) {
+        if (plen)  /*copy proto for later match in _nss_files_decode_servent()*/
+            memcpy(buf, proto, plen+1);
+        else
+            *buf = '\0';
+        uint32_to_ascii8uphex((uint32_t)port, hexstr);
+        return _nss_files_get_generic(NSS_DBTYPE_SERVICES, &kinfo, &vinfo);
     }
-    mcdb_unregister(m.map);
-    return NSS_STATUS_NOTFOUND;
+    else {
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
 
 
@@ -967,12 +1015,10 @@ _nss_files_getspnam_r(const char * const restrict name,
 }
 
 
-/*  ??? (what is prototype for _nss_files_getpublickey()) ???  */
-/*  ??? (what is prototype for _nss_files_getsecretkey()) ??? (different db?) */
 enum nss_status
 _nss_files_getpublickey(const char * const restrict name,
                         char * const restrict buf, const size_t buflen)
-{
+{   /*  man getpublickey() *//* Solaris */
     const struct _nss_kinfo kinfo = { .key    = name,
                                       .klen   = strlen(name),
                                       .tagc   = (unsigned char)'=' };
@@ -982,6 +1028,26 @@ _nss_files_getpublickey(const char * const restrict name,
                                       .buflen = buflen,
                                       .p      = { .NA = 0 } };
     return _nss_files_get_generic(NSS_DBTYPE_PUBLICKEY, &kinfo, &vinfo);
+}
+
+
+enum nss_status
+_nss_files_getsecretkey(const char * const restrict name,
+                        const char * const restrict decryptkey,
+                        char * const restrict buf, const size_t buflen)
+{   /*  man getsecretkey() *//* Solaris */
+    const struct _nss_kinfo kinfo = { .key    = name,
+                                      .klen   = strlen(name),
+                                      .tagc   = (unsigned char)'*' };
+    const struct _nss_vinfo vinfo = { .decode = _nss_files_decode_buf,
+                                      .u      = { .NA = 0 },
+                                      .buf    = buf,
+                                      .buflen = buflen,
+                                      .p      = { .NA = 0 } };
+    const enum nss_status status =
+      _nss_files_get_generic(NSS_DBTYPE_PUBLICKEY, &kinfo, &vinfo);
+    /* TODO: decrypt buf using decryptkey */
+    return status;
 }
 
 
@@ -1018,7 +1084,7 @@ enum nss_status
 _nss_files_getntohost_r(struct ether_addr * const restrict ether,
                         char * const restrict buf, const size_t buflen)
 {   /*  man ether_ntohost()  */
-    char hexstr[8];
+    char hexstr[12]; /* (6) 8-bit octets = 48-bits */
     const struct _nss_kinfo kinfo = { .key    = hexstr,
                                       .klen   = sizeof(hexstr),
                                       .tagc   = (unsigned char)'x' };
@@ -1027,8 +1093,10 @@ _nss_files_getntohost_r(struct ether_addr * const restrict ether,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .NA = 0 } };
-/* GPS: FIXME convert ether_addr into hex; TODO need 12 chars for 48 bits */
-    uint32_to_ascii8uphex((uint32_t)ether, hexstr); /* TODO from cdbauthz.c */
+    /* (assumes hexstr[] on stack is aligned to at least 4-byte boundary) */
+    memcpy(hexstr, &(ether->ether_addr_octet[0]), sizeof(hexstr));
+    uint32_to_ascii8uphex(ntohl(*((uint32_t *)&hexstr[0])), hexstr);
+    uint32_to_ascii4uphex((uint32_t)ntohs(*((uint16_t *)&hexstr[8])), hexstr+8);
     return _nss_files_get_generic(NSS_DBTYPE_ETHERS, &kinfo, &vinfo);
 }
 
@@ -1093,9 +1161,6 @@ To save some code size, use dispatch table for parse functions?
 
 
 #if 0
-
-To avoid conflicts, prepend *all* types with a char indicating type
-(Do not trust user input that might otherwise match a different type)
 
 _nss_files_parse_etherent
 _nss_files_parse_grent@@GLIBC_PRIVATE
