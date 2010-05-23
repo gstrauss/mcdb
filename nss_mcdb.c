@@ -27,7 +27,7 @@
 #include <shadow.h>
 #include <netinet/ether.h>
 #include <netinet/in.h>    /* htonl() htons() ntohl() ntohs() */
-#include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() */
+#include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() inet_pton() */
 
 #ifdef _THREAD_SAFE
 #include <pthread.h>       /* pthread_mutex_t, pthread_mutex_{lock,unlock}() */
@@ -412,6 +412,7 @@ _nss_files_decode_hostent(struct mcdb * restrict,
                           const struct _nss_kinfo * restrict,
                           const struct _nss_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+  /* TODO: check type match: mcdb_findtagnext() until match */
 enum nss_status
 _nss_files_decode_netent(struct mcdb * restrict,
                          const struct _nss_kinfo * restrict,
@@ -462,6 +463,7 @@ _nss_files_getpwent_r(struct passwd * const restrict pwbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .passwd = pwbufp } };
+    *pwbufp = NULL;
     return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_PASSWD],
                                          NSS_DBTYPE_PASSWD, &vinfo);
 }
@@ -480,6 +482,7 @@ _nss_files_getpwnam_r(const char * const restrict name,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .passwd = pwbufp } };
+    *pwbufp = NULL;
     return _nss_files_get_generic(NSS_DBTYPE_PASSWD, &kinfo, &vinfo);
 }
 
@@ -498,6 +501,7 @@ _nss_files_getpwuid_r(const uid_t uid,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .passwd = pwbufp } };
+    *pwbufp = NULL;
     uint32_to_ascii8uphex((uint32_t)uid, hexstr);
     return _nss_files_get_generic(NSS_DBTYPE_PASSWD, &kinfo, &vinfo);
 }
@@ -513,6 +517,7 @@ _nss_files_getgrent_r(struct group * const restrict grbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .group = grbufp } };
+    *grbufp = NULL;
     return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_GROUP],
                                          NSS_DBTYPE_GROUP, &vinfo);
 }
@@ -531,6 +536,7 @@ _nss_files_getgrnam_r(const char * const restrict name,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .group = grbufp } };
+    *grbufp = NULL;
     return _nss_files_get_generic(NSS_DBTYPE_GROUP, &kinfo, &vinfo);
 }
 
@@ -549,21 +555,14 @@ _nss_files_getgrgid_r(const gid_t gid,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .group = grbufp } };
+    *grbufp = NULL;
     uint32_to_ascii8uphex((uint32_t)gid, hexstr);
     return _nss_files_get_generic(NSS_DBTYPE_GROUP, &kinfo, &vinfo);
 }
 
 
-/* GPS: TODO check for each get*ent if buflen is size_t or int
- * and document if we choose to use size_t anyway */
-/* GPS: some sethostent() calls have a 'stayopen' parameter.
- * Is nss looking for this?  Check */
-/* GPS: document which routines are POSIX-1.2001 and which are GNU extensions */
-/* GPS: make sure to fill in h_errnop on error */
-/* GPS: if buffer sizes are not large enough, man page says return ERANGE ? */
-
-static enum nss_status
-fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
+static enum nss_status  __attribute_noinline__
+gethost_fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
 {
     switch (status) {
       case NSS_STATUS_TRYAGAIN: *h_errnop = TRY_AGAIN; break;
@@ -573,6 +572,63 @@ fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
       case NSS_STATUS_RETURN:   *h_errnop = TRY_AGAIN; break;
     }
     return status;
+}
+
+static enum nss_status
+gethost_query(const int type,
+              const struct _nss_kinfo * restrict kinfo,
+              const struct _nss_vinfo * restrict vinfo,
+              int * const restrict h_errnop)
+{
+    enum nss_status status;
+    if (vinfo->buflen >= 4) {
+        /*copy type for later match in _nss_files_decode_hostent()*/
+        char * const restrict buf = vinfo->buf;
+        buf[0] = (((uint32_t)type)              ) >> 24;
+        buf[1] = (((uint32_t)type) & 0x00FF0000u) >> 16;
+        buf[2] = (((uint32_t)type) & 0x0000FF00u) >>  8;
+        buf[3] = (((uint32_t)type) & 0x000000FFu);
+        status = _nss_files_get_generic(NSS_DBTYPE_HOSTS, kinfo, vinfo);
+    }
+    else {
+        errno = ERANGE;
+        status = NSS_STATUS_TRYAGAIN;
+    }
+    return (status == NSS_STATUS_SUCCESS)
+      ? NSS_STATUS_SUCCESS
+      : gethost_fill_h_errnop(status, h_errnop);
+}
+
+static enum nss_status
+gethost_filladdr(const void * const restrict addr, const int type,
+                 const struct _nss_kinfo * restrict kinfo,
+                 const struct _nss_vinfo * restrict vinfo,
+                 int * const restrict h_errnop)
+{
+    struct hostent * const restrict hostbuf = vinfo->u.hostent;
+    char * const restrict buf = vinfo->buf;
+    char * const aligned = (char *)((uintptr_t)(buf+7) & ~0x7);
+    /* supports only AF_INET and AF_INET6
+     * (future: create static array of addr sizes indexed by AF_*) */
+    int h_length;
+    switch (type) {
+      case AF_INET:  h_length = sizeof(struct in_addr);  break;
+      case AF_INET6: h_length = sizeof(struct in6_addr); break;
+      default: return gethost_fill_h_errnop(NSS_STATUS_RETURN, h_errnop);
+    }          /* other addr types not implemented */
+    /* (pointers in struct hostent must be aligned; align to 8 bytes) */
+    /* (align+(char **h_aliases)+(char **h_addr_list)+h_length+addrstr+'\0') */
+    if ((aligned - buf) + 8 + 8 + h_length + kinfo->klen + 1 >= vinfo->buflen)
+        return gethost_fill_h_errnop(NSS_STATUS_TRYAGAIN, h_errnop);
+    hostbuf->h_name      = memcpy(aligned+16+h_length,kinfo->key,kinfo->klen+1);
+    hostbuf->h_aliases   = (char **)aligned;
+    hostbuf->h_addrtype  = type;
+    hostbuf->h_length    = h_length;
+    hostbuf->h_addr_list = (char **)(aligned+8);
+    hostbuf->h_aliases[0]   = NULL;
+    hostbuf->h_addr_list[0] = memcpy(aligned+16, addr, h_length);
+    *vinfo->p.hostent       = hostbuf;
+    return NSS_STATUS_SUCCESS;
 }
 
 enum nss_status
@@ -586,21 +642,15 @@ _nss_files_gethostent_r(struct hostent * const restrict hostbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .hostent = hostbufp } };
-    const enum nss_status status =
-      _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_HOSTS],
-                                    NSS_DBTYPE_HOSTS, &vinfo);
+    enum nss_status status;
+    *hostbufp = NULL;
+    status = _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_HOSTS],
+                                           NSS_DBTYPE_HOSTS, &vinfo);
     return (status == NSS_STATUS_SUCCESS)
       ? NSS_STATUS_SUCCESS
-      : fill_h_errnop(status, h_errnop);
+      : gethost_fill_h_errnop(status, h_errnop);
 }
 
-/* GPS: TODO
- * POSIX.1-2001  marks  gethostbyaddr()  and  gethostbyname() obsolescent.
- * See getaddrinfo(), getnameinfo(), gai_strerror() and see if we can implement
- * the parsing and lookups according to those interfaces.
- */
-
-/*  ??? (struct hostent *)   */
 enum nss_status
 _nss_files_gethostbyname2_r(const char * const restrict name, const int type,
                             struct hostent * const restrict hostbuf,
@@ -608,40 +658,23 @@ _nss_files_gethostbyname2_r(const char * const restrict name, const int type,
                             struct hostent ** const restrict hostbufp,
                             int * const restrict h_errnop)
 {
-    const enum nss_status status;
-    struct mcdb m;
-    size_t nlen;
-/* GPS: if the name is already an address, fill the struct and return.
- * GPS: FIXME: should we look for HOSTALIASES environment variable
- * and parse that?  Do other get* types look for environment overrides?  Check.
- * GPS: if the name does *not* end in '.' and HOSTALIASES is set, look there
- * first and there here?  Yech.  HOSTALIASES is not documented in SuSv6.
-    if (0 && getenv("HOSTALIASES") != NULL)
-        return NSS_STATUS_NOTFOUND;
- */
-/* GPS: look for unadorned name, then current
- * domain and then parent domain appended.  Yech. */
-    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_HOSTS);
-    if (__builtin_expect(m.map == NULL, false))
-        return NSS_STATUS_UNAVAIL;
-    nlen = strlen(name);
-/* GPS: FIXME: must parse name str and see if it is already an address */
-    if (  mcdb_findtagstart(&m, name, nlen, (unsigned char)'=')
-        && mcdb_findtagnext(&m, name, nlen, (unsigned char)'=')  ) {
-/* GPS: FIXME: check type match: mcdb_findtagnext() until match */
-
-        /* TODO: decode into struct hostent */
-        /* fail ERANGE only if insufficient buffer space supplied */
-
-        mcdb_unregister(m.map);
-        return NSS_STATUS_SUCCESS;
-    }
-    mcdb_unregister(m.map);
-    return NSS_STATUS_NOTFOUND;
-
-    return (status == NSS_STATUS_SUCCESS)
-      ? NSS_STATUS_SUCCESS
-      : fill_h_errnop(status, h_errnop);
+    const struct _nss_kinfo kinfo = { .key    = name,
+                                      .klen   = strlen(name),
+                                      .tagc   = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode = _nss_files_decode_hostent,
+                                      .u      = { .hostent = hostbuf },
+                                      .buf    = buf,
+                                      .buflen = buflen,
+                                      .p      = { .hostent = hostbufp } };
+    uint64_t addr[2] = {0,0};/* support addr sizes up to 128-bits (e.g. IPv6) */
+    const int is_addr = inet_pton(type, name, &addr);
+    *hostbufp = NULL;
+    if (is_addr == 0) /* name is not valid address for specified addr family */
+        return gethost_query(type, &kinfo, &vinfo, h_errnop);
+    else if (is_addr > 0) /* name is valid address for specified addr family */
+        return gethost_filladdr(&addr, type, &kinfo, &vinfo, h_errnop);
+    else
+        return gethost_fill_h_errnop(NSS_STATUS_RETURN, h_errnop);
 }
 
 enum nss_status
@@ -655,7 +688,6 @@ _nss_files_gethostbyname_r(const char * const restrict name,
                                        buf, buflen, hostbufp, h_errnop);
 }
 
-/*  ??? (struct hostent *)   */
 enum nss_status
 _nss_files_gethostbyaddr_r(const void * const restrict addr,
                            const socklen_t len, const int type,
@@ -664,31 +696,33 @@ _nss_files_gethostbyaddr_r(const void * const restrict addr,
                            struct hostent ** const restrict hostbufp,
                            int * const restrict h_errnop)
 {
-    const enum nss_status status;
-    struct mcdb m;
-    char hexstr[8];
-    m.map = _nss_mcdb_db_getshared(NSS_DBTYPE_HOSTS);
-    if (__builtin_expect(m.map == NULL, false))
-        return NSS_STATUS_UNAVAIL;
-/* GPS: FIXME: do we need 16 char buffer for addr? */
-/* GPS: FIXME: do we need to canonicalize addr? */
-    uint32_to_ascii8uphex((uint32_t)len, hexstr);
-    if (  mcdb_findtagstart(&m, hexstr, sizeof(hexstr), (unsigned char)'x')
-        && mcdb_findtagnext(&m, hexstr, sizeof(hexstr), (unsigned char)'x')  ) {
-/* GPS: FIXME: check addr,len,type match: mcdb_findtagnext() until match */
-
-        /* TODO: decode into struct hostent */
-        /* fail ERANGE only if insufficient buffer space supplied */
-
-        mcdb_unregister(m.map);
-        return NSS_STATUS_SUCCESS;
+    char hexstr[32];  /* support 128-bit IPv6 addresses */
+    const struct _nss_kinfo kinfo = { .key    = hexstr,
+                                      .klen   = len<<1,
+                                      .tagc   = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode = _nss_files_decode_hostent,
+                                      .u      = { .hostent = hostbuf },
+                                      .buf    = buf,
+                                      .buflen = buflen,
+                                      .p      = { .hostent = hostbufp } };
+    uint32_t u[4];  /* align data to uint32_t for uphex conversion routines */
+    *hostbufp = NULL;
+    switch (len) {
+      case 4:  /* e.g. AF_INET4 */
+               memcpy(&u, addr, 4);
+               uint32_to_ascii8uphex(u[0], hexstr);
+               break;
+      case 16: /* e.g. AF_INET6 */
+               memcpy(&u, addr, 16);
+               uint32_to_ascii8uphex(u[0], hexstr);
+               uint32_to_ascii8uphex(u[1], hexstr+8);
+               uint32_to_ascii8uphex(u[2], hexstr+16);
+               uint32_to_ascii8uphex(u[3], hexstr+24);
+               break;
+      default: return NSS_STATUS_UNAVAIL; /* other types not implemented */
     }
-    mcdb_unregister(m.map);
-    return NSS_STATUS_NOTFOUND;
 
-    return (status == NSS_STATUS_SUCCESS)
-      ? NSS_STATUS_SUCCESS
-      : fill_h_errnop(status, h_errnop);
+    return gethost_query(type, &kinfo, &vinfo, h_errnop);
 }
 
 
@@ -726,6 +760,7 @@ _nss_files_getnetent_r(struct netent * const restrict netbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .netent = netbufp } };
+    *netbufp = NULL;
     return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_NETWORKS],
                                          NSS_DBTYPE_NETWORKS, &vinfo);
 }
@@ -744,6 +779,7 @@ _nss_files_getnetbyname_r(const char * const restrict name,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .netent = netbufp } };
+    *netbufp = NULL;
     return _nss_files_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
 }
 
@@ -762,6 +798,7 @@ _nss_files_getnetbyaddr_r(const uint32_t net, const int type,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .netent = netbufp } };
+    *netbufp = NULL;
     uint32_to_ascii8uphex(net, hexstr);
     uint32_to_ascii8uphex((uint32_t)type, hexstr+8);
     return _nss_files_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
@@ -778,6 +815,7 @@ _nss_files_getprotoent_r(struct protoent * const restrict protobuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .protoent = protobufp } };
+    *protobufp = NULL;
     return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_PROTOCOLS],
                                          NSS_DBTYPE_PROTOCOLS, &vinfo);
 }
@@ -796,6 +834,7 @@ _nss_files_getprotobyname_r(const char * const restrict name,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .protoent = protobufp } };
+    *protobufp = NULL;
     return _nss_files_get_generic(NSS_DBTYPE_PROTOCOLS, &kinfo, &vinfo);
 }
 
@@ -814,6 +853,7 @@ _nss_files_getprotobynumber_r(const int proto,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .protoent = protobufp } };
+    *protobufp = NULL;
     uint32_to_ascii8uphex((uint32_t)proto, hexstr);
     return _nss_files_get_generic(NSS_DBTYPE_PROTOCOLS, &kinfo, &vinfo);
 }
@@ -829,6 +869,7 @@ _nss_files_getrpcent_r(struct rpcent * const restrict rpcbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .rpcent = rpcbufp } };
+    *rpcbufp = NULL;
     return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_RPC],
                                          NSS_DBTYPE_RPC, &vinfo);
 }
@@ -847,6 +888,7 @@ _nss_files_getrpcbyname_r(const char * const restrict name,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .rpcent = rpcbufp } };
+    *rpcbufp = NULL;
     return _nss_files_get_generic(NSS_DBTYPE_RPC, &kinfo, &vinfo);
 }
 
@@ -865,6 +907,7 @@ _nss_files_getrpcbynumber_r(const int number,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .rpcent = rpcbufp } };
+    *rpcbufp = NULL;
     uint32_to_ascii8uphex((uint32_t)number, hexstr);
     return _nss_files_get_generic(NSS_DBTYPE_RPC, &kinfo, &vinfo);
 }
@@ -880,6 +923,7 @@ _nss_files_getservent_r(struct servent * const restrict servbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .servent = servbufp } };
+    *servbufp = NULL;
     if (buflen > 0) {
         *buf = '\0';
         return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_SERVICES],
@@ -907,6 +951,7 @@ _nss_files_getservbyname_r(const char * const restrict name,
                                       .buflen = buflen,
                                       .p      = { .servent = servbufp } };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
+    *servbufp = NULL;
     if (buflen > plen) {
         if (plen)  /*copy proto for later match in _nss_files_decode_servent()*/
             memcpy(buf, proto, plen+1);
@@ -936,6 +981,7 @@ _nss_files_getservbyport_r(const int port, const char * const restrict proto,
                                       .buflen = buflen,
                                       .p      = { .servent = servbufp } };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
+    *servbufp = NULL;
     if (buflen > plen) {
         if (plen)  /*copy proto for later match in _nss_files_decode_servent()*/
             memcpy(buf, proto, plen+1);
@@ -961,6 +1007,7 @@ _nss_files_getaliasent_r(struct aliasent * const restrict aliasbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .aliasent = aliasbufp } };
+    *aliasbufp = NULL;
     return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_ALIASES],
                                          NSS_DBTYPE_ALIASES, &vinfo);
 }
@@ -979,6 +1026,7 @@ _nss_files_getaliasbyname_r(const char * const restrict name,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .aliasent = aliasbufp } };
+    *aliasbufp = NULL;
     return _nss_files_get_generic(NSS_DBTYPE_ALIASES, &kinfo, &vinfo);
 }
 
@@ -993,6 +1041,7 @@ _nss_files_getspent_r(struct spwd * const restrict spbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .spwd = spbufp } };
+    *spbufp = NULL;
     return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_SHADOW],
                                          NSS_DBTYPE_SHADOW, &vinfo);
 }
@@ -1011,6 +1060,7 @@ _nss_files_getspnam_r(const char * const restrict name,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .spwd = spbufp } };
+    *spbufp = NULL;
     return _nss_files_get_generic(NSS_DBTYPE_SHADOW, &kinfo, &vinfo);
 }
 
@@ -1061,6 +1111,7 @@ _nss_files_getetherent_r(struct ether_addr * const restrict etherbuf,
                                       .buf    = buf,
                                       .buflen = buflen,
                                       .p      = { .ether_addr = etherbufp } };
+    *etherbufp = NULL;
     return _nss_mcdb_getent(&nss_mcdb_st[NSS_DBTYPE_ETHERS],
                                          NSS_DBTYPE_ETHERS, &vinfo);
 }
@@ -1203,5 +1254,26 @@ Currently we are passing kinfo through to decode routines to enable further
 lookups.  If we do not need it, and if we include key info in each entry in
 mcdb, then do not pass kinfo and maybe reorder list so that vinfo is in the
 same register slot that is passed through.
+
+GPS: should we require that 'buf' be aligned if we add a structure?
+     probably should not make the requirement and should align ourselves
+     if writing structure into char buf
+
+/* GPS: TODO check for each get*ent if buflen is size_t or int
+ * and document if we choose to use size_t anyway */
+/* GPS: some sethostent() calls have a 'stayopen' parameter.
+ * Is nss looking for this?  Check */
+/* GPS: document which routines are POSIX-1.2001 and which are GNU extensions */
+/* GPS: make sure to fill in h_errnop on error */
+/* GPS: if gethost* buffer sizes are not large enough,
+ *      man page says return ERANGE ? */
+
+/* GPS: TODO
+ * POSIX.1-2001  marks  gethostbyaddr()  and  gethostbyname() obsolescent.
+ * See getaddrinfo(), getnameinfo(), gai_strerror() and see if we can implement
+ * the parsing and lookups according to those interfaces.
+ */
+
+GPS: how about a mcdb for /etc/nsswitch.conf ?
 
 #endif
