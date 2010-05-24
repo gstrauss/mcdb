@@ -19,9 +19,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <netinet/in.h>    /* htonl() htons() ntohl() ntohs() */
-#include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() inet_pton() */
-
 #ifdef _THREAD_SAFE
 #include <pthread.h>       /* pthread_mutex_t, pthread_mutex_{lock,unlock}() */
 #else
@@ -93,7 +90,7 @@ uint16_to_ascii4uphex(const uint32_t n, char * restrict buf)
 
 
 /* custom free for mcdb_mmap_create() to not free initial static storage */
-static void  __attribute_noinline__
+static void
 nss_mcdb_mmap_free(void * const v)
 {
     struct mcdb_mmap * const m = v;
@@ -182,11 +179,11 @@ static bool _nss_mcdb_stayopen = true;
 #define _nss_mcdb_db_relshared(map,flags) mcdb_register_access(&(map),(flags))
 
 /* get shared mcdb_mmap */
-static struct mcdb_mmap *  __attribute_noinline__
+static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
                        const enum mcdb_register_flags mcdb_flags)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-static struct mcdb_mmap *  __attribute_noinline__
+static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
                        const enum mcdb_register_flags mcdb_flags)
 {
@@ -214,7 +211,7 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
       : NULL;
 }
 
-enum nss_status
+enum nss_status  __attribute_noinline__  /*(skip inline into _nss_mcdb_getent)*/
 _nss_mcdb_setent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
@@ -519,6 +516,7 @@ _nss_files_getgrgid_r(const gid_t gid,
  * (linked list of struct addrinfo) that must be free()d with freeaddrinfo(). */
 
 #include <sys/socket.h>    /* AF_INET */
+#include <arpa/inet.h>     /* inet_pton() */
 
 static enum nss_status  __attribute_noinline__
 gethost_fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
@@ -1051,6 +1049,9 @@ _nss_files_getsecretkey(const char * const restrict name,
     return status;
 }
 
+
+#include <netinet/in.h>    /* htonl() htons() ntohl() ntohs() */
+#include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() */
 
 enum nss_status
 _nss_files_getetherent_r(struct ether_addr * const restrict etherbuf,
