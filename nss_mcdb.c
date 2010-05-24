@@ -262,14 +262,16 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
 static bool _nss_mcdb_stayopen = true;
 
 /* release shared mcdb_mmap */
-#define _nss_mcdb_db_relshared(map) mcdb_unregister(map)
+#define _nss_mcdb_db_relshared(map,flags) mcdb_register_access(&(map),(flags))
 
 /* get shared mcdb_mmap */
 static struct mcdb_mmap *  __attribute_noinline__
-_nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
+_nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
+                       const enum mcdb_register_flags mcdb_flags)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static struct mcdb_mmap *  __attribute_noinline__
-_nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
+_nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
+                       const enum mcdb_register_flags mcdb_flags)
 {
     /* reuse set*ent(),get*ent(),end*end() session if open in current thread */
     if (_nss_mcdb_st[dbtype].map != NULL)
@@ -290,7 +292,7 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
     else if (!_nss_mcdb_db_openshared(dbtype))
         return NULL;
 
-    return mcdb_register(_nss_mcdb_mmap[dbtype])
+    return mcdb_register_access(&_nss_mcdb_mmap[dbtype], mcdb_flags)
       ? _nss_mcdb_mmap[dbtype]
       : NULL;
 }
@@ -302,7 +304,9 @@ static enum nss_status
 _nss_mcdb_setent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
-    if (m->map != NULL || (m->map = _nss_mcdb_db_getshared(dbtype)) != NULL) {
+    const enum mcdb_register_flags mcdb_flags = MCDB_REGISTER_USE;
+    if (m->map != NULL
+        || (m->map = _nss_mcdb_db_getshared(dbtype, mcdb_flags)) != NULL) {
         m->hpos = 0;
         return NSS_STATUS_SUCCESS;
     }
@@ -316,7 +320,9 @@ static enum nss_status
 _nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
-    return (m->map == NULL || _nss_mcdb_db_relshared(m->map))
+    const enum mcdb_register_flags mcdb_flags =
+        MCDB_REGISTER_DONE | MCDB_REGISTER_MUNMAP_SKIP;
+    return (m->map == NULL || _nss_mcdb_db_relshared(m->map, mcdb_flags))
       ? NSS_STATUS_SUCCESS
       : NSS_STATUS_TRYAGAIN; /* (fails only if obtaining mutex fails) */
 }
@@ -363,8 +369,14 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 {
     struct mcdb m;
     enum nss_status status = NSS_STATUS_NOTFOUND;
+    const enum mcdb_register_flags mcdb_flags_lock =
+      MCDB_REGISTER_USE | MCDB_REGISTER_MUTEX_LOCK_HOLD;
 
-    m.map = _nss_mcdb_db_getshared(dbtype);
+    /* Queries to mcdb are quick, so attempt to reduce locking overhead.
+     * Set mcdb_flags to get and release mcdb_global_mutex once instead of
+     * grab/release mutex to register, then grab/release mutex to unregister */
+
+    m.map = _nss_mcdb_db_getshared(dbtype, mcdb_flags_lock);
     if (__builtin_expect(m.map == NULL, false))
         return NSS_STATUS_UNAVAIL;
 
@@ -372,7 +384,15 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
         && mcdb_findtagnext(&m, kinfo->key, kinfo->klen, kinfo->tagc)  )
         status = vinfo->decode(&m, kinfo, vinfo);
 
-    _nss_mcdb_db_relshared(m.map);
+    /* set*ent(),get*ent(),end*end() session not open/reused in current thread*/
+    if (_nss_mcdb_st[dbtype].map == NULL) {
+        const enum mcdb_register_flags mcdb_flags_unlock =
+            MCDB_REGISTER_DONE
+          | MCDB_REGISTER_MUNMAP_SKIP
+          | MCDB_REGISTER_MUTEX_UNLOCK_HOLD;
+        _nss_mcdb_db_relshared(m.map, mcdb_flags_unlock);
+    }
+
     return status;
 }
 
@@ -593,6 +613,11 @@ _nss_files_getgrgid_r(const gid_t gid,
 }
 
 
+/* POSIX.1-2001 marks gethostbyaddr() and gethostbyname() obsolescent.
+ * See man getnameinfo(), getaddrinfo(), freeaddrinfo(), gai_strerror()
+ * However, note that getaddrinfo() allocates memory for its results 
+ * (linked list of struct addrinfo) that must be free()d with freeaddrinfo(). */
+
 static enum nss_status  __attribute_noinline__
 gethost_fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
 {
@@ -757,7 +782,6 @@ _nss_files_gethostbyaddr_r(const void * const restrict addr,
 }
 
 
-/* GPS: should we also provide an efficient innetgr()? */
 enum nss_status
 _nss_files_getnetgrent_r(char ** const restrict host,
                          char ** const restrict user,
@@ -1178,34 +1202,11 @@ _nss_files_getntohost_r(struct ether_addr * const restrict ether,
 
 
 
-/* GPS:
- *   ==> lookups might take lock, lookup, decode, unlock mutex
- *   instead of lock, register, unlock, lookup, decode, lock, unregister, unlock
- *   (need to create an interface for this and document as dangerous if not
- *    done carefully, in an encapsulated manner)
- */
-/* TODO create an atexit() routine to walk static maps and munmap recursively
- * (might only do if compiled with -D_FORTIFY_SOURCE or something so that we
- *  free() memory allocated to demonstrate lack of leaking)
- */
-/* GPS: verify what nss passes in and what it wants as exit values
- * It probably always wants enum nss_status
- */
-
-
-
-
-
-/* GPS: FIXME FIXME FIXME
- * mcdb_unregister() calls down to mcdb_mmap_free() if there are no other
- * references.  mcdb_mmap_free() calls mcdb_mmap_unmap() which will set
- * map->ptr to be NULL.  We either need to detect this to reopen mmap on
- * every usage, or we need to provide a persistence mechanism which checks
- * if map needs to be reopened.  (Yes, add a stat()) */
-
-
-
 #if 0
+
+TODO: split each nss database access routines into a separate .c file
+      document which routines are POSIX-1.2001 and which are GNU extensions
+        and which are BSD/Solaris extensions
 
 _nss_files_parse_etherent
 _nss_files_parse_grent@@GLIBC_PRIVATE
@@ -1219,20 +1220,27 @@ _nss_files_parse_spent@@GLIBC_PRIVATE
 _nss_netgroup_parseline
 
 
-/* GPS: document which routines are POSIX-1.2001 and which are GNU extensions */
-/* GPS: make sure to fill in h_errnop on error */
+/* GPS: verify what nss passes in and what it wants as exit values
+ * It probably always wants enum nss_status
+ */
+
 /* GPS: if gethost* buffer sizes are not large enough,
  *      man page says return ERANGE ?  In errno or in enum nss_status ? */
 
-/* GPS: TODO
- * POSIX.1-2001  marks  gethostbyaddr()  and  gethostbyname() obsolescent.
- * See getaddrinfo(), getnameinfo(), gai_strerror() and see if we can implement
- * the parsing and lookups according to those interfaces.
- */
+
+(non-standard)
+setnetgrent() takes const char *netgroup and subsequent queries are limited
+  to that.  We should probably implement using thread-local storage.
+  Also should provide an man innetgr()
 
 GPS: how about a mcdb for /etc/nsswitch.conf ?
   (where does nscd socket get plugged in to all this?
    and should I add something to nscd.conf to implicitly use mcdb
    before its cache?)
+
+/* TODO create an atexit() routine to walk static maps and munmap each map
+ * (might only do if compiled with -D_FORTIFY_SOURCE or something so that we
+ *  free() memory allocated to demonstrate lack of leaking)
+ */
 
 #endif

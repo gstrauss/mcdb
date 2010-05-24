@@ -122,18 +122,14 @@ mcdb_read(struct mcdb * const restrict m, const uint32_t pos,
 
 bool  __attribute_noinline__
 mcdb_register_access(struct mcdb_mmap * volatile * const restrict mcdb_mmap,
-                     const bool add)
+                     const enum mcdb_register_flags flags)
 {
-/* GPS: FIXME need a better interface, or two.
- * Extra flag to indicate that lock should remain held
- *   (unlock following shortly -- need another routine to provide that)
- * Callers should be able to register without needing to play tricks with
- *   the next pointer.
- */
     struct mcdb_mmap *map;
     struct mcdb_mmap *next;
+    const bool add = ((flags & MCDB_REGISTER_USE) != 0);
 
-    if (pthread_mutex_lock(&mcdb_global_mutex) != 0)
+    if (!(flags & MCDB_REGISTER_MUTEX_UNLOCK_HOLD)
+        && pthread_mutex_lock(&mcdb_global_mutex) != 0)
         return false;
 
     map = *mcdb_mmap;  /*(ought to be preceded by StoreLoad memory barrier)*/
@@ -158,12 +154,16 @@ mcdb_register_access(struct mcdb_mmap * volatile * const restrict mcdb_mmap,
             mcdb_mmap_free(next);
             prev->next = NULL;
         }
-        mcdb_mmap_free(map);
-        if (!add)
-            *mcdb_mmap = NULL;
+        if (!(flags & MCDB_REGISTER_MUNMAP_SKIP)) {
+            mcdb_mmap_free(map);
+            if (!add)
+                *mcdb_mmap = NULL;
+        }
     }
 
-    pthread_mutex_unlock(&mcdb_global_mutex);
+    if (!(flags & MCDB_REGISTER_MUTEX_LOCK_HOLD))
+        pthread_mutex_unlock(&mcdb_global_mutex);
+
     return true;
 }
 

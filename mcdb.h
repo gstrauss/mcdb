@@ -127,12 +127,20 @@ extern void
 mcdb_mmap_destroy(struct mcdb_mmap * restrict)
   __attribute_nonnull__;
 
+enum mcdb_register_flags {
+  MCDB_REGISTER_DONE = 0,
+  MCDB_REGISTER_USE  = 1,
+  MCDB_REGISTER_MUNMAP_SKIP = 2,
+  MCDB_REGISTER_MUTEX_LOCK_HOLD = 4,
+  MCDB_REGISTER_MUTEX_UNLOCK_HOLD = 8
+};
+
 extern bool
-mcdb_register_access(struct mcdb_mmap * volatile *, bool)
+mcdb_register_access(struct mcdb_mmap * volatile *, enum mcdb_register_flags)
   __attribute_nonnull__;
 
-#define mcdb_register(map)    mcdb_register_access(&(map), true)
-#define mcdb_unregister(map)  mcdb_register_access(&(map), false)
+#define mcdb_register(map)    mcdb_register_access(&(map), MCDB_REGISTER_USE)
+#define mcdb_unregister(map)  mcdb_register_access(&(map), MCDB_REGISTER_DONE)
 #define mcdb_thread_refresh(mcdb) \
   (__builtin_expect((mcdb)->map->next == NULL, true) \
    || __builtin_expect(mcdb_register((mcdb)->map), true))
