@@ -1,5 +1,5 @@
-#ifndef MCDB_MAKEFMT_H
-#define MCDB_MAKEFMT_H
+#ifndef INCLUDED_MCDB_MAKEFMT_H
+#define INCLUDED_MCDB_MAKEFMT_H
 
 #include <sys/types.h>  /* size_t */
 

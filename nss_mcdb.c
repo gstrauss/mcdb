@@ -1,8 +1,9 @@
 /* fstatat(), openat() */
 #define _ATFILE_SOURCE
-/* _BSD_SOURCE or _SVID_SOURCE needed for struct rpcent on Linux */
+/* _BSD_SOURCE or _SVID_SOURCE for struct rpcent, struct ether_addr on Linux */
 #define _BSD_SOURCE
 
+#include "nss_mcdb.h"
 #include "mcdb.h"
 #include "mcdb_uint32.h"
 #include "mcdb_attribute.h"
@@ -17,15 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <nss.h>    /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
 
-#include <pwd.h>
-#include <grp.h>
-#include <netdb.h>
-#include <sys/socket.h>    /* AF_INET */
-#include <aliases.h>
-#include <shadow.h>
-#include <netinet/ether.h>
 #include <netinet/in.h>    /* htonl() htons() ntohl() ntohs() */
 #include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() inet_pton() */
 
@@ -39,21 +32,6 @@
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 0
 #endif
-
-enum nss_dbtype {
-    NSS_DBTYPE_ALIASES = 0,
-    NSS_DBTYPE_ETHERS,
-    NSS_DBTYPE_GROUP,
-    NSS_DBTYPE_HOSTS,
-    NSS_DBTYPE_NETGROUP,
-    NSS_DBTYPE_NETWORKS,
-    NSS_DBTYPE_PASSWD,
-    NSS_DBTYPE_PROTOCOLS,
-    NSS_DBTYPE_PUBLICKEY,
-    NSS_DBTYPE_RPC,
-    NSS_DBTYPE_SERVICES,
-    NSS_DBTYPE_SHADOW
-};
 
 /* compile-time setting for security */
 #ifndef NSS_DBPATH
@@ -87,68 +65,10 @@ static struct mcdb_mmap *_nss_mcdb_mmap[_nss_num_dbs];
 
 static __thread struct mcdb _nss_mcdb_st[_nss_num_dbs];
 
-/* To maintain a consistent view of a database, set*ent() opens a session to
- * the database and it is held open until end*ent() is called.  This session
- * is maintained in thread-local storage.  get*() queries other than get*ent()
- * obtain and release a session to the database upon every call.  To avoid the
- * locking overhead, thread can call set*ent() and then can make (many) get*()
- * calls in the same session.  When done, end*ent() should be called to release
- * the session. */
-
-
-union _nss_ent {
-  struct passwd     * restrict passwd;
-  struct group      * restrict group;
-  struct hostent    * restrict hostent;
-  struct netent     * restrict netent;
-  struct protoent   * restrict protoent;
-  struct rpcent     * restrict rpcent;
-  struct servent    * restrict servent;
-  struct aliasent   * restrict aliasent;
-  struct spwd       * restrict spwd;
-  struct ether_addr * restrict ether_addr;
-  void              * restrict extension;
-  uintptr_t         NA;
-};
-
-union _nss_entp {
-  struct passwd     ** restrict passwd;
-  struct group      ** restrict group;
-  struct hostent    ** restrict hostent;
-  struct netent     ** restrict netent;
-  struct protoent   ** restrict protoent;
-  struct rpcent     ** restrict rpcent;
-  struct servent    ** restrict servent;
-  struct aliasent   ** restrict aliasent;
-  struct spwd       ** restrict spwd;
-  struct ether_addr ** restrict ether_addr;
-  void              ** restrict extension;
-  uintptr_t         NA;
-};
-
-struct _nss_kinfo {
-  const char * restrict key;
-  size_t klen;
-  unsigned char tagc;
-};
-
-struct _nss_vinfo {
-  /* fail with errno = ERANGE if insufficient buf space supplied */
-  enum nss_status (*decode)(struct mcdb * restrict,
-                            const struct _nss_kinfo * restrict,
-                            const struct _nss_vinfo * restrict);
-  union _nss_ent u;
-  char * restrict buf;
-  size_t buflen;
-  union _nss_entp p;
-};
-
 
 /* TODO take pipelined versions from cdbauthz.c */
-static char *  __attribute_noinline__
-uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
-  __attribute_nonnull__;
-static char *  __attribute_noinline__
+/* experiment with C99 static inline in header */
+char *  __attribute_noinline__
 uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
 {
     uint32_t nibble;
@@ -159,10 +79,7 @@ uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
     } while (++i < 8);
     return buf;
 }
-static char *  __attribute_noinline__
-uint16_to_ascii4uphex(const uint32_t n, char * restrict buf)
-  __attribute_nonnull__;
-static char *  __attribute_noinline__
+char *  __attribute_noinline__
 uint16_to_ascii4uphex(const uint32_t n, char * restrict buf)
 {
     uint32_t nibble;
@@ -297,10 +214,7 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
       : NULL;
 }
 
-static enum nss_status
-_nss_mcdb_setent(const enum nss_dbtype dbtype)
-  __attribute_nonnull__;
-static enum nss_status
+enum nss_status
 _nss_mcdb_setent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
@@ -313,10 +227,7 @@ _nss_mcdb_setent(const enum nss_dbtype dbtype)
     return NSS_STATUS_UNAVAIL;
 }
 
-static enum nss_status
-_nss_mcdb_endent(const enum nss_dbtype dbtype)
-  __attribute_nonnull__;
-static enum nss_status
+enum nss_status
 _nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
@@ -328,11 +239,7 @@ _nss_mcdb_endent(const enum nss_dbtype dbtype)
 }
 
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
-static enum nss_status
-_nss_mcdb_getent(const enum nss_dbtype dbtype,
-                 const struct _nss_vinfo * const restrict vinfo)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-static enum nss_status
+enum nss_status
 _nss_mcdb_getent(const enum nss_dbtype dbtype,
                  const struct _nss_vinfo * const restrict vinfo)
 {
@@ -357,12 +264,7 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
     return NSS_STATUS_NOTFOUND;
 }
 
-static enum nss_status
-_nss_mcdb_get_generic(const enum nss_dbtype dbtype,
-                      const struct _nss_kinfo * const restrict kinfo,
-                      const struct _nss_vinfo * const restrict vinfo)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-static enum nss_status
+enum nss_status
 _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
                       const struct _nss_kinfo * const restrict kinfo,
                       const struct _nss_vinfo * const restrict vinfo)
@@ -396,6 +298,24 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
     return status;
 }
 
+enum nss_status
+_nss_mcdb_decode_buf(struct mcdb * const restrict m,
+                     const struct _nss_kinfo * const restrict kinfo
+                       __attribute_unused__,
+                     const struct _nss_vinfo * const restrict vinfo)
+{   /* generic; simply copy data into target buffer and NIL terminate string */
+    const size_t dlen = mcdb_datalen(m);
+    if (vinfo->buflen > dlen) {
+        memcpy(vinfo->buf, mcdb_dataptr(m), dlen);
+        vinfo->buf[dlen] = '\0';
+        return NSS_STATUS_SUCCESS;
+    }
+    return NSS_STATUS_TRYAGAIN;
+}
+
+
+
+
 
 /* _nss_files_setaliasent()   _nss_files_endaliasent() */
 /* _nss_files_setetherent()   _nss_files_endetherent() */
@@ -427,26 +347,6 @@ _nss_files_xxxNAMEent(serv,  NSS_DBTYPE_SERVICES)
 _nss_files_xxxNAMEent(sp,    NSS_DBTYPE_SHADOW)
 
 
-
-static enum nss_status
-_nss_mcdb_decode_buf(struct mcdb * restrict,
-                     const struct _nss_kinfo * restrict,
-                     const struct _nss_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-static enum nss_status
-_nss_mcdb_decode_buf(struct mcdb * const restrict m,
-                     const struct _nss_kinfo * const restrict kinfo
-                       __attribute_unused__,
-                     const struct _nss_vinfo * const restrict vinfo)
-{   /* generic; simply copy data into target buffer and NIL terminate string */
-    const size_t dlen = mcdb_datalen(m);
-    if (vinfo->buflen > dlen) {
-        memcpy(vinfo->buf, mcdb_dataptr(m), dlen);
-        vinfo->buf[dlen] = '\0';
-        return NSS_STATUS_SUCCESS;
-    }
-    return NSS_STATUS_TRYAGAIN;
-}
 
 /* GPS: these all should be static (once we define them) */
 
@@ -617,6 +517,8 @@ _nss_files_getgrgid_r(const gid_t gid,
  * See man getnameinfo(), getaddrinfo(), freeaddrinfo(), gai_strerror()
  * However, note that getaddrinfo() allocates memory for its results 
  * (linked list of struct addrinfo) that must be free()d with freeaddrinfo(). */
+
+#include <sys/socket.h>    /* AF_INET */
 
 static enum nss_status  __attribute_noinline__
 gethost_fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
@@ -1205,8 +1107,10 @@ _nss_files_getntohost_r(struct ether_addr * const restrict ether,
 #if 0
 
 TODO: split each nss database access routines into a separate .c file
+        (separate, too, reading and creation/writing)
       document which routines are POSIX-1.2001 and which are GNU extensions
         and which are BSD/Solaris extensions
+      see what other services are in /etc/nsswitch.conf on my machine
 
 _nss_files_parse_etherent
 _nss_files_parse_grent@@GLIBC_PRIVATE
@@ -1241,6 +1145,7 @@ GPS: how about a mcdb for /etc/nsswitch.conf ?
 /* TODO create an atexit() routine to walk static maps and munmap each map
  * (might only do if compiled with -D_FORTIFY_SOURCE or something so that we
  *  free() memory allocated to demonstrate lack of leaking)
+ * Set flag in _nss_mcdb_db_openshared() so atexit() is run only once.
  */
 
 #endif

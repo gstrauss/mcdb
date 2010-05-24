@@ -2,8 +2,8 @@
  * License: GPLv3
  */
 
-#ifndef MCDB_MAKE_H
-#define MCDB_MAKE_H
+#ifndef INCLUDED_MCDB_MAKE_H
+#define INCLUDED_MCDB_MAKE_H
 
 #include <sys/types.h> /* size_t   */
 

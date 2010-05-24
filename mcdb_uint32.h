@@ -1,7 +1,7 @@
 /* License: GPLv3 */
 
-#ifndef MCDB_UINT32_H
-#define MCDB_UINT32_H
+#ifndef INCLUDED_MCDB_UINT32_H
+#define INCLUDED_MCDB_UINT32_H
 
 #include <stdint.h>
 #include <unistd.h>
