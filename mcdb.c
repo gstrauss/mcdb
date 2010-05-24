@@ -121,7 +121,7 @@ mcdb_read(struct mcdb * const restrict m, const uint32_t pos,
 
 
 bool  __attribute_noinline__
-mcdb_register_access(struct mcdb_mmap ** const restrict mcdb_mmap,
+mcdb_register_access(struct mcdb_mmap * volatile * const restrict mcdb_mmap,
                      const bool add)
 {
 /* GPS: FIXME need a better interface, or two.

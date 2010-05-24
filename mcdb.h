@@ -128,7 +128,7 @@ mcdb_mmap_destroy(struct mcdb_mmap * restrict)
   __attribute_nonnull__;
 
 extern bool
-mcdb_register_access(struct mcdb_mmap **, bool)
+mcdb_register_access(struct mcdb_mmap * volatile *, bool)
   __attribute_nonnull__;
 
 #define mcdb_register(map)    mcdb_register_access(&(map), true)
