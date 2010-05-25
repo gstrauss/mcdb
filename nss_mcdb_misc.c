@@ -15,6 +15,14 @@
 #include <netinet/in.h>    /* htonl() htons() ntohl() ntohs() */
 #include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() */
 
+/*
+ * man aliases(5) getaliasbyname setaliasent getaliasent endaliasent
+ *     /etc/aliases
+ * man ethers(5)  ether_line ether_hostton ether_ntohost
+ *     /etc/ethers
+ * man getpublickey (Solaris)
+ * man getsecretkey (Solaris)
+ */
 
 static enum nss_status
 _nss_mcdb_decode_aliasent(struct mcdb * restrict,

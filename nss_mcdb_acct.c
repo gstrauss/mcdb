@@ -11,6 +11,14 @@
 #include <grp.h>
 #include <shadow.h>
 
+/*
+ * man passwd(5) getpwnam getpwuid setpwent getpwent endpwent
+ *     /etc/passwd
+ * man group(5)  getgrnam getgrgid setgrent getgrent endgrent
+ *     /etc/group
+ * man shadow(5) getspnam
+ *     /etc/shadow
+ */
 
 static enum nss_status
 _nss_mcdb_decode_passwd(struct mcdb * restrict,

@@ -14,6 +14,31 @@
 #include <sys/socket.h>    /* AF_INET */
 #include <arpa/inet.h>     /* inet_pton() */
 
+/*
+ * man hosts         (Internet RFC 952)
+ *     hostname(1) hostname(7) resolver(3) resolver(5) host.conf resolv.conf
+ *     gethostbyname gethostbyaddr sethostent gethostent endhostent
+ *     gethostname getdomainname
+ *     /etc/hosts
+ *
+ * man protocols(5)  (POSIX.1-2001)
+ *     getprotobyname getprotobynumber setprotoent getprotoent endprotoent
+ *     /etc/protocols
+ * man networks      (POSIX.1-2001)
+ *     getnetbyname getnetbyaddr setnetent getnetent endnetent
+ *     /etc/networks
+ * man services(5)   (POSIX.1-2001)
+ *     getservbyname getservbyport setservent getservent endservent
+ *     /etc/services
+ *
+ * man rpc(5)        (not standard)
+ *     getrpcbyname getrpcbynumber setrpcent getrpcent endrpcent rpcinfo rpcbind
+ *     /etc/rpc
+ *
+ * man netgroup      (not standard)
+ *     setnetgrent getnetgrent endnetgrent innetgr
+ *     /etc/netgroup
+ */
 
 static enum nss_status
 _nss_mcdb_decode_hostent(struct mcdb * restrict,
@@ -524,6 +549,9 @@ _nss_mcdb_decode_hostent(struct mcdb * restrict m,
 {
     /* TODO: check type match from buf: mcdb_findtagnext() until match
      * buf[0-3] = 0 and take first match */
+    /* creation from /etc/hosts needs to read file and bunch together multiple
+     * IPs for 'host' records that have multiple IPs since keys have to be
+     * unique in mcdb.  Be sure to support IPv4 and IPv6  ==> Perl! :) */
     return NSS_STATUS_SUCCESS;
 }
 
@@ -542,6 +570,12 @@ _nss_mcdb_decode_protoent(struct mcdb * restrict m,
                           const struct _nss_vinfo * restrict vinfo)
 {
     /* TODO */
+    /* creation from /etc/protocols
+     * '#' to end of line is ignored
+     * empty lines are ignored
+     * any number of spaces or tabs separates fields
+     * protocol number aliase(es)(optional)
+     */
     return NSS_STATUS_SUCCESS;
 }
 

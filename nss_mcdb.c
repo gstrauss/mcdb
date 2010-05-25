@@ -27,6 +27,13 @@
 #define O_CLOEXEC 0
 #endif
 
+/*
+ * man nsswitch.conf
+ *     /etc/nsswitch.conf
+ *     /lib/libnss_XXXXX.so, e.g. /lib/libnss_files.so
+ *     rpm -qil nss_db nss_ldap
+ */
+
 /* compile-time setting for security */
 #ifndef NSS_DBPATH
 #define NSS_DBPATH "/var/db/"
