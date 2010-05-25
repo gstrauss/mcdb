@@ -209,6 +209,12 @@ _nss_files_getnetgrent_r(char ** const restrict host,
                          char ** const restrict domain,
                          char * const restrict buf, const size_t buflen)
 {
+    /* man setnetgrent() documents param const char *netgroup and subsequent
+     * queries are limited to that netgroup.  When implementing setnetgrent()
+     * and innetgr() might detect if query in progress and return next entry.
+     * (This routine might be a departure from typical get*ent() routines.)
+     * (depends how we structure keys/values in mcdb)
+     * (might store current netgroup in thread-local storage) */
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
                                       .vstruct = NULL,
                                       .buf     = buf,

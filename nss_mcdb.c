@@ -323,16 +323,15 @@ NOTES
 -----
 
 TODO: split each set of nss database access routines into a separate .c file
-        (separate, too, reading and creation/writing)
-        nss_mcdb_acct.[ch]
-        nss_mcdb_acct_make.[ch]  (#include "nss_mcdb_acct.h" for offsets)
-        nss_mcdb_netdb.[ch]
-        nss_mcdb_netdb_make.[ch] (#include "nss_mcdb_netdb.h" for offsets)
-        nss_mcdb_misc.[ch]
-        nss_mcdb_misc_make.[ch]  (#include "nss_mcdb_misc.h" for offsets)
-      document which routines are POSIX-1.2001 and which are GNU extensions
-        and which are BSD/Solaris extensions
-      see what other services are in /etc/nsswitch.conf on my machine
+      (separate, too, reading and creation/writing)
+      (store offsets for serialized record in header file)
+
+/* GPS: verify what nss passes in and what it wants as exit values
+ * It probably always wants enum nss_status
+ *
+ * If gethost* buffer sizes are not large enough, man page says return ERANGE ?
+ * in errno?  not in enum nss_status ?  Return NSS_STATUS_TRYAGAIN?
+ */
 
 _nss_files_parse_etherent
 _nss_files_parse_grent@@GLIBC_PRIVATE
@@ -342,27 +341,12 @@ _nss_files_parse_pwent@@GLIBC_PRIVATE
 _nss_files_parse_rpcent
 _nss_files_parse_servent
 _nss_files_parse_spent@@GLIBC_PRIVATE
-
 _nss_netgroup_parseline
 
-
-/* GPS: verify what nss passes in and what it wants as exit values
- * It probably always wants enum nss_status
- */
-
-/* GPS: if gethost* buffer sizes are not large enough,
- *      man page says return ERANGE ?  in errno?  not in enum nss_status ? */
-
-
-(non-standard)
-setnetgrent() takes const char *netgroup and subsequent queries are limited
-  to that.  We should probably implement using thread-local storage.
-  Also should provide an man innetgr()
-
 GPS: how about a mcdb for /etc/nsswitch.conf ?
-  (where does nscd socket get plugged in to all this?
-   and should I add something to nscd.conf to implicitly use mcdb
-   before its cache?)
+GPS: where does nscd socket get plugged in to all this?
+     and should I add something to nscd.conf to implicitly use mcdb
+     before its cache?
 
 /* TODO create an atexit() routine to walk static maps and munmap each map
  * (might only do if compiled with -D_FORTIFY_SOURCE or something so that we
