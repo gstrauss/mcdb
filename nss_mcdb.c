@@ -404,16 +404,18 @@ _nss_mcdb_decode_ether_addr(struct mcdb * restrict,
     /* TODO: decode into struct ether_addr and hostname in buf, if not NULL */
 
 
+#include <pwd.h>
+
 enum nss_status
 _nss_files_getpwent_r(struct passwd * const restrict pwbuf,
                       char * const restrict buf, const size_t buflen,
                       struct passwd ** const restrict pwbufp)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_passwd,
-                                      .u      = { .passwd = pwbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .passwd = pwbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_passwd,
+                                      .vstruct = pwbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= pwbufp };
     *pwbufp = NULL;
     return _nss_mcdb_getent(NSS_DBTYPE_PASSWD, &vinfo);
 }
@@ -424,14 +426,14 @@ _nss_files_getpwnam_r(const char * const restrict name,
                       char * const restrict buf, const size_t buflen,
                       struct passwd ** const restrict pwbufp)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_passwd,
-                                      .u      = { .passwd = pwbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .passwd = pwbufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_passwd,
+                                      .vstruct = pwbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= pwbufp };
     *pwbufp = NULL;
     return _nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &kinfo, &vinfo);
 }
@@ -443,30 +445,32 @@ _nss_files_getpwuid_r(const uid_t uid,
                       struct passwd ** const restrict pwbufp)
 {
     char hexstr[8];
-    const struct _nss_kinfo kinfo = { .key    = hexstr,
-                                      .klen   = sizeof(hexstr),
-                                      .tagc   = (unsigned char)'x' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_passwd,
-                                      .u      = { .passwd = pwbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .passwd = pwbufp } };
+    const struct _nss_kinfo kinfo = { .key     = hexstr,
+                                      .klen    = sizeof(hexstr),
+                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_passwd,
+                                      .vstruct = pwbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= pwbufp };
     *pwbufp = NULL;
     uint32_to_ascii8uphex((uint32_t)uid, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &kinfo, &vinfo);
 }
 
 
+#include <grp.h>
+
 enum nss_status
 _nss_files_getgrent_r(struct group * const restrict grbuf,
                       char * const restrict buf, const size_t buflen,
                       struct group ** const restrict grbufp)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_group,
-                                      .u      = { .group = grbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .group = grbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_group,
+                                      .vstruct = grbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= grbufp };
     *grbufp = NULL;
     return _nss_mcdb_getent(NSS_DBTYPE_GROUP, &vinfo);
 }
@@ -477,14 +481,14 @@ _nss_files_getgrnam_r(const char * const restrict name,
                       char * const restrict buf, const size_t buflen,
                       struct group ** const restrict grbufp)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_group,
-                                      .u      = { .group = grbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .group = grbufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_group,
+                                      .vstruct = grbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= grbufp };
     *grbufp = NULL;
     return _nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &kinfo, &vinfo);
 }
@@ -496,14 +500,14 @@ _nss_files_getgrgid_r(const gid_t gid,
                       struct group ** const restrict grbufp)
 {
     char hexstr[8];
-    const struct _nss_kinfo kinfo = { .key    = hexstr,
-                                      .klen   = sizeof(hexstr),
-                                      .tagc   = (unsigned char)'x' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_group,
-                                      .u      = { .group = grbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .group = grbufp } };
+    const struct _nss_kinfo kinfo = { .key     = hexstr,
+                                      .klen    = sizeof(hexstr),
+                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_group,
+                                      .vstruct = grbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= grbufp };
     *grbufp = NULL;
     uint32_to_ascii8uphex((uint32_t)gid, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &kinfo, &vinfo);
@@ -515,6 +519,7 @@ _nss_files_getgrgid_r(const gid_t gid,
  * However, note that getaddrinfo() allocates memory for its results 
  * (linked list of struct addrinfo) that must be free()d with freeaddrinfo(). */
 
+#include <netdb.h>
 #include <sys/socket.h>    /* AF_INET */
 #include <arpa/inet.h>     /* inet_pton() */
 
@@ -562,7 +567,9 @@ gethost_filladdr(const void * const restrict addr, const int type,
                  const struct _nss_vinfo * restrict vinfo,
                  int * const restrict h_errnop)
 {
-    struct hostent * const restrict hostbuf = vinfo->u.hostent;
+    struct hostent * const restrict hostbuf = (struct hostent *)vinfo->vstruct;
+    struct hostent ** const restrict hostbufp=(struct hostent**)vinfo->vstructp;
+    const size_t buflen = vinfo->buflen;
     char * const restrict buf = vinfo->buf;
     char * const aligned = (char *)((uintptr_t)(buf+7) & ~0x7);
     /* supports only AF_INET and AF_INET6
@@ -575,7 +582,7 @@ gethost_filladdr(const void * const restrict addr, const int type,
     }          /* other addr types not implemented */
     /* (pointers in struct hostent must be aligned; align to 8 bytes) */
     /* (align+(char **h_aliases)+(char **h_addr_list)+h_length+addrstr+'\0') */
-    if ((aligned - buf) + 8 + 8 + h_length + kinfo->klen + 1 >= vinfo->buflen)
+    if ((aligned - buf) + 8 + 8 + h_length + kinfo->klen + 1 >= buflen)
         return gethost_fill_h_errnop(NSS_STATUS_TRYAGAIN, h_errnop);
     hostbuf->h_name      = memcpy(aligned+16+h_length,kinfo->key,kinfo->klen+1);
     hostbuf->h_aliases   = (char **)aligned;
@@ -584,7 +591,7 @@ gethost_filladdr(const void * const restrict addr, const int type,
     hostbuf->h_addr_list = (char **)(aligned+8);
     hostbuf->h_aliases[0]   = NULL;
     hostbuf->h_addr_list[0] = memcpy(aligned+16, addr, h_length);
-    *vinfo->p.hostent       = hostbuf;
+    *hostbufp = hostbuf;
     return NSS_STATUS_SUCCESS;
 }
 
@@ -594,11 +601,11 @@ _nss_files_gethostent_r(struct hostent * const restrict hostbuf,
                         struct hostent ** const restrict hostbufp,
                         int * const restrict h_errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_hostent,
-                                      .u      = { .hostent = hostbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .hostent = hostbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_hostent,
+                                      .vstruct = hostbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= hostbufp };
     enum nss_status status;
     *hostbufp = NULL;
     status = _nss_mcdb_getent(NSS_DBTYPE_HOSTS, &vinfo);
@@ -614,14 +621,14 @@ _nss_files_gethostbyname2_r(const char * const restrict name, const int type,
                             struct hostent ** const restrict hostbufp,
                             int * const restrict h_errnop)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_hostent,
-                                      .u      = { .hostent = hostbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .hostent = hostbufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_hostent,
+                                      .vstruct = hostbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= hostbufp };
     uint64_t addr[2] = {0,0};/* support addr sizes up to 128-bits (e.g. IPv6) */
     const int is_addr = inet_pton(type, name, &addr);
     *hostbufp = NULL;
@@ -653,14 +660,14 @@ _nss_files_gethostbyaddr_r(const void * const restrict addr,
                            int * const restrict h_errnop)
 {
     char hexstr[32];  /* support 128-bit IPv6 addresses */
-    const struct _nss_kinfo kinfo = { .key    = hexstr,
-                                      .klen   = len<<1,
-                                      .tagc   = (unsigned char)'x' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_hostent,
-                                      .u      = { .hostent = hostbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .hostent = hostbufp } };
+    const struct _nss_kinfo kinfo = { .key     = hexstr,
+                                      .klen    = len<<1,
+                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_hostent,
+                                      .vstruct = hostbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= hostbufp };
     uint32_t u[4];  /* align data to uint32_t for uphex conversion routines */
     *hostbufp = NULL;
     switch (len) {
@@ -688,11 +695,11 @@ _nss_files_getnetgrent_r(char ** const restrict host,
                          char ** const restrict domain,
                          char * const restrict buf, const size_t buflen)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_buf,
-                                      .u      = { .NA = 0 },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .NA = 0 } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
+                                      .vstruct = NULL,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= NULL };
     const enum nss_status status =
       _nss_mcdb_getent(NSS_DBTYPE_NETGROUP, &vinfo);
     if (status == NSS_STATUS_SUCCESS) {
@@ -710,11 +717,11 @@ _nss_files_getnetent_r(struct netent * const restrict netbuf,
                        char * const restrict buf, const size_t buflen,
                        struct netent ** const restrict netbufp)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_netent,
-                                      .u      = { .netent = netbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .netent = netbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_netent,
+                                      .vstruct = netbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= netbufp };
     *netbufp = NULL;
     return _nss_mcdb_getent(NSS_DBTYPE_NETWORKS, &vinfo);
 }
@@ -725,14 +732,14 @@ _nss_files_getnetbyname_r(const char * const restrict name,
                           char * const restrict buf, const size_t buflen,
                           struct netent ** const restrict netbufp)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_netent,
-                                      .u      = { .netent = netbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .netent = netbufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_netent,
+                                      .vstruct = netbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= netbufp };
     *netbufp = NULL;
     return _nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
 }
@@ -744,14 +751,14 @@ _nss_files_getnetbyaddr_r(const uint32_t net, const int type,
                           struct netent ** const restrict netbufp)
 {
     char hexstr[16];
-    const struct _nss_kinfo kinfo = { .key    = hexstr,
-                                      .klen   = sizeof(hexstr),
-                                      .tagc   = (unsigned char)'x' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_netent,
-                                      .u      = { .netent = netbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .netent = netbufp } };
+    const struct _nss_kinfo kinfo = { .key     = hexstr,
+                                      .klen    = sizeof(hexstr),
+                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_netent,
+                                      .vstruct = netbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= netbufp };
     *netbufp = NULL;
     uint32_to_ascii8uphex(net, hexstr);
     uint32_to_ascii8uphex((uint32_t)type, hexstr+8);
@@ -764,11 +771,11 @@ _nss_files_getprotoent_r(struct protoent * const restrict protobuf,
                          char * const restrict buf, const size_t buflen,
                          struct protoent ** const restrict protobufp)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_protoent,
-                                      .u      = { .protoent = protobuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .protoent = protobufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_protoent,
+                                      .vstruct = protobuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= protobufp };
     *protobufp = NULL;
     return _nss_mcdb_getent(NSS_DBTYPE_PROTOCOLS, &vinfo);
 }
@@ -779,14 +786,14 @@ _nss_files_getprotobyname_r(const char * const restrict name,
                             char * const restrict buf, const size_t buflen,
                             struct protoent ** const restrict protobufp)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_protoent,
-                                      .u      = { .protoent = protobuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .protoent = protobufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_protoent,
+                                      .vstruct = protobuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= protobufp };
     *protobufp = NULL;
     return _nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &kinfo, &vinfo);
 }
@@ -798,14 +805,14 @@ _nss_files_getprotobynumber_r(const int proto,
                               struct protoent ** const restrict protobufp)
 {
     char hexstr[8];
-    const struct _nss_kinfo kinfo = { .key    = hexstr,
-                                      .klen   = sizeof(hexstr),
-                                      .tagc   = (unsigned char)'x' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_protoent,
-                                      .u      = { .protoent = protobuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .protoent = protobufp } };
+    const struct _nss_kinfo kinfo = { .key     = hexstr,
+                                      .klen    = sizeof(hexstr),
+                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_protoent,
+                                      .vstruct = protobuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= protobufp };
     *protobufp = NULL;
     uint32_to_ascii8uphex((uint32_t)proto, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &kinfo, &vinfo);
@@ -817,11 +824,11 @@ _nss_files_getrpcent_r(struct rpcent * const restrict rpcbuf,
                        char * const restrict buf, const size_t buflen,
                        struct rpcent ** const restrict rpcbufp)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_rpcent,
-                                      .u      = { .rpcent = rpcbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .rpcent = rpcbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_rpcent,
+                                      .vstruct = rpcbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= rpcbufp };
     *rpcbufp = NULL;
     return _nss_mcdb_getent(NSS_DBTYPE_RPC, &vinfo);
 }
@@ -832,14 +839,14 @@ _nss_files_getrpcbyname_r(const char * const restrict name,
                           char * const restrict buf, const size_t buflen,
                           struct rpcent ** const restrict rpcbufp)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_rpcent,
-                                      .u      = { .rpcent = rpcbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .rpcent = rpcbufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_rpcent,
+                                      .vstruct = rpcbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= rpcbufp };
     *rpcbufp = NULL;
     return _nss_mcdb_get_generic(NSS_DBTYPE_RPC, &kinfo, &vinfo);
 }
@@ -851,14 +858,14 @@ _nss_files_getrpcbynumber_r(const int number,
                             struct rpcent ** const restrict rpcbufp)
 {
     char hexstr[8];
-    const struct _nss_kinfo kinfo = { .key    = hexstr,
-                                      .klen   = sizeof(hexstr),
-                                      .tagc   = (unsigned char)'x' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_rpcent,
-                                      .u      = { .rpcent = rpcbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .rpcent = rpcbufp } };
+    const struct _nss_kinfo kinfo = { .key     = hexstr,
+                                      .klen    = sizeof(hexstr),
+                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_rpcent,
+                                      .vstruct = rpcbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= rpcbufp };
     *rpcbufp = NULL;
     uint32_to_ascii8uphex((uint32_t)number, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_RPC, &kinfo, &vinfo);
@@ -870,11 +877,11 @@ _nss_files_getservent_r(struct servent * const restrict servbuf,
                         char * const restrict buf, const size_t buflen,
                         struct servent ** const restrict servbufp)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_servent,
-                                      .u      = { .servent = servbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .servent = servbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_servent,
+                                      .vstruct = servbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= servbufp };
     *servbufp = NULL;
     if (buflen > 0) {
         *buf = '\0';
@@ -893,14 +900,14 @@ _nss_files_getservbyname_r(const char * const restrict name,
                            char * const restrict buf, const size_t buflen,
                            struct servent ** const restrict servbufp)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_servent,
-                                      .u      = { .servent = servbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .servent = servbufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_servent,
+                                      .vstruct = servbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= servbufp };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
     *servbufp = NULL;
     if (buflen > plen) {
@@ -923,14 +930,14 @@ _nss_files_getservbyport_r(const int port, const char * const restrict proto,
                            struct servent ** const restrict servbufp)
 {
     char hexstr[8];
-    const struct _nss_kinfo kinfo = { .key    = hexstr,
-                                      .klen   = sizeof(hexstr),
-                                      .tagc   = (unsigned char)'x' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_servent,
-                                      .u      = { .servent = servbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .servent = servbufp } };
+    const struct _nss_kinfo kinfo = { .key     = hexstr,
+                                      .klen    = sizeof(hexstr),
+                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_servent,
+                                      .vstruct = servbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= servbufp };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
     *servbufp = NULL;
     if (buflen > plen) {
@@ -948,16 +955,18 @@ _nss_files_getservbyport_r(const int port, const char * const restrict proto,
 }
 
 
+#include <aliases.h>
+
 enum nss_status
 _nss_files_getaliasent_r(struct aliasent * const restrict aliasbuf,
                          char * const restrict buf, const size_t buflen,
                          struct aliasent ** const restrict aliasbufp)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_aliasent,
-                                      .u      = { .aliasent = aliasbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .aliasent = aliasbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_aliasent,
+                                      .vstruct = aliasbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= aliasbufp };
     *aliasbufp = NULL;
     return _nss_mcdb_getent(NSS_DBTYPE_ALIASES, &vinfo);
 }
@@ -968,29 +977,31 @@ _nss_files_getaliasbyname_r(const char * const restrict name,
                             char * const restrict buf, const size_t buflen,
                             struct aliasent ** const restrict aliasbufp)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_aliasent,
-                                      .u      = { .aliasent = aliasbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .aliasent = aliasbufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_aliasent,
+                                      .vstruct = aliasbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= aliasbufp };
     *aliasbufp = NULL;
     return _nss_mcdb_get_generic(NSS_DBTYPE_ALIASES, &kinfo, &vinfo);
 }
 
+
+#include <shadow.h>
 
 enum nss_status
 _nss_files_getspent_r(struct spwd * const restrict spbuf,
                       char * const restrict buf, const size_t buflen,
                       struct spwd ** const restrict spbufp)
 {
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_spwd,
-                                      .u      = { .spwd = spbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .spwd = spbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_spwd,
+                                      .vstruct = spbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= spbufp };
     *spbufp = NULL;
     return _nss_mcdb_getent(NSS_DBTYPE_SHADOW, &vinfo);
 }
@@ -1001,14 +1012,14 @@ _nss_files_getspnam_r(const char * const restrict name,
                       char * const restrict buf, const size_t buflen,
                       struct spwd ** const restrict spbufp)
 {
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_spwd,
-                                      .u      = { .spwd = spbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .spwd = spbufp } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_spwd,
+                                      .vstruct = spbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= spbufp };
     *spbufp = NULL;
     return _nss_mcdb_get_generic(NSS_DBTYPE_SHADOW, &kinfo, &vinfo);
 }
@@ -1018,14 +1029,14 @@ enum nss_status
 _nss_files_getpublickey(const char * const restrict name,
                         char * const restrict buf, const size_t buflen)
 {   /*  man getpublickey() *//* Solaris */
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_buf,
-                                      .u      = { .NA = 0 },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .NA = 0 } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
+                                      .vstruct = NULL,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= NULL };
     return _nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &kinfo, &vinfo);
 }
 
@@ -1035,14 +1046,14 @@ _nss_files_getsecretkey(const char * const restrict name,
                         const char * const restrict decryptkey,
                         char * const restrict buf, const size_t buflen)
 {   /*  man getsecretkey() *//* Solaris */
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'*' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_buf,
-                                      .u      = { .NA = 0 },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .NA = 0 } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'*' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
+                                      .vstruct = NULL,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= NULL };
     const enum nss_status status =
       _nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &kinfo, &vinfo);
     /* TODO: decrypt buf using decryptkey */
@@ -1050,6 +1061,7 @@ _nss_files_getsecretkey(const char * const restrict name,
 }
 
 
+#include <netinet/ether.h>
 #include <netinet/in.h>    /* htonl() htons() ntohl() ntohs() */
 #include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() */
 
@@ -1058,11 +1070,11 @@ _nss_files_getetherent_r(struct ether_addr * const restrict etherbuf,
                          char * const restrict buf, const size_t buflen,
                          struct ether_addr ** const restrict etherbufp)
 {   /*  man ether_line()  */
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_ether_addr,
-                                      .u      = { .ether_addr = etherbuf },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .ether_addr = etherbufp } };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_ether_addr,
+                                      .vstruct = etherbuf,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= etherbufp };
     *etherbufp = NULL;
     return _nss_mcdb_getent(NSS_DBTYPE_ETHERS, &vinfo);
 }
@@ -1071,14 +1083,14 @@ enum nss_status
 _nss_files_gethostton_r(const char * const restrict name,
                         struct ether_addr * const restrict etherbuf)
 {   /*  man ether_hostton()  */
-    const struct _nss_kinfo kinfo = { .key    = name,
-                                      .klen   = strlen(name),
-                                      .tagc   = (unsigned char)'=' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_ether_addr,
-                                      .u      = { .ether_addr = etherbuf },
-                                      .buf    = NULL,
-                                      .buflen = 0,
-                                      .p      = { .NA = 0 } };
+    const struct _nss_kinfo kinfo = { .key     = name,
+                                      .klen    = strlen(name),
+                                      .tagc    = (unsigned char)'=' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_ether_addr,
+                                      .vstruct = etherbuf,
+                                      .buf     = NULL,
+                                      .buflen  = 0,
+                                      .vstructp= NULL };
     return _nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &kinfo, &vinfo);
 }
 
@@ -1087,14 +1099,14 @@ _nss_files_getntohost_r(struct ether_addr * const restrict ether,
                         char * const restrict buf, const size_t buflen)
 {   /*  man ether_ntohost()  */
     char hexstr[12]; /* (6) 8-bit octets = 48-bits */
-    const struct _nss_kinfo kinfo = { .key    = hexstr,
-                                      .klen   = sizeof(hexstr),
-                                      .tagc   = (unsigned char)'x' };
-    const struct _nss_vinfo vinfo = { .decode = _nss_mcdb_decode_buf,
-                                      .u      = { .NA = 0 },
-                                      .buf    = buf,
-                                      .buflen = buflen,
-                                      .p      = { .NA = 0 } };
+    const struct _nss_kinfo kinfo = { .key     = hexstr,
+                                      .klen     = sizeof(hexstr),
+                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
+                                      .vstruct = NULL,
+                                      .buf     = buf,
+                                      .buflen  = buflen,
+                                      .vstructp= NULL };
     /* (assumes hexstr[] on stack is aligned to at least 4-byte boundary) */
     memcpy(hexstr, &(ether->ether_addr_octet[0]), sizeof(hexstr));
     uint32_to_ascii8uphex(ntohl(*((uint32_t *)&hexstr[0])), hexstr);
@@ -1109,6 +1121,8 @@ _nss_files_getntohost_r(struct ether_addr * const restrict ether,
 
 TODO: split each nss database access routines into a separate .c file
         (separate, too, reading and creation/writing)
+        nss_mcdb_passwd.[ch]
+        nss_mcdb_passwd_make.[ch]  (#include "nss_mcdb_passwd.h" for offsets)
       document which routines are POSIX-1.2001 and which are GNU extensions
         and which are BSD/Solaris extensions
       see what other services are in /etc/nsswitch.conf on my machine
@@ -1130,7 +1144,7 @@ _nss_netgroup_parseline
  */
 
 /* GPS: if gethost* buffer sizes are not large enough,
- *      man page says return ERANGE ?  In errno or in enum nss_status ? */
+ *      man page says return ERANGE ?  in errno?  not in enum nss_status ? */
 
 
 (non-standard)

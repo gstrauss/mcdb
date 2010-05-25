@@ -29,44 +29,6 @@ enum nss_dbtype {
  * calls in the same session.  When done, end*ent() should be called to release
  * the session. */
 
-/* might remove union _nss_ent and union _nss_entp for better encapsulation */
-#include <pwd.h>
-#include <grp.h>
-#include <netdb.h>
-#include <aliases.h>
-#include <shadow.h>
-#include <netinet/ether.h>
-
-union _nss_ent {
-  struct passwd     * restrict passwd;
-  struct group      * restrict group;
-  struct hostent    * restrict hostent;
-  struct netent     * restrict netent;
-  struct protoent   * restrict protoent;
-  struct rpcent     * restrict rpcent;
-  struct servent    * restrict servent;
-  struct aliasent   * restrict aliasent;
-  struct spwd       * restrict spwd;
-  struct ether_addr * restrict ether_addr;
-  void              * restrict extension;
-  uintptr_t         NA;
-};
-
-union _nss_entp {
-  struct passwd     ** restrict passwd;
-  struct group      ** restrict group;
-  struct hostent    ** restrict hostent;
-  struct netent     ** restrict netent;
-  struct protoent   ** restrict protoent;
-  struct rpcent     ** restrict rpcent;
-  struct servent    ** restrict servent;
-  struct aliasent   ** restrict aliasent;
-  struct spwd       ** restrict spwd;
-  struct ether_addr ** restrict ether_addr;
-  void              ** restrict extension;
-  uintptr_t         NA;
-};
-
 struct _nss_kinfo {
   const char * restrict key;
   size_t klen;
@@ -78,10 +40,10 @@ struct _nss_vinfo {
   enum nss_status (*decode)(struct mcdb * restrict,
                             const struct _nss_kinfo * restrict,
                             const struct _nss_vinfo * restrict);
-  union _nss_ent u;
+  void * restrict vstruct;
   char * restrict buf;
   size_t buflen;
-  union _nss_entp p;
+  void * vstructp;
 };
 
 
