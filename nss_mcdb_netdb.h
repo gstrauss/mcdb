@@ -1,0 +1,5 @@
+#ifndef INCLUDED_NSS_MCDB_NETDB_H
+#define INCLUDED_NSS_MCDB_NETDB_H
+
+
+#endif

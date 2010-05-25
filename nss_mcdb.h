@@ -6,6 +6,7 @@
 
 #include <nss.h>    /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
 
+/* enum nss_dbtype index must match path in nss_mcdb.c char *_nss_dbnames[] */
 enum nss_dbtype {
     NSS_DBTYPE_ALIASES = 0,
     NSS_DBTYPE_ETHERS,
@@ -50,34 +51,38 @@ struct _nss_vinfo {
 char *  __attribute_noinline__
 uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
   __attribute_nonnull__;
+
 char *  __attribute_noinline__
 uint16_to_ascii4uphex(const uint32_t n, char * restrict buf)
   __attribute_nonnull__;
 
 
+enum nss_status
+_nss_mcdb_setent(const enum nss_dbtype)
+  __attribute_nonnull__;
 
 enum nss_status
-_nss_mcdb_setent(const enum nss_dbtype dbtype)
+_nss_mcdb_endent(const enum nss_dbtype)
   __attribute_nonnull__;
-enum nss_status
-_nss_mcdb_endent(const enum nss_dbtype dbtype)
-  __attribute_nonnull__;
+
 enum nss_status
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
-_nss_mcdb_getent(const enum nss_dbtype dbtype,
-                 const struct _nss_vinfo * const restrict vinfo)
+_nss_mcdb_getent(const enum nss_dbtype,
+                 const struct _nss_vinfo * const restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
 enum nss_status
-_nss_mcdb_get_generic(const enum nss_dbtype dbtype,
-                      const struct _nss_kinfo * const restrict kinfo,
-                      const struct _nss_vinfo * const restrict vinfo)
+_nss_mcdb_get_generic(const enum nss_dbtype,
+                      const struct _nss_kinfo * const restrict,
+                      const struct _nss_vinfo * const restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+
 enum nss_status
-_nss_mcdb_decode_buf(struct mcdb * restrict,
-                     const struct _nss_kinfo * restrict,
-                     const struct _nss_vinfo * restrict)
+_nss_mcdb_decode_buf(struct mcdb * const restrict,
+                     const struct _nss_kinfo * const restrict,
+                     const struct _nss_vinfo * const restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+
 
 #endif
