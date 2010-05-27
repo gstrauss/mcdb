@@ -1,5 +1,6 @@
+#ifndef _XOPEN_SOURCE /* IOV_MAX */
 #define _XOPEN_SOURCE 500
-/* need to define _XOPEN_SOURCE to get IOV_MAX */
+#endif
 
 #include "mcdb.h"
 #include "mcdb_makefmt.h"

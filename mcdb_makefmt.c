@@ -1,6 +1,9 @@
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
-/* _XOPEN_SOURCE >= 500 needed on Linux for mkstemp(), fchmod() prototypes */
+#endif
+#ifndef _XOPEN_SOURCE /* >= 500 on Linux for mkstemp(), fchmod() prototypes */
 #define _XOPEN_SOURCE 500
+#endif
 
 #include "mcdb_makefmt.h"
 #include "mcdb_make.h"

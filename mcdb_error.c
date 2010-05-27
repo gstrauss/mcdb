@@ -1,5 +1,6 @@
-/* _POSIX_C_SOURCE 200112L needed for XSI-compliant sterror_r() */
+#ifndef _POSIX_C_SOURCE /* 200112L for XSI-compliant sterror_r() */
 #define _POSIX_C_SOURCE 200112L
+#endif
 
 #include "mcdb_error.h"
 

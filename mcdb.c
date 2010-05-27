@@ -1,7 +1,11 @@
 /* License: GPLv3 */
 
-#define _XOPEN_SOURCE 600  /* POSIX_MADV_RANDOM */
-#define _ATFILE_SOURCE     /* fstatat(), openat() */
+#ifndef _XOPEN_SOURCE /* POSIX_MADV_RANDOM */
+#define _XOPEN_SOURCE 600
+#endif
+#ifndef _ATFILE_SOURCE /* fstatat(), openat() */
+#define _ATFILE_SOURCE
+#endif
 
 #include "mcdb.h"
 #include "mcdb_uint32.h"
@@ -24,7 +28,7 @@ static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define pthread_mutex_unlock(mutexp) (void)0
 #endif
 
-#ifndef O_CLOEXEC
+#ifndef O_CLOEXEC /* O_CLOEXEC available since Linux 2.6.23 */
 #define O_CLOEXEC 0
 #endif
 
@@ -298,9 +302,8 @@ mcdb_mmap_create(const char * const dname  __attribute_unused__,
   #if defined(__linux) || defined(__sun)
     /* caller must have open STDIN, STDOUT, STDERR */
     if ((dfd = open(dname, O_RDONLY | O_CLOEXEC, 0)) > STDERR_FILENO) {
-      #if O_CLOEXEC == 0
-        (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
-      #endif
+        if (O_CLOEXEC == 0)
+            (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
     }
     else {
         fn_free(map);

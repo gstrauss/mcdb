@@ -1,5 +1,6 @@
-/* fstatat(), openat() */
+#ifndef _ATFILE_SOURCE /* fstatat(), openat() */
 #define _ATFILE_SOURCE
+#endif
 
 #include "nss_mcdb.h"
 #include "mcdb.h"
@@ -23,7 +24,7 @@
 #define pthread_mutex_unlock(mutexp) (void)0
 #endif
 
-#ifndef O_CLOEXEC
+#ifndef O_CLOEXEC /* O_CLOEXEC available since Linux 2.6.23 */
 #define O_CLOEXEC 0
 #endif
 
@@ -108,9 +109,9 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
   #if defined(__linux) || defined(__sun)
     if (__builtin_expect(dfd <= STDERR_FILENO, false)) {
         if ((dfd = open(NSS_DBPATH, O_RDONLY | O_CLOEXEC, 0)) > STDERR_FILENO) {
-      #if O_CLOEXEC == 0
-        (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
-      #endif
+            if (O_CLOEXEC == 0)
+                (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
+            map->dfd = dfd;
         }
         else {
             if (dfd != -1) /* caller must have open STDIN, STDOUT, STDERR */
@@ -131,7 +132,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
   #endif
 
   #if defined(__linux) || defined(__sun)
-    if ((fd = openat((map->dfd=dfd), map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
+    if ((fd = openat(dfd, map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
   #else
     if ((fd = open(map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
   #endif

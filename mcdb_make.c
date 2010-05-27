@@ -2,19 +2,32 @@
  * License: GPLv3
  */
 
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
+#endif
+#ifndef _XOPEN_SOURCE /* 600 for posix_fallocate(), >= 500 for fdatasync() */
 #define _XOPEN_SOURCE 600
-/* _XOPEN_SOURCE 600 needed for posix_fallocate(), >= 500 for fdatasync() */
-#define _BSD_SOURCE
+#endif
 /* gcc -std=c99 hides MAP_ANONYMOUS
  * _BSD_SOURCE or _SVID_SOURCE needed for mmap MAP_ANONYMOUS on Linux */
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#endif
 /* large file support needed for mmap() offset,ftruncate() on cdb > 2 GB */
 #if defined(_AIX)
+#ifndef _LARGE_FILES
 #define _LARGE_FILES
+#endif
 #else /*#elif defined(__linux) || defined(__sun) || defined(__hpux)*/
+#ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
+#endif
+#ifndef _LARGEFILE_SOURCE
 #define _LARGEFILE_SOURCE 1
+#endif
+#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE 1
+#endif
 #endif
 
 #include "mcdb_make.h"
