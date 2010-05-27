@@ -67,32 +67,6 @@ static struct mcdb_mmap *_nss_mcdb_mmap[_nss_num_dbs];
 static __thread struct mcdb _nss_mcdb_st[_nss_num_dbs];
 
 
-/* TODO take pipelined versions from cdbauthz.c */
-/* experiment with C99 static inline in header */
-char *  __attribute_noinline__
-uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
-{
-    uint32_t nibble;
-    uint32_t i = 0;
-    do {
-        nibble = (n << (i<<2)) >> 28; /* isolate 4 bits */
-        *buf++ = nibble + (nibble < 10 ? '0': 'A'-10);
-    } while (++i < 8);
-    return buf;
-}
-char *  __attribute_noinline__
-uint16_to_ascii4uphex(const uint32_t n, char * restrict buf)
-{
-    uint32_t nibble;
-    uint32_t i = 4;
-    do {
-        nibble = (n << (i<<2)) >> 28; /* isolate 4 bits */
-        *buf++ = nibble + (nibble < 10 ? '0': 'A'-10);
-    } while (++i < 8);
-    return buf;
-}
-
-
 /* custom free for mcdb_mmap_create() to not free initial static storage */
 static void
 nss_mcdb_mmap_free(void * const v)

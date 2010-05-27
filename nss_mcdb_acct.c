@@ -95,7 +95,7 @@ _nss_files_getpwuid_r(const uid_t uid,
                                       .buflen  = buflen,
                                       .vstructp= pwbufp };
     *pwbufp = NULL;
-    uint32_to_ascii8uphex((uint32_t)uid, hexstr);
+    mcdb_uint32_to_ascii8uphex((uint32_t)uid, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &kinfo, &vinfo);
 }
 
@@ -148,7 +148,7 @@ _nss_files_getgrgid_r(const gid_t gid,
                                       .buflen  = buflen,
                                       .vstructp= grbufp };
     *grbufp = NULL;
-    uint32_to_ascii8uphex((uint32_t)gid, hexstr);
+    mcdb_uint32_to_ascii8uphex((uint32_t)gid, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &kinfo, &vinfo);
 }
 

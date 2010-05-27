@@ -187,14 +187,14 @@ _nss_files_gethostbyaddr_r(const void * const restrict addr,
     switch (len) {
       case 4:  /* e.g. AF_INET4 */
                memcpy(&u, addr, 4);
-               uint32_to_ascii8uphex(u[0], hexstr);
+               mcdb_uint32_to_ascii8uphex(u[0], hexstr);
                break;
       case 16: /* e.g. AF_INET6 */
                memcpy(&u, addr, 16);
-               uint32_to_ascii8uphex(u[0], hexstr);
-               uint32_to_ascii8uphex(u[1], hexstr+8);
-               uint32_to_ascii8uphex(u[2], hexstr+16);
-               uint32_to_ascii8uphex(u[3], hexstr+24);
+               mcdb_uint32_to_ascii8uphex(u[0], hexstr);
+               mcdb_uint32_to_ascii8uphex(u[1], hexstr+8);
+               mcdb_uint32_to_ascii8uphex(u[2], hexstr+16);
+               mcdb_uint32_to_ascii8uphex(u[3], hexstr+24);
                break;
       default: return NSS_STATUS_UNAVAIL; /* other types not implemented */
     }
@@ -280,8 +280,8 @@ _nss_files_getnetbyaddr_r(const uint32_t net, const int type,
                                       .buflen  = buflen,
                                       .vstructp= netbufp };
     *netbufp = NULL;
-    uint32_to_ascii8uphex(net, hexstr);
-    uint32_to_ascii8uphex((uint32_t)type, hexstr+8);
+    mcdb_uint32_to_ascii8uphex(net, hexstr);
+    mcdb_uint32_to_ascii8uphex((uint32_t)type, hexstr+8);
     return _nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
 }
 
@@ -334,7 +334,7 @@ _nss_files_getprotobynumber_r(const int proto,
                                       .buflen  = buflen,
                                       .vstructp= protobufp };
     *protobufp = NULL;
-    uint32_to_ascii8uphex((uint32_t)proto, hexstr);
+    mcdb_uint32_to_ascii8uphex((uint32_t)proto, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &kinfo, &vinfo);
 }
 
@@ -387,7 +387,7 @@ _nss_files_getrpcbynumber_r(const int number,
                                       .buflen  = buflen,
                                       .vstructp= rpcbufp };
     *rpcbufp = NULL;
-    uint32_to_ascii8uphex((uint32_t)number, hexstr);
+    mcdb_uint32_to_ascii8uphex((uint32_t)number, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_RPC, &kinfo, &vinfo);
 }
 
@@ -465,7 +465,7 @@ _nss_files_getservbyport_r(const int port, const char * const restrict proto,
             memcpy(buf, proto, plen+1);
         else
             *buf = '\0';
-        uint32_to_ascii8uphex((uint32_t)port, hexstr);
+        mcdb_uint32_to_ascii8uphex((uint32_t)port, hexstr);
         return _nss_mcdb_get_generic(NSS_DBTYPE_SERVICES, &kinfo, &vinfo);
     }
     else {

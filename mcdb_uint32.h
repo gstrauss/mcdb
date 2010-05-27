@@ -3,6 +3,8 @@
 #ifndef INCLUDED_MCDB_UINT32_H
 #define INCLUDED_MCDB_UINT32_H
 
+#include "mcdb_attribute.h"
+
 #include <stdint.h>
 #include <unistd.h>
 
@@ -46,6 +48,15 @@ mcdb_uint32_pack_bigendian(char s[4], uint32_t);
    (*((uint32_t *)(s)) = htonl(u))
 #define mcdb_uint32_unpack_bigendian_aligned_macro(s) \
    ntohl(*((uint32_t *)(s)))
+
+
+char *  __attribute_noinline__
+mcdb_uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
+  __attribute_nonnull__;
+
+char *  __attribute_noinline__
+mcdb_uint16_to_ascii4uphex(const uint32_t n, char * restrict buf)
+  __attribute_nonnull__;
 
 
 #ifdef __cplusplus
