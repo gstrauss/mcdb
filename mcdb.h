@@ -86,17 +86,11 @@ struct mcdb {
 #define MCDB_HASH_INIT 5381
 
 
-/* C inline functions defined in header (C99 behavior introduced in gcc 4.3) */
-#if __GNUC__ && !__GNUC_STDC_INLINE__
-extern
-#endif
-uint32_t  inline
+/* C99 inline functions defined in header */
+uint32_t  C99INLINE
 mcdb_hash(uint32_t, const void *, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_pure__;
-#if __GNUC__ && !__GNUC_STDC_INLINE__
-extern
-#endif
-uint32_t  inline
+uint32_t  C99INLINE
 mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
 {
     /* TODO: test if better code is generated with:

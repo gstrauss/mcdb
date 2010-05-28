@@ -9,10 +9,18 @@
 #endif
 
 /*
- * Discussion of nuances of "extern inline" functions in C:
+ * C inline functions defined in header
+ * Discussion of nuances of "extern inline" and inline functions in C headers:
  *   http://www.greenend.org.uk/rjk/2003/03/inline.html
  *   http://gcc.gnu.org/onlinedocs/gcc/Inline.html#Inline
  */
+#ifndef C99INLINE
+#if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
+#define C99INLINE inline
+#else /* (GCC extern inline was prior to C99 standard; gcc 4.3+ supports C99) */
+#define C99INLINE extern inline
+#endif
+#endif
 
 /*
  http://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html#Function-Attributes
@@ -91,3 +99,4 @@
 #ifndef __attribute_warn_unused_result__
 #define __attribute_warn_unused_result__
 #endif
+

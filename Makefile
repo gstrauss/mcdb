@@ -1,5 +1,6 @@
 
-all: mcdbctl testzero nss
+.PHONY: all other_objects
+all: mcdbctl testzero nss libmcdb.a
 
 CC=gcc
 CFLAGS+=-pipe -Wall -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3 -g -I.
@@ -10,14 +11,17 @@ _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-mcdbctl:  mcdb.o mcdb_makefmt.o mcdb_make.o mcdb_error.o mcdbctl.o
+libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_uint32.o
+	$(AR) -r $@ $^
+
+mcdbctl:  mcdbctl.o libmcdb.a
 	$(CC) -o $@ $(CFLAGS) $^
-testzero: mcdb.o mcdb_makefmt.o mcdb_make.o mcdb_error.o testzero.o
+testzero: testzero.o libmcdb.a
 	$(CC) -o $@ $(CFLAGS) $^
 
-.PHONY: all clean
+.PHONY: clean
 clean:
-	$(RM) *.o mcdbctl testzero
+	$(RM) *.o libmcdb.a mcdbctl testzero
 
 .PHONY: nss
 nss: nss_mcdb.o nss_mcdb_acct.o nss_mcdb_misc.o nss_mcdb_netdb.o \

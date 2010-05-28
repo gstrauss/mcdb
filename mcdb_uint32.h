@@ -12,21 +12,7 @@
 extern "C" {
 #endif
 
-uint32_t
-mcdb_uint32_unpack(const char s[4])
-  __attribute_pure__  __attribute_warn_unused_result__;
-
-uint32_t
-mcdb_uint32_unpack_bigendian(const char s[4])
-  __attribute_pure__  __attribute_warn_unused_result__;
-
-void
-mcdb_uint32_pack(char s[4], uint32_t);
-
-void
-mcdb_uint32_pack_bigendian(char s[4], uint32_t);
-
-/*(use macros only with simple args, or else better to call subroutines)*/
+/*(use macros only with simple args, or else better to call inline subroutine)*/
 
 /* mcdb_uint32_unpack_macro(): string 's' must be unsigned char */
 #define mcdb_uint32_unpack_macro(s) \
@@ -48,6 +34,41 @@ mcdb_uint32_pack_bigendian(char s[4], uint32_t);
    (*((uint32_t *)(s)) = htonl(u))
 #define mcdb_uint32_unpack_bigendian_aligned_macro(s) \
    ntohl(*((uint32_t *)(s)))
+
+
+/* C99 inline functions defined in header */
+
+uint32_t  C99INLINE
+mcdb_uint32_unpack(const char s[4])
+  __attribute_pure__  __attribute_warn_unused_result__;
+uint32_t  C99INLINE
+mcdb_uint32_unpack(const char s[4])
+{
+    const unsigned char * const restrict n = (const unsigned char *)s;
+    return mcdb_uint32_unpack_macro(n);
+}
+
+uint32_t  C99INLINE
+mcdb_uint32_unpack_bigendian(const char s[4])
+  __attribute_pure__  __attribute_warn_unused_result__;
+uint32_t  C99INLINE
+mcdb_uint32_unpack_bigendian(const char s[4])
+{
+    const unsigned char * const restrict n = (const unsigned char *)s;
+    return mcdb_uint32_unpack_bigendian_macro(n);
+}
+
+void  C99INLINE
+mcdb_uint32_pack(char s[4], const uint32_t u)
+{
+    mcdb_uint32_pack_macro(s,u);
+}
+
+void  C99INLINE
+mcdb_uint32_pack_bigendian(char s[4], const uint32_t u)
+{
+    mcdb_uint32_pack_bigendian_macro(s,u);
+}
 
 
 char *

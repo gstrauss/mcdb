@@ -40,18 +40,20 @@ mcdb_hash(uint32_t, const void *, size_t);
 uint32_t
 mcdb_hash(uint32_t, const void *, size_t);
 
-#if 0 /* generate external linkage definition in GCC earlier than GCC 4.3 */
-#if __GNUC__ && !__GNUC_STDC_INLINE__
+/* generate external linkage definition in GCC earlier than GCC 4.3
+ * (need to -duplicate- definition from header for non-C99-compliant compiler)*/
+#if defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
 uint32_t  inline
 mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
 {
+    /* TODO: test if better code is generated with:
+     *    while (sz--) h = (h + (h << 5)) ^ *buf++; */
     const unsigned char * const restrict buf = (const unsigned char *)vbuf;
     size_t i = SIZE_MAX;  /* (size_t)-1; will wrap around to 0 with first ++i */
     while (++i < sz)
         h = (h + (h << 5)) ^ buf[i];
     return h;
 }
-#endif
 #endif
 
 

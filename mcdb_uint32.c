@@ -1,34 +1,39 @@
 /* License: GPLv3 */
 
+/* inlined functions defined in header
+ * (generate external linkage definition in GCC versions earlier than GCC 4.3)
+ * (mcdb_uint32.h does not include other headers defining other inline functions
+ *  in header, so simply disable C99INLINE to generate external linkage
+ *  definition for all inlined functions seen (i.e. those in mcdb_uint32.h))
+ */
+#if defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
+#define C99INLINE
+#endif
+
 #include "mcdb_uint32.h"
 
-/* future todo: C99 inline function definitions in header instead of macros */
-
+/* inlined functions defined in header
+ * (generate external linkage definition in C99-compliant compilers)
+ * (Would need to repeat definition in header for non-C99-compliant compiler)
+ */
+#if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
+extern inline uint32_t
+mcdb_uint32_unpack(const char s[4]);
 uint32_t
-mcdb_uint32_unpack(const char s[4])
-{
-    const unsigned char * const restrict n = (const unsigned char *)s;
-    return mcdb_uint32_unpack_macro(n);
-}
-
+mcdb_uint32_unpack(const char s[4]);
+extern inline uint32_t
+mcdb_uint32_unpack_bigendian(const char s[4]);
 uint32_t
-mcdb_uint32_unpack_bigendian(const char s[4])
-{
-    const unsigned char * const restrict n = (const unsigned char *)s;
-    return mcdb_uint32_unpack_bigendian_macro(n);
-}
-
+mcdb_uint32_unpack_bigendian(const char s[4]);
+extern inline void
+mcdb_uint32_pack(char s[4], uint32_t);
 void
-mcdb_uint32_pack(char s[4], const uint32_t u)
-{
-    mcdb_uint32_pack_macro(s,u);
-}
-
+mcdb_uint32_pack(char s[4], uint32_t);
+extern inline void
+mcdb_uint32_pack_bigendian(char s[4], uint32_t);
 void
-mcdb_uint32_pack_bigendian(char s[4], const uint32_t u)
-{
-    mcdb_uint32_pack_bigendian_macro(s,u);
-}
+mcdb_uint32_pack_bigendian(char s[4], uint32_t);
+#endif
 
 
 /* GPS: TODO take pipelined versions from my cdbauthz.c */
