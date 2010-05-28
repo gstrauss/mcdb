@@ -14,11 +14,11 @@ extern "C" {
 
 uint32_t
 mcdb_uint32_unpack(const char s[4])
-  __attribute_warn_unused_result__;
+  __attribute_pure__  __attribute_warn_unused_result__;
 
 uint32_t
 mcdb_uint32_unpack_bigendian(const char s[4])
-  __attribute_warn_unused_result__;
+  __attribute_pure__  __attribute_warn_unused_result__;
 
 void
 mcdb_uint32_pack(char s[4], uint32_t);
@@ -50,11 +50,11 @@ mcdb_uint32_pack_bigendian(char s[4], uint32_t);
    ntohl(*((uint32_t *)(s)))
 
 
-char *  __attribute_noinline__
+char *
 mcdb_uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
   __attribute_nonnull__;
 
-char *  __attribute_noinline__
+char *
 mcdb_uint16_to_ascii4uphex(const uint32_t n, char * restrict buf)
   __attribute_nonnull__;
 

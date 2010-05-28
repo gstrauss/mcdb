@@ -32,7 +32,17 @@ static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define O_CLOEXEC 0
 #endif
 
+
+/* inlined functions defined in header
+ * (generate external linkage definition in C99-compliant compilers) */
+extern inline uint32_t
+mcdb_hash(uint32_t, const void *, size_t);
 uint32_t
+mcdb_hash(uint32_t, const void *, size_t);
+
+#if 0 /* generate external linkage definition in GCC earlier than GCC 4.3 */
+#if __GNUC__ && !__GNUC_STDC_INLINE__
+uint32_t  inline
 mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
 {
     const unsigned char * const restrict buf = (const unsigned char *)vbuf;
@@ -41,6 +51,9 @@ mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
         h = (h + (h << 5)) ^ buf[i];
     return h;
 }
+#endif
+#endif
+
 
 /* Note: tagc of 0 ('\0') is reserved to indicate no tag */
 

@@ -85,9 +85,29 @@ struct mcdb {
 
 #define MCDB_HASH_INIT 5381
 
-extern uint32_t
+
+/* C inline functions defined in header (C99 behavior introduced in gcc 4.3) */
+#if __GNUC__ && !__GNUC_STDC_INLINE__
+extern
+#endif
+uint32_t  inline
 mcdb_hash(uint32_t, const void *, size_t)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_pure__;
+#if __GNUC__ && !__GNUC_STDC_INLINE__
+extern
+#endif
+uint32_t  inline
+mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
+{
+    /* TODO: test if better code is generated with:
+     *    while (sz--) h = (h + (h << 5)) ^ *buf++; */
+    const unsigned char * const restrict buf = (const unsigned char *)vbuf;
+    size_t i = SIZE_MAX;  /* (size_t)-1; will wrap around to 0 with first ++i */
+    while (++i < sz)
+        h = (h + (h << 5)) ^ buf[i];
+    return h;
+}
+
 
 extern bool
 mcdb_findtagstart(struct mcdb * restrict, const char * restrict, size_t,

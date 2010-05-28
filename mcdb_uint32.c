@@ -2,6 +2,8 @@
 
 #include "mcdb_uint32.h"
 
+/* future todo: C99 inline function definitions in header instead of macros */
+
 uint32_t
 mcdb_uint32_unpack(const char s[4])
 {
@@ -31,8 +33,7 @@ mcdb_uint32_pack_bigendian(char s[4], const uint32_t u)
 
 /* GPS: TODO take pipelined versions from my cdbauthz.c */
 /* GPS: TODO uint32_from_ascii8uphex, uint16_from_ascii4uphex */
-/* experiment with C99 static inline in header */
-char *  __attribute_noinline__
+char *
 uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
 {
     uint32_t nibble;
@@ -43,7 +44,7 @@ uint32_to_ascii8uphex(const uint32_t n, char * restrict buf)
     } while (++i < 8);
     return buf;
 }
-char *  __attribute_noinline__
+char *
 uint16_to_ascii4uphex(const uint32_t n, char * restrict buf)
 {
     uint32_t nibble;
