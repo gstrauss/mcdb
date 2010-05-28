@@ -70,7 +70,7 @@ static __thread struct mcdb _nss_mcdb_st[_nss_num_dbs];
 
 /* custom free for mcdb_mmap_create() to not free initial static storage */
 static void
-nss_mcdb_mmap_free(void * const v)
+_nss_mcdb_mmap_free(void * const v)
 {
     struct mcdb_mmap * const m = v;
     if (&_nss_mcdb_mmap_st[_nss_num_dbs] <= m || m < &_nss_mcdb_mmap_st[0])
@@ -104,7 +104,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
     }
 
     map->fn_malloc = malloc;
-    map->fn_free   = nss_mcdb_mmap_free;
+    map->fn_free   = _nss_mcdb_mmap_free;
 
   #if defined(__linux) || defined(__sun)
     if (__builtin_expect(dfd <= STDERR_FILENO, false)) {
