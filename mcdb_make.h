@@ -7,7 +7,7 @@
 
 #include <sys/types.h> /* size_t   */
 
-#include "mcdb_attribute.h"
+#include "code_attributes.h"
 
 #ifdef __cplusplus
 extern "C" {

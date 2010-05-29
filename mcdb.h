@@ -54,7 +54,7 @@
 #error "mcdb requires mmap() and msync() support"
 #endif
 
-#include "mcdb_attribute.h"
+#include "code_attributes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,33 +83,13 @@ struct mcdb {
   uint32_t dlen;   /* initialized if cdb_findnext() returns 1 */
 };
 
-#define MCDB_HASH_INIT 5381
-
-
-/* C99 inline functions defined in header */
-uint32_t  C99INLINE
-mcdb_hash(uint32_t, const void *, size_t)
-  __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_pure__;
-uint32_t  C99INLINE
-mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
-{
-    /* TODO: test if better code is generated with:
-     *    while (sz--) h = (h + (h << 5)) ^ *buf++; */
-    const unsigned char * const restrict buf = (const unsigned char *)vbuf;
-    size_t i = SIZE_MAX;  /* (size_t)-1; will wrap around to 0 with first ++i */
-    while (++i < sz)
-        h = (h + (h << 5)) ^ buf[i];
-    return h;
-}
-
-
 extern bool
 mcdb_findtagstart(struct mcdb * restrict, const char * restrict, size_t,
-                  unsigned char) /* note: must be cast to (unsigned char) */
+                  unsigned char)/* note: must be 0 or cast to (unsigned char) */
   __attribute_nonnull__  __attribute_warn_unused_result__;
 extern bool
 mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
-                 unsigned char)  /* note: must be cast to (unsigned char) */
+                 unsigned char) /* note: must be 0 or cast to (unsigned char) */
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 #define mcdb_findstart(m,key,klen) mcdb_findtagstart((m),(key),(klen),0)

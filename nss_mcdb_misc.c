@@ -6,8 +6,8 @@
 #include "nss_mcdb_misc.h"
 #include "nss_mcdb.h"
 #include "mcdb.h"
-#include "mcdb_uint32.h"
-#include "mcdb_attribute.h"
+#include "uint32.h"
+#include "code_attributes.h"
 
 #include <errno.h>
 #include <string.h>
@@ -158,9 +158,8 @@ _nss_files_getntohost_r(struct ether_addr * const restrict ether,
                                       .vstructp= NULL };
     /* (assumes hexstr[] on stack is aligned to at least 4-byte boundary) */
     memcpy(hexstr, &(ether->ether_addr_octet[0]), sizeof(hexstr));
-    mcdb_uint32_to_ascii8uphex(ntohl(*((uint32_t *)&hexstr[0])), hexstr);
-    mcdb_uint16_to_ascii4uphex((uint32_t)ntohs(*((uint16_t *)&hexstr[8])),
-                               hexstr+8);
+    uint32_to_ascii8uphex(ntohl(*((uint32_t *)&hexstr[0])), hexstr);
+    uint16_to_ascii4uphex((uint32_t)ntohs(*((uint16_t *)&hexstr[8])), hexstr+8);
     return _nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &kinfo, &vinfo);
 }
 

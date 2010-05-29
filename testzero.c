@@ -1,7 +1,7 @@
 #include "mcdb.h"
 #include "mcdb_make.h"
 #include "mcdb_error.h"
-#include "mcdb_uint32.h"
+#include "uint32.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -23,7 +23,7 @@ main(int argc,char **argv)
         return mcdb_error(MCDB_ERROR_WRITE, "testzero");
 
     while (loop--) {
-        mcdb_uint32_pack_bigendian_aligned_macro(key,loop);
+        uint32_strpack_bigendian_aligned_macro(key,loop);
         if (mcdb_make_add(&m,key,sizeof(key),data,sizeof(data)) == -1)
             return mcdb_error(MCDB_ERROR_WRITE, "testzero");
     }

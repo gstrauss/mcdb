@@ -5,7 +5,7 @@
 #include "mcdb.h"
 #include "mcdb_makefmt.h"
 #include "mcdb_error.h"
-#include "mcdb_uint32.h"
+#include "uint32.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -59,7 +59,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     uint32_t klen;
     uint32_t dlen;
     unsigned char * const eod =
-      p + mcdb_uint32_unpack_bigendian_aligned_macro(p) - 7;
+      p + uint32_strunpack_bigendian_aligned_macro(p) - 7;
     int    iovcnt = 0;
     size_t iovlen = 0;
     size_t buflen = 0;
@@ -70,8 +70,8 @@ mcdbctl_dump(struct mcdb * const restrict m)
 
     for (p += MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
 
-        klen = mcdb_uint32_unpack_bigendian_macro(p);
-        dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
+        klen = uint32_strunpack_bigendian_macro(p);
+        dlen = uint32_strunpack_bigendian_macro(p+4);
 
         /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
         /* klen, dlen each limited to (2GB - 8); space for extra tokens exists*/
@@ -152,14 +152,14 @@ mcdbctl_stats(struct mcdb * const restrict m)
     uint32_t klen;
     uint32_t dlen;
     unsigned char * const eod =
-      map_ptr + mcdb_uint32_unpack_bigendian_aligned_macro(map_ptr) - 7;
+      map_ptr + uint32_strunpack_bigendian_aligned_macro(map_ptr) - 7;
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
     bool rc;
     for (p = map_ptr+MCDB_HEADER_SZ; p < eod; p += klen+dlen) {
-        klen = mcdb_uint32_unpack_bigendian_macro(p);
-        dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
+        klen = uint32_strunpack_bigendian_macro(p);
+        dlen = uint32_strunpack_bigendian_macro(p+4);
         /* Search for key,data and track number of tries before found.
          * Technically, passing m (which contains m->map->ptr) and an
          * alias into the map (p+8) as key is in violation of C99 restrict

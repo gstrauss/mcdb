@@ -32,8 +32,8 @@
 
 #include "mcdb_make.h"
 #include "mcdb.h"
-#include "mcdb_uint32.h"
-#include "mcdb_attribute.h"
+#include "uint32.h"
+#include "code_attributes.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -167,14 +167,14 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     struct mcdb_hplist * const head =
       m->head->num < MCDB_HPLIST ? m->head : mcdb_hplist_alloc(m);
     if (head == NULL) return -1;
-    head->hp[head->num].h = MCDB_HASH_INIT;
+    head->hp[head->num].h = UINT32_HASH_DJB_INIT;
     head->hp[head->num].p = (uint32_t)pos;  /* arbitrary ~2 GB limit for lens */
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
     if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
     if (m->fsz < pos+len && !mcdb_mmap_upsize(m,pos+len))          return -1;
     p = m->map + pos - m->offset;
-    mcdb_uint32_pack_bigendian_macro(p,keylen);
-    mcdb_uint32_pack_bigendian_macro(p+4,datalen);
+    uint32_strpack_bigendian_macro(p,keylen);
+    uint32_strpack_bigendian_macro(p+4,datalen);
     m->pos += 8;
     return 0;
 }
@@ -196,7 +196,7 @@ mcdb_make_addbuf_key(struct mcdb_make * const restrict m,
     /* len validated in mcdb_make_addbegin(); passing any other len is wrong,
      * unless the len is shorter from partial contents of buf. */
     uint32_t * const h = &m->head->hp[m->head->num].h;
-    *h = mcdb_hash(*h, buf, len);
+    *h = uint32_hash_djb(*h, buf, len);
     mcdb_make_addbuf_data(m, buf, len);
 }
 
@@ -329,8 +329,8 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
         /* constant header (8 bytes per header slot, so multiply by 8) */
         p = header + (i << 3);  /* (i << 3) == (i * 8) */
-        mcdb_uint32_pack_bigendian_aligned_macro(p,u);
-        mcdb_uint32_pack_bigendian_aligned_macro(p+4,len);
+        uint32_strpack_bigendian_aligned_macro(p,u);
+        uint32_strpack_bigendian_aligned_macro(p+4,len);
 
         /* generate hash table for this slot */
         memset(hash, 0, len * sizeof(struct mcdb_hp));
@@ -348,9 +348,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
             p = m->map + m->pos - m->offset;
             m->pos += 8;
             d = hash[u].h;
-            mcdb_uint32_pack_bigendian_aligned_macro(p,d);
+            uint32_strpack_bigendian_aligned_macro(p,d);
             d = hash[u].p;
-            mcdb_uint32_pack_bigendian_aligned_macro(p+4,d);
+            uint32_strpack_bigendian_aligned_macro(p+4,d);
         }
     }
     m->fn_free(split);

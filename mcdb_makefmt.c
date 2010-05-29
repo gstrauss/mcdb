@@ -8,7 +8,7 @@
 #include "mcdb_makefmt.h"
 #include "mcdb_make.h"
 #include "mcdb_error.h"
-#include "mcdb_attribute.h"
+#include "code_attributes.h"
 
 #include <errno.h>
 #include <sys/types.h>

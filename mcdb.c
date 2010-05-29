@@ -8,8 +8,8 @@
 #endif
 
 #include "mcdb.h"
-#include "mcdb_uint32.h"
-#include "mcdb_attribute.h"
+#include "uint32.h"
+#include "code_attributes.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -33,30 +33,6 @@ static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 
-/* inlined functions defined in header
- * (generate external linkage definition in C99-compliant compilers) */
-extern inline uint32_t
-mcdb_hash(uint32_t, const void *, size_t);
-uint32_t
-mcdb_hash(uint32_t, const void *, size_t);
-
-/* generate external linkage definition in GCC earlier than GCC 4.3
- * (need to -duplicate- definition from header for non-C99-compliant compiler)*/
-#if defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
-uint32_t  inline
-mcdb_hash(uint32_t h, const void * const vbuf, const size_t sz)
-{
-    /* TODO: test if better code is generated with:
-     *    while (sz--) h = (h + (h << 5)) ^ *buf++; */
-    const unsigned char * const restrict buf = (const unsigned char *)vbuf;
-    size_t i = SIZE_MAX;  /* (size_t)-1; will wrap around to 0 with first ++i */
-    while (++i < sz)
-        h = (h + (h << 5)) ^ buf[i];
-    return h;
-}
-#endif
-
-
 /* Note: tagc of 0 ('\0') is reserved to indicate no tag */
 
 bool
@@ -64,19 +40,21 @@ mcdb_findtagstart(struct mcdb * const restrict m,
                   const char * const restrict key, const size_t klen,
                   const unsigned char tagc)
 {
-    const uint32_t khash_init = /* inline mcdb_hash() for tag char */
-      (tagc != 0) ? (MCDB_HASH_INIT+(MCDB_HASH_INIT<<5))^tagc : MCDB_HASH_INIT;
-    const uint32_t khash = mcdb_hash(khash_init, key, klen);
+    const uint32_t khash_init = /* init hash value; hash tagc if tagc not 0 */
+      (tagc != 0)
+        ? uint32_hash_djb_uchar(UINT32_HASH_DJB_INIT, tagc)
+        : UINT32_HASH_DJB_INIT;
+    const uint32_t khash = uint32_hash_djb(khash_init, key, klen);
     const unsigned char * restrict ptr;
 
     (void) mcdb_thread_refresh(m);
     /* (ignore rc; continue with previous map in case of failure) */
 
     ptr = m->map->ptr + ((khash << 3) & MCDB_HEADER_MASK) + 4;
-    m->hslots = mcdb_uint32_unpack_bigendian_aligned_macro(ptr);
+    m->hslots = uint32_strunpack_bigendian_aligned_macro(ptr);
     if (!m->hslots)
         return false;
-    m->hpos  = mcdb_uint32_unpack_bigendian_aligned_macro(ptr-4);
+    m->hpos  = uint32_strunpack_bigendian_aligned_macro(ptr-4);
     m->kpos  = m->hpos + (((khash >> 8) % m->hslots) << 3);
     m->khash = khash;
     m->loop  = 0;
@@ -94,21 +72,21 @@ mcdb_findtagnext(struct mcdb * const restrict m,
 
     while (m->loop < m->hslots) {
         ptr = mptr + m->kpos + 4;
-        vpos = mcdb_uint32_unpack_bigendian_aligned_macro(ptr);
+        vpos = uint32_strunpack_bigendian_aligned_macro(ptr);
         if (!vpos)
             return false;
-        khash = mcdb_uint32_unpack_bigendian_aligned_macro(ptr-4);
+        khash = uint32_strunpack_bigendian_aligned_macro(ptr-4);
         m->kpos += 8;
         if (m->kpos == m->hpos + (m->hslots << 3))
             m->kpos = m->hpos;
         m->loop += 1;
         if (khash == m->khash) {
             ptr = mptr + vpos;
-            len = mcdb_uint32_unpack_bigendian_macro(ptr);
+            len = uint32_strunpack_bigendian_macro(ptr);
             if (tagc != 0
                 ? len == klen+1 && tagc == ptr[8] && memcmp(key,ptr+9,klen) == 0
                 : len == klen && memcmp(key,ptr+8,klen) == 0) {
-                m->dlen = mcdb_uint32_unpack_bigendian_macro(ptr+4);
+                m->dlen = uint32_strunpack_bigendian_macro(ptr+4);
                 m->dpos = vpos + 8 + len;
                 return true;
             }

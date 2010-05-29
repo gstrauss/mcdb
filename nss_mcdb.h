@@ -2,7 +2,7 @@
 #define INCLUDED_NSS_MCDB_H
 
 #include "mcdb.h"
-#include "mcdb_attribute.h"
+#include "code_attributes.h"
 
 #include <nss.h>    /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
 

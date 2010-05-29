@@ -1,7 +1,7 @@
 #ifndef INCLUDED_MCDB_ERROR_H
 #define INCLUDED_MCDB_ERROR_H
 
-#include "mcdb_attribute.h"
+#include "code_attributes.h"
 
 #ifdef __cplusplus
 extern "C" {

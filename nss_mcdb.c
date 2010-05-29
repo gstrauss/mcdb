@@ -4,8 +4,8 @@
 
 #include "nss_mcdb.h"
 #include "mcdb.h"
-#include "mcdb_uint32.h"
-#include "mcdb_attribute.h"
+#include "uint32.h"
+#include "code_attributes.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -227,11 +227,11 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
         && _nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS)
         return NSS_STATUS_UNAVAIL;
     map = m->map->ptr;
-    eod = mcdb_uint32_unpack_bigendian_aligned_macro(map) - 7;
+    eod = uint32_strunpack_bigendian_aligned_macro(map) - 7;
     while (m->hpos < eod) {
         unsigned char * const restrict p = map + m->hpos;
-        klen    = mcdb_uint32_unpack_bigendian_macro(p);
-        m->dlen = mcdb_uint32_unpack_bigendian_macro(p+4);
+        klen    = uint32_strunpack_bigendian_macro(p);
+        m->dlen = uint32_strunpack_bigendian_macro(p+4);
         m->hpos = (m->dpos = (m->kpos = m->hpos + 8) + klen) + m->dlen;
         if (p[8+klen] == (unsigned char)'=')
             /* valid data in mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
