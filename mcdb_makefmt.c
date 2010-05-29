@@ -68,8 +68,8 @@ mcdb_bufread_fd (struct mcdb_input * const restrict b)
 {
     ssize_t r;
     if (b->fd == -1) return (ssize_t)-1; /* we use fd == -1 as flag for mmap */
-    do { r = read(b->fd, b->buf + b->datasz, b->bufsz - b->datasz);
-    } while (r == -1 && errno == EINTR);
+    retry_eintr_do_while(
+      (r = read(b->fd, b->buf + b->datasz, b->bufsz - b->datasz)), (r == -1));
     return r;
 }
 
@@ -267,7 +267,7 @@ mcdb_makefmt_fdintofd (const int inputfd,
 
 static int
 close_nointr(const int fd)
-{ int r; do { r = close(fd); } while (r != 0 && errno == EINTR); return r; }
+{ int r; retry_eintr_do_while((r = close(fd)), (r != 0)); return r; }
 
 /* Examples:
  * - read from stdin:
@@ -321,7 +321,7 @@ open_nointr(const char * const restrict fn, const int flags, const mode_t mode)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static int
 open_nointr(const char * const restrict fn, const int flags, const mode_t mode)
-{ int r; do {r=open(fn,flags,mode);} while (r != 0 && errno==EINTR); return r; }
+{ int r; retry_eintr_do_while((r = open(fn,flags,mode)), (r == -1)); return r; }
 
 int  __attribute_noinline__
 mcdb_makefmt_fileintofile (const char * const restrict infile,

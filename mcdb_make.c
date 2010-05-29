@@ -87,7 +87,7 @@ mcdb_ftruncate_nointr(const int fd, const size_t sz)
   __attribute_warn_unused_result__;
 static int  __attribute_noinline__
 mcdb_ftruncate_nointr(const int fd, const size_t sz)
-{ int r; do{r=ftruncate(fd,(off_t)sz);}while(r != 0 && errno==EINTR);return r; }
+{ int r; retry_eintr_do_while((r=ftruncate(fd,(off_t)sz)),(r != 0)); return r; }
 
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,

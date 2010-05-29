@@ -183,9 +183,7 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
 
     rc = mcdb_mmap_init(map, fd);
 
-    /* close fd once it has been mmap'ed */
-    while (close(fd) != 0 && errno == EINTR)
-        ;
+    retry_eintr_while((close(fd) != 0)); /* close fd once it has been mmap'ed */
 
     return rc;
 }
@@ -272,10 +270,8 @@ mcdb_mmap_free(struct mcdb_mmap * const restrict map)
 void  __attribute_noinline__
 mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 {
-    if (map->dfd > STDERR_FILENO) {
-        while (close(map->dfd) != 0 && errno == EINTR)
-            ;
-    }
+    if (map->dfd > STDERR_FILENO)
+        retry_eintr_while((close(map->dfd) != 0));
     mcdb_mmap_free(map);
 }
 

@@ -115,8 +115,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
         }
         else {
             if (dfd != -1) /* caller must have open STDIN, STDOUT, STDERR */
-                while (close(dfd) != 0 && errno == EINTR)
-                    ;
+                retry_eintr_while((close(dfd) != 0));
             pthread_mutex_unlock(&_nss_mcdb_global_mutex);
             return false;
         }
@@ -138,8 +137,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
   #endif
     {
         rc = mcdb_mmap_init(map, fd);
-        while (close(fd) != 0 && errno == EINTR) /* close fd once mmap'ed */
-            ;
+        retry_eintr_while((close(fd) != 0)); /* close fd once mmap'ed */
         if (rc)      /*(ought to be preceded by StoreStore memory barrier)*/
             _nss_mcdb_mmap[dbtype] = map;
     }
