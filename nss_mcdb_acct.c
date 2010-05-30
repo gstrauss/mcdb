@@ -303,8 +303,8 @@ _nss_mcdb_decode_spwd(struct mcdb * const restrict m,
     sp->sp_expire    = (long int) uint32_from_ascii8uphex(dptr+IDX_SP_EXPIRE);
     sp->sp_flag      =            uint32_from_ascii8uphex(dptr+IDX_SP_FLAG);
     /* populate sp string pointers */
-    sp->sp_namp  = buf;
-    sp->sp_pwdp  = buf+idx_sp_pwdp;
+    sp->sp_namp      = buf;
+    sp->sp_pwdp      = buf+idx_sp_pwdp;
     if (dlen < vinfo->buflen) {
         *((struct spwd **)vinfo->vstructp) = sp;
         memcpy(buf, dptr+IDX_SP_HDRSZ, dlen);

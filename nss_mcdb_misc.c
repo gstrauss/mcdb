@@ -171,8 +171,52 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
                           const struct _nss_kinfo * const restrict kinfo,
                           const struct _nss_vinfo * const restrict vinfo)
 {
-    /* TODO */
-    return NSS_STATUS_SUCCESS;
+    enum {
+      IDX_AE_MEM_STR =  0,
+      IDX_AE_MEM     =  4, /* align target addr to 8-byte boundary for 64-bit */
+      IDX_AE_MEM_NUM =  8,
+      IDX_AE_HDRSZ   = 12
+    };
+
+    char * const restrict dptr = (char *)mcdb_dataptr(m);
+    struct aliasent * const ae = (struct aliasent *)vinfo->vstruct;
+    char *buf = vinfo->buf;
+    /* parse fixed format record header to get offsets into strings */
+    const uintptr_t idx_ae_mem_str=uint16_from_ascii4uphex(dptr+IDX_AE_MEM_STR);
+    const uintptr_t idx_ae_mem    =uint16_from_ascii4uphex(dptr+IDX_AE_MEM);
+    const size_t ae_mem_num       =uint16_from_ascii4uphex(dptr+IDX_AE_MEM_NUM);
+    char ** const restrict ae_mem =
+      (char **)(((uintptr_t)(buf+idx_ae_mem+0x7u)) & ~0x7u); /* 8-byte align */
+    ae->alias_members_len = ae_mem_num;
+    ae->alias_members     = ae_mem;
+    ae->alias_local       = 0;          /* ??? */
+    /* populate ae string pointers */
+    ae->alias_name        = buf;
+    /* fill buf, (char **) ae_mem (allow 8-byte ptrs), and terminate strings.
+     * scan for ',' instead of precalculating array because names should
+     * be short and adding an extra 4 chars per name to store size takes
+     * more space and might take just as long to parse as scan for ','
+     * (assume data consistent, ae_mem_num correct) */
+    if (((char *)ae_mem)-buf+(ae_mem_num<<3) <= vinfo->buflen) {
+        *((struct aliasent **)vinfo->vstructp) = ae;
+        memcpy(buf, dptr+IDX_AE_HDRSZ, mcdb_datalen(m)-IDX_AE_HDRSZ);
+        /* terminate strings; replace ':' separator in data with '\0'. */
+        buf[idx_ae_mem_str-1] = '\0';        /* terminate ae_name */
+        buf[idx_ae_mem-1]     = '\0';        /* terminate final ae_mem string */
+        ae_mem[0] = (buf += idx_ae_mem_str); /* begin of ae_mem strings */
+        for (size_t i=1; i<ae_mem_num; ++i) {/*(i=1; assigned first str above)*/
+            while (*buf != ',')   /*(*++buf if no 0-len names check in create)*/
+                ++buf;
+            *buf++ = '\0';
+            ae_mem[i] = buf;
+        }
+        return NSS_STATUS_SUCCESS;
+    }
+    else {
+        *((struct aliasent **)vinfo->vstructp) = NULL;
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
 
 
@@ -181,6 +225,37 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
                             const struct _nss_kinfo * const restrict kinfo,
                             const struct _nss_vinfo * const restrict vinfo)
 {
-    /* TODO: decode into struct ether_addr and hostname in buf, if not NULL */
+    /* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr) */
+    enum { IDX_ETHER_ADDR_HDRSZ = 12 };
+
+    char * const restrict dptr = (char *)mcdb_dataptr(m);
+    const size_t dlen = ((size_t)mcdb_datalen(m)) - IDX_ETHER_ADDR_HDRSZ;
+    struct ether_addr * const ether_addr = (struct ether_addr *)vinfo->vstruct;
+    char * const buf = vinfo->buf;
+
+    if (ether_addr != NULL) {
+        ether_addr->ether_addr_octet[0] = (uxton(dptr[0]) <<4)| uxton(dptr[1]);
+        ether_addr->ether_addr_octet[1] = (uxton(dptr[2]) <<4)| uxton(dptr[3]);
+        ether_addr->ether_addr_octet[2] = (uxton(dptr[4]) <<4)| uxton(dptr[5]);
+        ether_addr->ether_addr_octet[3] = (uxton(dptr[6]) <<4)| uxton(dptr[7]);
+        ether_addr->ether_addr_octet[4] = (uxton(dptr[8]) <<4)| uxton(dptr[9]);
+        ether_addr->ether_addr_octet[5] = (uxton(dptr[10])<<4)| uxton(dptr[11]);
+        if (vinfo->vstructp != NULL)
+            *((struct ether_addr **)vinfo->vstructp) = ether_addr;
+    }
+
+    if (buf != NULL) {
+        if (dlen < vinfo->buflen) {
+            memcpy(buf, dptr+IDX_ETHER_ADDR_HDRSZ, dlen);
+            buf[dlen] = '\0';              /* terminate hostname */
+        }
+        else {
+            if (vinfo->vstructp != NULL)
+                *((struct ether_addr **)vinfo->vstructp) = NULL;
+            errno = ERANGE;
+            return NSS_STATUS_TRYAGAIN;
+        }
+    }
+
     return NSS_STATUS_SUCCESS;
 }
