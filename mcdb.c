@@ -8,6 +8,7 @@
 #endif
 
 #include "mcdb.h"
+#include "nointr.h"
 #include "uint32.h"
 #include "code_attributes.h"
 
@@ -175,15 +176,15 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
     bool rc;
 
   #if defined(__linux) || defined(__sun)
-    if ((fd = openat(map->dfd, map->fname, O_RDONLY|O_NONBLOCK, 0)) == -1)
+    if ((fd = nointr_openat(map->dfd,map->fname,O_RDONLY|O_NONBLOCK,0)) == -1)
   #else
-    if ((fd = open(map->fname, O_RDONLY|O_NONBLOCK, 0)) == -1)
+    if ((fd = nointr_open(map->fname, O_RDONLY|O_NONBLOCK, 0)) == -1)
   #endif
         return false;
 
     rc = mcdb_mmap_init(map, fd);
 
-    retry_eintr_while((close(fd) != 0)); /* close fd once it has been mmap'ed */
+    (void) nointr_close(fd); /* close fd once it has been mmap'ed */
 
     return rc;
 }
@@ -271,7 +272,7 @@ void  __attribute_noinline__
 mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 {
     if (map->dfd > STDERR_FILENO)
-        retry_eintr_while((close(map->dfd) != 0));
+        (void) nointr_close(map->dfd);
     mcdb_mmap_free(map);
 }
 
@@ -290,7 +291,7 @@ mcdb_mmap_create(const char * const dname  __attribute_unused__,
         return NULL;
   #if defined(__linux) || defined(__sun)
     /* caller must have open STDIN, STDOUT, STDERR */
-    if ((dfd = open(dname, O_RDONLY | O_CLOEXEC, 0)) > STDERR_FILENO) {
+    if ((dfd = nointr_open(dname, O_RDONLY | O_CLOEXEC, 0)) > STDERR_FILENO) {
         if (O_CLOEXEC == 0)
             (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
     }

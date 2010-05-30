@@ -32,6 +32,7 @@
 
 #include "mcdb_make.h"
 #include "mcdb.h"
+#include "nointr.h"
 #include "uint32.h"
 #include "code_attributes.h"
 
@@ -70,25 +71,6 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
     return (m->head = head);
 }
 
-static ssize_t  __attribute_noinline__
-mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-static ssize_t
-mcdb_write_nointr(const int fd, const char * restrict buf, size_t sz)
-{
-    ssize_t w;
-    do { w = write(fd,buf,sz); } while (w!=-1 ? (buf+=w,sz-=w) : errno==EINTR);
-    return w;
-}
-
-/* (compilation with large file support enables off_t max > 2 GB in cast) */
-static int  __attribute_noinline__
-mcdb_ftruncate_nointr(const int fd, const size_t sz)
-  __attribute_warn_unused_result__;
-static int  __attribute_noinline__
-mcdb_ftruncate_nointr(const int fd, const size_t sz)
-{ int r; retry_eintr_do_while((r=ftruncate(fd,(off_t)sz)),(r != 0)); return r; }
-
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
                  char header[MCDB_HEADER_SZ])
@@ -99,11 +81,11 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
 {
     if (m->fd == -1) return true; /*(m->fd == -1 during large mcdb size tests)*/
 
-    return (    0 == mcdb_ftruncate_nointr(m->fd, m->pos)
+    return (    0 == nointr_ftruncate(m->fd, (off_t)m->pos)
             &&  0 == posix_fallocate(m->fd, m->offset, m->pos - m->offset)
             &&  0 == msync(m->map, m->pos - m->offset, MS_SYNC)
             && -1 != lseek(m->fd, 0, SEEK_SET)
-            && -1 != mcdb_write_nointr(m->fd, header, MCDB_HEADER_SZ)
+            && -1 != nointr_write(m->fd, header, MCDB_HEADER_SZ)
             &&  0 == fdatasync(m->fd));
     /* fdatasync() on Linux happens to ensure prior msync() MS_ASYNC complete.
      * If there is no way on other platforms to ensure this, then use MS_SYNC
@@ -142,7 +124,7 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
         msz = (UINT_MAX & m->pgalign) - offset;
 
     m->fsz = offset + msz; /* (mcdb_make mmap region is always to end of file)*/
-    if (m->fd != -1 && mcdb_ftruncate_nointr(m->fd, m->fsz) != 0) return false;
+    if (m->fd != -1 && nointr_ftruncate(m->fd,(off_t)m->fsz) != 0) return false;
 
     /* (compilation with large file support enables off_t max > 2 GB in cast) */
     m->map = (m->fd != -1) /* (m->fd == -1 during some large mcdb size tests) */

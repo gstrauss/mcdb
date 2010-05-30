@@ -17,44 +17,35 @@
  * (need to -duplicate- definition from header for non-C99-compliant compiler)
  */
 #if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
-extern inline uint32_t
-uint32_strunpack(const char s[4]);
-uint32_t
-uint32_strunpack(const char s[4]);
-extern inline uint32_t
-uint32_strunpack_bigendian(const char s[4]);
-uint32_t
-uint32_strunpack_bigendian(const char s[4]);
-extern inline void
-uint32_strpack(char s[4], uint32_t);
-void
-uint32_strpack(char s[4], uint32_t);
-extern inline void
-uint32_strpack_bigendian(char s[4], uint32_t);
-void
-uint32_strpack_bigendian(char s[4], uint32_t);
+extern inline
+uint32_t uint32_strunpack(const char s[4]);
+uint32_t uint32_strunpack(const char s[4]);
+extern inline
+uint32_t uint32_strunpack_bigendian(const char s[4]);
+uint32_t uint32_strunpack_bigendian(const char s[4]);
+extern inline
+void uint32_strpack(char s[4], uint32_t);
+void uint32_strpack(char s[4], uint32_t);
+extern inline
+void uint32_strpack_bigendian(char s[4], uint32_t);
+void uint32_strpack_bigendian(char s[4], uint32_t);
 
-extern inline uint32_t
-uint32_hash_djb(uint32_t, const void *, size_t);
-uint32_t
-uint32_hash_djb(uint32_t, const void *, size_t);
+extern inline
+uint32_t uint32_hash_djb(uint32_t, const void *, size_t);
+uint32_t uint32_hash_djb(uint32_t, const void *, size_t);
 
-extern inline void
-uint32_to_ascii8uphex(uint32_t, char * restrict);
-void
-uint32_to_ascii8uphex(uint32_t, char * restrict);
-extern inline void
-uint16_to_ascii4uphex(uint32_t, char * restrict);
-void
-uint16_to_ascii4uphex(uint32_t, char * restrict);
-extern inline uint32_t
-uint32_from_ascii8uphex(const char * restrict);
-uint32_t
-uint32_from_ascii8uphex(const char * restrict);
-extern inline uint16_t
-uint16_from_ascii4uphex(const char * restrict);
-uint16_t
-uint16_from_ascii4uphex(const char * restrict);
+extern inline
+void uint32_to_ascii8uphex(uint32_t, char * restrict);
+void uint32_to_ascii8uphex(uint32_t, char * restrict);
+extern inline
+void uint16_to_ascii4uphex(uint32_t, char * restrict);
+void uint16_to_ascii4uphex(uint32_t, char * restrict);
+extern inline
+uint32_t uint32_from_ascii8uphex(const char * restrict);
+uint32_t uint32_from_ascii8uphex(const char * restrict);
+extern inline
+uint16_t uint16_from_ascii4uphex(const char * restrict);
+uint16_t uint16_from_ascii4uphex(const char * restrict);
 #endif
 
 

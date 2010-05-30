@@ -5,6 +5,7 @@
 #include "mcdb.h"
 #include "mcdb_makefmt.h"
 #include "mcdb_error.h"
+#include "nointr.h"
 #include "uint32.h"
 
 #include <sys/types.h>
@@ -244,14 +245,12 @@ mcdbctl_query(const int argc, char ** restrict argv)
     if (query_type == MCDBCTL_BAD_QUERY_TYPE)
         return MCDB_ERROR_USAGE;
 
-    /* open mcdb
-     * Note: not retrying open() and close() on EINTR here
-     * since the program is not catching any signals */
-    fd = open(argv[2], O_RDONLY, 0);  /* fname = argv[2] */
+    /* open mcdb */
+    fd = nointr_open(argv[2], O_RDONLY, 0);  /* fname = argv[2] */
     if (fd == -1) return MCDB_ERROR_READ;
     memset(&map, '\0', sizeof(map));
     rv = mcdb_mmap_init(&map, fd);
-    close(fd);
+    (void) nointr_close(fd);
     if (!rv) return MCDB_ERROR_READ;
     memset(&m, '\0', sizeof(m));
     m.map = &map;

@@ -8,6 +8,7 @@
 #include "mcdb_makefmt.h"
 #include "mcdb_make.h"
 #include "mcdb_error.h"
+#include "nointr.h"
 #include "code_attributes.h"
 
 #include <errno.h>
@@ -265,10 +266,6 @@ mcdb_makefmt_fdintofd (const int inputfd,
     return rv;
 }
 
-static int
-close_nointr(const int fd)
-{ int r; retry_eintr_do_while((r = close(fd)), (r != 0)); return r; }
-
 /* Examples:
  * - read from stdin:
  *     mcdb_makefmt_fdintofile(STDIN_FILENO,buf,BUFSZ,"fname.cdb",malloc,free);
@@ -297,7 +294,7 @@ mcdb_makefmt_fdintofile (const int inputfd,
     if ((fd = mkstemp(fnametmp)) != -1
         && (rv=mcdb_makefmt_fdintofd(inputfd,buf,bufsz,fd,fn_malloc,fn_free))==0
         && fchmod(fd, (0666 & ~mask)) == 0
-        && close_nointr(fd) == 0        /* NFS might report write errors here */
+        && nointr_close(fd) == 0        /* NFS might report write errors here */
         && (fd = -2, rename(fnametmp,fname) == 0)) /* (fd=-2 so not re-closed)*/
         rv = EXIT_SUCCESS;
     else {
@@ -307,7 +304,7 @@ mcdb_makefmt_fdintofile (const int inputfd,
         if (fd != -1) {                      /* (fd == -1 if mkstemp() fails) */
             unlink(fnametmp);
             if (fd >= 0)
-                (void) close_nointr(fd);
+                (void) nointr_close(fd);
         }
         errno = errsave;
     }
@@ -315,13 +312,6 @@ mcdb_makefmt_fdintofile (const int inputfd,
     fn_free(fnametmp);
     return rv;
 }
-
-static int
-open_nointr(const char * const restrict fn, const int flags, const mode_t mode)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-static int
-open_nointr(const char * const restrict fn, const int flags, const mode_t mode)
-{ int r; retry_eintr_do_while((r = open(fn,flags,mode)), (r == -1)); return r; }
 
 int  __attribute_noinline__
 mcdb_makefmt_fileintofile (const char * const restrict infile,
@@ -335,7 +325,7 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
     struct stat st;
     int errsave = 0;
 
-    if ((fd = open_nointr(infile,O_RDONLY,0)) == -1)
+    if ((fd = nointr_open(infile,O_RDONLY,0)) == -1)
         return MCDB_ERROR_READ;
 
     if (fstat(fd, &st) == -1
@@ -343,7 +333,7 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
         errsave = errno;
 
     /* close fd after mmap (no longer needed),check mmap succeeded,create cdb */
-    if (close_nointr(fd) == 0 && x != MAP_FAILED) {
+    if (nointr_close(fd) == 0 && x != MAP_FAILED) {
         posix_madvise(x, st.st_size, POSIX_MADV_SEQUENTIAL);
         /* pass entire map and size as params; fd -1 elides read()/remaps */
         rv = mcdb_makefmt_fdintofile(-1,x,st.st_size,fname,fn_malloc,fn_free);

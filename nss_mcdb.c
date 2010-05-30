@@ -4,6 +4,7 @@
 
 #include "nss_mcdb.h"
 #include "mcdb.h"
+#include "nointr.h"
 #include "uint32.h"
 #include "code_attributes.h"
 
@@ -108,14 +109,14 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
 
   #if defined(__linux) || defined(__sun)
     if (__builtin_expect(dfd <= STDERR_FILENO, false)) {
-        if ((dfd = open(NSS_DBPATH, O_RDONLY | O_CLOEXEC, 0)) > STDERR_FILENO) {
+        if ((dfd=nointr_open(NSS_DBPATH,O_RDONLY|O_CLOEXEC,0)) > STDERR_FILENO){
             if (O_CLOEXEC == 0)
                 (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
             map->dfd = dfd;
         }
         else {
             if (dfd != -1) /* caller must have open STDIN, STDOUT, STDERR */
-                retry_eintr_while((close(dfd) != 0));
+                (void) nointr_close(dfd);
             pthread_mutex_unlock(&_nss_mcdb_global_mutex);
             return false;
         }
@@ -131,13 +132,13 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
   #endif
 
   #if defined(__linux) || defined(__sun)
-    if ((fd = openat(dfd, map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
+    if ((fd = nointr_openat(dfd, map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
   #else
-    if ((fd = open(map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
+    if ((fd = nointr_open(map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
   #endif
     {
         rc = mcdb_mmap_init(map, fd);
-        retry_eintr_while((close(fd) != 0)); /* close fd once mmap'ed */
+        (void) nointr_close(fd); /* close fd once mmap'ed */
         if (rc)      /*(ought to be preceded by StoreStore memory barrier)*/
             _nss_mcdb_mmap[dbtype] = map;
     }

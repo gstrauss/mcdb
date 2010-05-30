@@ -11,7 +11,7 @@ _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o uint32.o
+libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o
 	$(AR) -r $@ $^
 
 mcdbctl:  mcdbctl.o libmcdb.a
