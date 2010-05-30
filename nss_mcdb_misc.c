@@ -178,7 +178,7 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
       IDX_AE_HDRSZ   = 12
     };
 
-    char * const restrict dptr = (char *)mcdb_dataptr(m);
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
     struct aliasent * const ae = (struct aliasent *)vinfo->vstruct;
     char *buf = vinfo->buf;
     /* parse fixed format record header to get offsets into strings */
@@ -205,10 +205,10 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
         buf[idx_ae_mem-1]     = '\0';        /* terminate final ae_mem string */
         ae_mem[0] = (buf += idx_ae_mem_str); /* begin of ae_mem strings */
         for (size_t i=1; i<ae_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*buf != ',')   /*(*++buf if no 0-len names check in create)*/
-                ++buf;
-            *buf++ = '\0';
-            ae_mem[i] = buf;
+            while (*++buf != ',')
+                ;
+            *buf = '\0';
+            ae_mem[i] = ++buf;
         }
         return NSS_STATUS_SUCCESS;
     }
@@ -228,7 +228,7 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
     /* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr) */
     enum { IDX_ETHER_ADDR_HDRSZ = 12 };
 
-    char * const restrict dptr = (char *)mcdb_dataptr(m);
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
     const size_t dlen = ((size_t)mcdb_datalen(m)) - IDX_ETHER_ADDR_HDRSZ;
     struct ether_addr * const ether_addr = (struct ether_addr *)vinfo->vstruct;
     char * const buf = vinfo->buf;

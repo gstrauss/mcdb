@@ -198,7 +198,7 @@ _nss_mcdb_decode_passwd(struct mcdb * const restrict m,
                         const struct _nss_kinfo * restrict kinfo,
                         const struct _nss_vinfo * restrict vinfo)
 {
-    char * const restrict dptr = (char *)mcdb_dataptr(m);
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
     const size_t dlen = ((size_t)mcdb_datalen(m)) - IDX_PW_HDRSZ;
     struct passwd * const pw = (struct passwd *)vinfo->vstruct;
     char * const buf = vinfo->buf;
@@ -239,7 +239,7 @@ _nss_mcdb_decode_group(struct mcdb * const restrict m,
                        const struct _nss_kinfo * const restrict kinfo,
                        const struct _nss_vinfo * const restrict vinfo)
 {
-    char * const restrict dptr = (char *)mcdb_dataptr(m);
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
     struct group * const gr = (struct group *)vinfo->vstruct;
     char *buf = vinfo->buf;
     /* parse fixed format record header to get offsets into strings */
@@ -268,10 +268,10 @@ _nss_mcdb_decode_group(struct mcdb * const restrict m,
         buf[idx_gr_mem-1]     = '\0';        /* terminate final gr_mem string */
         gr_mem[0] = (buf += idx_gr_mem_str); /* begin of gr_mem strings */
         for (size_t i=1; i<gr_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*buf != ',')   /*(*++buf if no 0-len names check in create)*/
-                ++buf;
-            *buf++ = '\0';
-            gr_mem[i] = buf;
+            while (*++buf != ',')
+                ;
+            *buf = '\0';
+            gr_mem[i] = ++buf;
         }
         gr_mem[gr_mem_num] = NULL;         /* terminate (char **) gr_mem array*/
         return NSS_STATUS_SUCCESS;
@@ -289,7 +289,7 @@ _nss_mcdb_decode_spwd(struct mcdb * const restrict m,
                       const struct _nss_kinfo * const restrict kinfo,
                       const struct _nss_vinfo * const restrict vinfo)
 {
-    char * const restrict dptr = (char *)mcdb_dataptr(m);
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
     const size_t dlen = ((size_t)mcdb_datalen(m)) - IDX_SP_HDRSZ;
     struct spwd * const sp = (struct spwd *)vinfo->vstruct;
     char * const buf = vinfo->buf;

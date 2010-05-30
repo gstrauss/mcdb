@@ -560,58 +560,328 @@ gethost_filladdr(const void * const restrict addr, const int type,
 }
 
 
+/* Deserializing netdb entries shares much similar code -- some duplicated --
+ * but each entry differs slightly so that factoring to common routine would
+ * result in excess work.  Therefore, common template was copied and modified */
+
+
 static enum nss_status
 _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
                          const struct _nss_kinfo * const restrict kinfo,
                          const struct _nss_vinfo * const restrict vinfo)
 {
-    /* TODO: check type match from buf: mcdb_findtagnext() until match
-     * buf[0-3] = 0 and take first match */
-    /* creation from /etc/hosts needs to read file and bunch together multiple
-     * IPs for 'host' records that have multiple IPs since keys have to be
-     * unique in mcdb.  Be sure to support IPv4 and IPv6  ==> Perl! :) */
-    return NSS_STATUS_SUCCESS;
+    enum {
+      IDX_H_ADDRTYPE =  0,
+      IDX_H_LENGTH   =  8,
+      IDX_HE_MEM_STR = 16,
+      IDX_HE_LST_STR = 20,
+      IDX_HE_MEM     = 24, /* align target addr to 8-byte boundary for 64-bit */
+      IDX_HE_MEM_NUM = 28,
+      IDX_HE_LST_NUM = 32,
+      IDX_HE_HDRSZ   = 36
+    };
+
+    const char * restrict dptr = (char *)mcdb_dataptr(m);
+    struct hostent * const he = (struct hostent *)vinfo->vstruct;
+    char *buf = vinfo->buf;
+    const uint32_t type = (buf[0]<<24) | (buf[1]<<16) | (buf[2]<<8) | buf[3];
+
+    /* match type (e.g. AF_INET, AF_INET6), if not zero (AF_UNSPEC) */
+    if (type != 0) {
+        while (type != uint32_from_ascii8uphex(dptr+IDX_H_ADDRTYPE)) {
+            if (!mcdb_findtagnext(m, kinfo->key, kinfo->klen, kinfo->tagc))
+                return NSS_STATUS_NOTFOUND;
+            dptr = (char *)mcdb_dataptr(m);
+        }
+    }
+
+    /* parse fixed format record header to get offsets into strings */
+    const uintptr_t idx_he_mem_str=uint16_from_ascii4uphex(dptr+IDX_HE_MEM_STR);
+    const uintptr_t idx_he_lst_str=uint16_from_ascii4uphex(dptr+IDX_HE_LST_STR);
+    const uintptr_t idx_he_mem    =uint16_from_ascii4uphex(dptr+IDX_HE_MEM);
+    const size_t he_mem_num       =uint16_from_ascii4uphex(dptr+IDX_HE_MEM_NUM);
+    const size_t he_lst_num       =uint16_from_ascii4uphex(dptr+IDX_HE_LST_NUM);
+    char ** const he_mem =
+      (char **)(((uintptr_t)(buf+idx_he_mem+0x7u)) & ~0x7u); /* 8-byte align */
+    char ** const he_lst = he_mem + he_mem_num + 1;          /* 8-byte align */
+    he->h_aliases  = he_mem;
+    he->h_addr_list= he_lst;
+    he->h_addrtype = (int)         uint32_from_ascii8uphex(dptr+IDX_H_ADDRTYPE);
+    he->h_length   = (int)         uint32_from_ascii8uphex(dptr+IDX_H_LENGTH);
+    /* populate he string pointers */
+    he->h_name    = buf;
+    /* fill buf, (char **) he_mem (allow 8-byte ptrs), and terminate strings.
+     * scan for ' ' instead of precalculating array because names should
+     * be short and adding an extra 4 chars per name to store size takes
+     * more space and might take just as long to parse as scan for ' '
+     * (assume data consistent, he_mem_num correct) */
+    if (((char *)he_mem)-buf+((he_mem_num+1+he_lst_num+1)<<3) <= vinfo->buflen){
+        *((struct hostent **)vinfo->vstructp) = he;
+        memcpy(buf, dptr+IDX_HE_HDRSZ, mcdb_datalen(m)-IDX_HE_HDRSZ);
+        /* terminate strings; replace ' ' separator in data with '\0'. */
+        buf[idx_he_mem_str-1] = '\0';        /* terminate h_name */
+        buf[idx_he_lst_str-1] = '\0';        /* terminate final he_mem string */
+        buf[idx_he_mem-1]     = '\0';        /* terminate final he_lst string */
+        he_mem[0] = (buf += idx_he_mem_str); /* begin of he_mem strings */
+        for (size_t i=1; i<he_mem_num; ++i) {/*(i=1; assigned first str above)*/
+            while (*++buf != ' ')
+                ;
+            *buf = '\0';
+            he_mem[i] = ++buf;
+        }
+        he_mem[he_mem_num] = NULL;         /* terminate (char **) he_mem array*/
+        he_lst[0] = buf = vinfo->buf+idx_he_lst_str; /*begin of he_lst strings*/
+        for (size_t i=1; i<he_lst_num; ++i) {/*(i=1; assigned first str above)*/
+            while (*++buf != ' ')
+                ;
+            *buf = '\0';
+            he_lst[i] = ++buf;
+        }
+        he_lst[he_lst_num] = NULL;         /* terminate (char **) he_lst array*/
+        return NSS_STATUS_SUCCESS;
+    }
+    else {
+        *((struct hostent **)vinfo->vstructp) = NULL;
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
+
 
 static enum nss_status
 _nss_mcdb_decode_netent(struct mcdb * const restrict m,
                         const struct _nss_kinfo * const restrict kinfo,
                         const struct _nss_vinfo * const restrict vinfo)
 {
-    /* TODO */
-    return NSS_STATUS_SUCCESS;
+    enum {
+      IDX_N_NET       =  0,
+      IDX_N_ADDRTYPE  =  8,
+      IDX_NE_MEM_STR  = 16,
+      IDX_NE_MEM      = 20,/* align target addr to 8-byte boundary for 64-bit */
+      IDX_NE_MEM_NUM  = 24,
+      IDX_NE_HDRSZ    = 28
+    };
+
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
+    struct netent * const ne = (struct netent *)vinfo->vstruct;
+    char *buf = vinfo->buf;
+    /* parse fixed format record header to get offsets into strings */
+    const uintptr_t idx_ne_mem_str=uint16_from_ascii4uphex(dptr+IDX_NE_MEM_STR);
+    const uintptr_t idx_ne_mem    =uint16_from_ascii4uphex(dptr+IDX_NE_MEM);
+    const size_t ne_mem_num       =uint16_from_ascii4uphex(dptr+IDX_NE_MEM_NUM);
+    char ** const restrict ne_mem =
+      (char **)(((uintptr_t)(buf+idx_ne_mem+0x7u)) & ~0x7u); /* 8-byte align */
+    ne->n_aliases = ne_mem;
+    ne->n_addrtype= (int)          uint32_from_ascii8uphex(dptr+IDX_N_ADDRTYPE);
+    ne->n_net     =                uint32_from_ascii8uphex(dptr+IDX_N_NET);
+    /* populate ne string pointers */
+    ne->n_name    = buf;
+    /* fill buf, (char **) ne_mem (allow 8-byte ptrs), and terminate strings.
+     * scan for ' ' instead of precalculating array because names should
+     * be short and adding an extra 4 chars per name to store size takes
+     * more space and might take just as long to parse as scan for ' '
+     * (assume data consistent, ne_mem_num correct) */
+    if (((char *)ne_mem)-buf+((ne_mem_num+1)<<3) <= vinfo->buflen) {
+        *((struct netent **)vinfo->vstructp) = ne;
+        memcpy(buf, dptr+IDX_NE_HDRSZ, mcdb_datalen(m)-IDX_NE_HDRSZ);
+        /* terminate strings; replace ' ' separator in data with '\0'. */
+        buf[idx_ne_mem_str-1] = '\0';        /* terminate n_name */
+        buf[idx_ne_mem-1]     = '\0';        /* terminate final ne_mem string */
+        ne_mem[0] = (buf += idx_ne_mem_str); /* begin of ne_mem strings */
+        for (size_t i=1; i<ne_mem_num; ++i) {/*(i=1; assigned first str above)*/
+            while (*++buf != ' ')
+                ;
+            *buf = '\0';
+            ne_mem[i] = ++buf;
+        }
+        ne_mem[ne_mem_num] = NULL;         /* terminate (char **) ne_mem array*/
+        return NSS_STATUS_SUCCESS;
+    }
+    else {
+        *((struct netent **)vinfo->vstructp) = NULL;
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
+
 
 static enum nss_status
 _nss_mcdb_decode_protoent(struct mcdb * const restrict m,
                           const struct _nss_kinfo * const restrict kinfo,
                           const struct _nss_vinfo * const restrict vinfo)
 {
-    /* TODO */
-    /* creation from /etc/protocols
-     * '#' to end of line is ignored
-     * empty lines are ignored
-     * any number of spaces or tabs separates fields
-     * protocol number aliase(es)(optional)
-     */
-    return NSS_STATUS_SUCCESS;
+    enum {
+      IDX_P_PROTO    =  0,
+      IDX_PE_MEM_STR =  8,
+      IDX_PE_MEM     = 12, /* align target addr to 8-byte boundary for 64-bit */
+      IDX_PE_MEM_NUM = 16,
+      IDX_PE_HDRSZ   = 20
+    };
+
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
+    struct protoent * const pe = (struct protoent *)vinfo->vstruct;
+    char *buf = vinfo->buf;
+    /* parse fixed format pecord header to get offsets into strings */
+    const uintptr_t idx_pe_mem_str=uint16_from_ascii4uphex(dptr+IDX_PE_MEM_STR);
+    const uintptr_t idx_pe_mem    =uint16_from_ascii4uphex(dptr+IDX_PE_MEM);
+    const size_t pe_mem_num       =uint16_from_ascii4uphex(dptr+IDX_PE_MEM_NUM);
+    char ** const restrict pe_mem =
+      (char **)(((uintptr_t)(buf+idx_pe_mem+0x7u)) & ~0x7u); /* 8-byte align */
+    pe->p_aliases = pe_mem;
+    pe->p_proto   =                uint32_from_ascii8uphex(dptr+IDX_P_PROTO);
+    /* populate pe string pointers */
+    pe->p_name    = buf;
+    /* fill buf, (char **) pe_mem (allow 8-byte ptrs), and terminate strings.
+     * scan for ' ' instead of precalculating array because names should
+     * be short and adding an extra 4 chars per name to store size takes
+     * more space and might take just as long to parse as scan for ' '
+     * (assume data consistent, pe_mem_num correct) */
+    if (((char *)pe_mem)-buf+((pe_mem_num+1)<<3) <= vinfo->buflen) {
+        *((struct protoent **)vinfo->vstructp) = pe;
+        memcpy(buf, dptr+IDX_PE_HDRSZ, mcdb_datalen(m)-IDX_PE_HDRSZ);
+        /* terminate strings; replace ' ' separator in data with '\0'. */
+        buf[idx_pe_mem_str-1] = '\0';        /* terminate p_name */
+        buf[idx_pe_mem-1]     = '\0';        /* terminate final pe_mem string */
+        pe_mem[0] = (buf += idx_pe_mem_str); /* begin of pe_mem strings */
+        for (size_t i=1; i<pe_mem_num; ++i) {/*(i=1; assigned first str above)*/
+            while (*++buf != ' ')
+                ;
+            *buf = '\0';
+            pe_mem[i] = ++buf;
+        }
+        pe_mem[pe_mem_num] = NULL;         /* terminate (char **) pe_mem array*/
+        return NSS_STATUS_SUCCESS;
+    }
+    else {
+        *((struct protoent **)vinfo->vstructp) = NULL;
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
+
 
 static enum nss_status
 _nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
                         const struct _nss_kinfo * const restrict kinfo,
                         const struct _nss_vinfo * const restrict vinfo)
 {
-    /* TODO */
-    return NSS_STATUS_SUCCESS;
+    enum {
+      IDX_R_NUMBER   =  0,
+      IDX_RE_MEM_STR =  8,
+      IDX_RE_MEM     = 12, /* align target addr to 8-byte boundary for 64-bit */
+      IDX_RE_MEM_NUM = 16,
+      IDX_RE_HDRSZ   = 20
+    };
+
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
+    struct rpcent * const re = (struct rpcent *)vinfo->vstruct;
+    char *buf = vinfo->buf;
+    /* parse fixed format record header to get offsets into strings */
+    const uintptr_t idx_re_mem_str=uint16_from_ascii4uphex(dptr+IDX_RE_MEM_STR);
+    const uintptr_t idx_re_mem    =uint16_from_ascii4uphex(dptr+IDX_RE_MEM);
+    const size_t re_mem_num       =uint16_from_ascii4uphex(dptr+IDX_RE_MEM_NUM);
+    char ** const restrict re_mem =
+      (char **)(((uintptr_t)(buf+idx_re_mem+0x7u)) & ~0x7u); /* 8-byte align */
+    re->r_aliases = re_mem;
+    re->r_number  =                uint32_from_ascii8uphex(dptr+IDX_R_NUMBER);
+    /* populate re string pointers */
+    re->r_name    = buf;
+    /* fill buf, (char **) re_mem (allow 8-byte ptrs), and terminate strings.
+     * scan for ' ' instead of precalculating array because names should
+     * be short and adding an extra 4 chars per name to store size takes
+     * more space and might take just as long to parse as scan for ' '
+     * (assume data consistent, re_mem_num correct) */
+    if (((char *)re_mem)-buf+((re_mem_num+1)<<3) <= vinfo->buflen) {
+        *((struct rpcent **)vinfo->vstructp) = re;
+        memcpy(buf, dptr+IDX_RE_HDRSZ, mcdb_datalen(m)-IDX_RE_HDRSZ);
+        /* terminate strings; replace ' ' separator in data with '\0'. */
+        buf[idx_re_mem_str-1] = '\0';        /* terminate r_name */
+        buf[idx_re_mem-1]     = '\0';        /* terminate final re_mem string */
+        re_mem[0] = (buf += idx_re_mem_str); /* begin of re_mem strings */
+        for (size_t i=1; i<re_mem_num; ++i) {/*(i=1; assigned first str above)*/
+            while (*++buf != ' ')
+                ;
+            *buf = '\0';
+            re_mem[i] = ++buf;
+        }
+        re_mem[re_mem_num] = NULL;         /* terminate (char **) re_mem array*/
+        return NSS_STATUS_SUCCESS;
+    }
+    else {
+        *((struct rpcent **)vinfo->vstructp) = NULL;
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
+
 
 static enum nss_status
 _nss_mcdb_decode_servent(struct mcdb * const restrict m,
                          const struct _nss_kinfo * const restrict kinfo,
                          const struct _nss_vinfo * const restrict vinfo)
 {
-    /* TODO: check proto in buf != "" and mcdb_findtagnext() until match 
-     *   (buf = "" and take first match) */
-    return NSS_STATUS_SUCCESS;
+    enum {
+      IDX_S_PORT      =  0,
+      IDX_S_NAME      =  8,
+      IDX_SE_MEM_STR  = 12,
+      IDX_SE_MEM      = 16,/* align target addr to 8-byte boundary for 64-bit */
+      IDX_SE_MEM_NUM  = 20,
+      IDX_SE_HDRSZ    = 24
+    };
+
+    const char * restrict dptr = (char *)mcdb_dataptr(m);
+    struct servent * const se = (struct servent *)vinfo->vstruct;
+    char *buf = vinfo->buf; /* contains proto string to match (if not "") */
+
+    /* match proto string, if not empty string */
+    if (*buf != '\0') {
+        const size_t protolen = strlen(buf);
+        while (*dptr != *buf
+               || memcmp(dptr, buf, protolen) != 0
+               || dptr[protolen] != ' ') {
+            if (!mcdb_findtagnext(m, kinfo->key, kinfo->klen, kinfo->tagc))
+                return NSS_STATUS_NOTFOUND;
+            dptr = (char *)mcdb_dataptr(m);
+        }
+    }
+
+    /* parse fixed format record header to get offsets into strings */
+    const uintptr_t idx_s_name    =uint16_from_ascii4uphex(dptr+IDX_S_NAME);
+    const uintptr_t idx_se_mem_str=uint16_from_ascii4uphex(dptr+IDX_SE_MEM_STR);
+    const uintptr_t idx_se_mem    =uint16_from_ascii4uphex(dptr+IDX_SE_MEM);
+    const size_t se_mem_num       =uint16_from_ascii4uphex(dptr+IDX_SE_MEM_NUM);
+    char ** const restrict se_mem =
+      (char **)(((uintptr_t)(buf+idx_se_mem+0x7u)) & ~0x7u); /* 8-byte align */
+    se->s_aliases = se_mem;
+    se->s_port    =                uint32_from_ascii8uphex(dptr+IDX_S_PORT);
+    /* populate se string pointers */
+    se->s_proto   = buf;
+    se->s_name    = buf+idx_s_name;
+    /* fill buf, (char **) se_mem (allow 8-byte ptrs), and terminate strings.
+     * scan for ' ' instead of precalculating array because names should
+     * be short and adding an extra 4 chars per name to store size takes
+     * more space and might take just as long to parse as scan for ' '
+     * (assume data consistent, se_mem_num correct) */
+    if (((char *)se_mem)-buf+((se_mem_num+1)<<3) <= vinfo->buflen) {
+        *((struct servent **)vinfo->vstructp) = se;
+        memcpy(buf, dptr+IDX_SE_HDRSZ, mcdb_datalen(m)-IDX_SE_HDRSZ);
+        /* terminate strings; replace ' ' separator in data with '\0'. */
+        buf[idx_s_name-1]     = '\0';        /* terminate s_proto */
+        buf[idx_se_mem_str-1] = '\0';        /* terminate s_name */
+        buf[idx_se_mem-1]     = '\0';        /* terminate final se_mem string */
+        se_mem[0] = (buf += idx_se_mem_str); /* begin of se_mem strings */
+        for (size_t i=1; i<se_mem_num; ++i) {/*(i=1; assigned first str above)*/
+            while (*++buf != ' ')
+                ;
+            *buf = '\0';
+            se_mem[i] = ++buf;
+        }
+        se_mem[se_mem_num] = NULL;         /* terminate (char **) se_mem array*/
+        return NSS_STATUS_SUCCESS;
+    }
+    else {
+        *((struct servent **)vinfo->vstructp) = NULL;
+        errno = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
 }
