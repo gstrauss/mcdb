@@ -73,7 +73,7 @@ enum nss_status
 _nss_mcdb_decode_buf(struct mcdb * const restrict,
                      const struct _nss_kinfo * const restrict,
                      const struct _nss_vinfo * const restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 
 #endif

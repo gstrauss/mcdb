@@ -65,7 +65,7 @@
 
 #if defined(__GNUC__) && __GNUC_PREREQ(3,3)
 #ifndef __attribute_nonnull_x__
-#define __attribute_nonnull_x__(x)  __attribute__((nonnull(x)))
+#define __attribute_nonnull_x__(x)  __attribute__((nonnull x))
 #endif
 #endif
 #ifndef __attribute_nonnull_x__

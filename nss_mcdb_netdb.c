@@ -46,31 +46,34 @@ static enum nss_status
 _nss_mcdb_decode_hostent(struct mcdb * restrict,
                          const struct _nss_kinfo * restrict,
                          const struct _nss_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 static enum nss_status
 _nss_mcdb_decode_netent(struct mcdb * restrict,
-                        const struct _nss_kinfo * restrict,
+                        const struct _nss_kinfo * restrict
+                          __attribute_unused__,
                         const struct _nss_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 static enum nss_status
 _nss_mcdb_decode_protoent(struct mcdb * restrict,
-                          const struct _nss_kinfo * restrict,
+                          const struct _nss_kinfo * restrict
+                            __attribute_unused__,
                           const struct _nss_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 static enum nss_status
 _nss_mcdb_decode_rpcent(struct mcdb * restrict,
-                        const struct _nss_kinfo * restrict,
+                        const struct _nss_kinfo * restrict
+                          __attribute_unused__,
                         const struct _nss_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 static enum nss_status
 _nss_mcdb_decode_servent(struct mcdb * restrict,
                          const struct _nss_kinfo * restrict,
                          const struct _nss_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 
 static enum nss_status  __attribute_noinline__
@@ -78,7 +81,7 @@ gethost_fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
   __attribute_cold__  __attribute_nonnull__;
 
 static enum nss_status
-gethost_query(const int type,
+gethost_query(const uint32_t type,
               const struct _nss_kinfo * restrict kinfo,
               const struct _nss_vinfo * restrict vinfo,
               int * const restrict h_errnop)
@@ -124,7 +127,14 @@ _nss_files_gethostent_r(struct hostent * const restrict hostbuf,
                                       .vstructp= hostbufp };
     enum nss_status status;
     *hostbufp = NULL;
-    status = _nss_mcdb_getent(NSS_DBTYPE_HOSTS, &vinfo);
+    if (buflen > 3) {
+        buf[0] = buf[1] = buf[2] = buf[3] = '\0'; /* addr type AF_UNSPEC == 0 */
+        status = _nss_mcdb_getent(NSS_DBTYPE_HOSTS, &vinfo);
+    }
+    else {
+        errno = ERANGE;
+        status = NSS_STATUS_TRYAGAIN;
+    }
     return (status == NSS_STATUS_SUCCESS)
       ? NSS_STATUS_SUCCESS
       : gethost_fill_h_errnop(status, h_errnop);
@@ -149,7 +159,7 @@ _nss_files_gethostbyname2_r(const char * const restrict name, const int type,
     const int is_addr = inet_pton(type, name, &addr);
     *hostbufp = NULL;
     if (is_addr == 0) /* name is not valid address for specified addr family */
-        return gethost_query(type, &kinfo, &vinfo, h_errnop);
+        return gethost_query((uint32_t)type, &kinfo, &vinfo, h_errnop);
     else if (is_addr > 0) /* name is valid address for specified addr family */
         return gethost_filladdr(&addr, type, &kinfo, &vinfo, h_errnop);
     else
@@ -201,7 +211,7 @@ _nss_files_gethostbyaddr_r(const void * const restrict addr,
       default: return NSS_STATUS_UNAVAIL; /* other types not implemented */
     }
 
-    return gethost_query(type, &kinfo, &vinfo, h_errnop);
+    return gethost_query((uint32_t)type, &kinfo, &vinfo, h_errnop);
 }
 
 
@@ -491,7 +501,7 @@ gethost_fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
 }
 
 static enum nss_status
-gethost_query(const int type,
+gethost_query(const uint32_t type,
               const struct _nss_kinfo * restrict kinfo,
               const struct _nss_vinfo * restrict vinfo,
               int * const restrict h_errnop)
@@ -500,10 +510,10 @@ gethost_query(const int type,
     if (vinfo->buflen >= 4) {
         /*copy type for later match in _nss_mcdb_decode_hostent()*/
         char * const restrict buf = vinfo->buf;
-        buf[0] = (((uint32_t)type)              ) >> 24;
-        buf[1] = (((uint32_t)type) & 0x00FF0000u) >> 16;
-        buf[2] = (((uint32_t)type) & 0x0000FF00u) >>  8;
-        buf[3] = (((uint32_t)type) & 0x000000FFu);
+        buf[0] = (type              ) >> 24;
+        buf[1] = (type & 0x00FF0000u) >> 16;
+        buf[2] = (type & 0x0000FF00u) >>  8;
+        buf[3] = (type & 0x000000FFu);
         status = _nss_mcdb_get_generic(NSS_DBTYPE_HOSTS, kinfo, vinfo);
     }
     else {
@@ -551,9 +561,9 @@ gethost_filladdr(const void * const restrict addr, const int type,
 
 
 static enum nss_status
-_nss_mcdb_decode_hostent(struct mcdb * restrict m,
-                         const struct _nss_kinfo * restrict kinfo,
-                         const struct _nss_vinfo * restrict vinfo)
+_nss_mcdb_decode_hostent(struct mcdb * const restrict m,
+                         const struct _nss_kinfo * const restrict kinfo,
+                         const struct _nss_vinfo * const restrict vinfo)
 {
     /* TODO: check type match from buf: mcdb_findtagnext() until match
      * buf[0-3] = 0 and take first match */
@@ -564,18 +574,18 @@ _nss_mcdb_decode_hostent(struct mcdb * restrict m,
 }
 
 static enum nss_status
-_nss_mcdb_decode_netent(struct mcdb * restrict m,
-                        const struct _nss_kinfo * restrict kinfo,
-                        const struct _nss_vinfo * restrict vinfo)
+_nss_mcdb_decode_netent(struct mcdb * const restrict m,
+                        const struct _nss_kinfo * const restrict kinfo,
+                        const struct _nss_vinfo * const restrict vinfo)
 {
     /* TODO */
     return NSS_STATUS_SUCCESS;
 }
 
 static enum nss_status
-_nss_mcdb_decode_protoent(struct mcdb * restrict m,
-                          const struct _nss_kinfo * restrict kinfo,
-                          const struct _nss_vinfo * restrict vinfo)
+_nss_mcdb_decode_protoent(struct mcdb * const restrict m,
+                          const struct _nss_kinfo * const restrict kinfo,
+                          const struct _nss_vinfo * const restrict vinfo)
 {
     /* TODO */
     /* creation from /etc/protocols
@@ -588,18 +598,18 @@ _nss_mcdb_decode_protoent(struct mcdb * restrict m,
 }
 
 static enum nss_status
-_nss_mcdb_decode_rpcent(struct mcdb * restrict m,
-                        const struct _nss_kinfo * restrict kinfo,
-                        const struct _nss_vinfo * restrict vinfo)
+_nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
+                        const struct _nss_kinfo * const restrict kinfo,
+                        const struct _nss_vinfo * const restrict vinfo)
 {
     /* TODO */
     return NSS_STATUS_SUCCESS;
 }
 
 static enum nss_status
-_nss_mcdb_decode_servent(struct mcdb * restrict m,
-                         const struct _nss_kinfo * restrict kinfo,
-                         const struct _nss_vinfo * restrict vinfo)
+_nss_mcdb_decode_servent(struct mcdb * const restrict m,
+                         const struct _nss_kinfo * const restrict kinfo,
+                         const struct _nss_vinfo * const restrict vinfo)
 {
     /* TODO: check proto in buf != "" and mcdb_findtagnext() until match 
      *   (buf = "" and take first match) */

@@ -28,15 +28,17 @@
 
 static enum nss_status
 _nss_mcdb_decode_aliasent(struct mcdb * restrict,
-                          const struct _nss_kinfo * restrict,
+                          const struct _nss_kinfo * restrict
+                            __attribute_unused__,
                           const struct _nss_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 static enum nss_status
 _nss_mcdb_decode_ether_addr(struct mcdb * restrict,
-                            const struct _nss_kinfo * restrict,
+                            const struct _nss_kinfo * restrict
+                              __attribute_unused__,
                             const struct _nss_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 
 void _nss_files_setaliasent(void) { _nss_mcdb_setent(NSS_DBTYPE_ALIASES); }
@@ -165,9 +167,9 @@ _nss_files_getntohost_r(struct ether_addr * const restrict ether,
 
 
 static enum nss_status
-_nss_mcdb_decode_aliasent(struct mcdb * restrict m,
-                          const struct _nss_kinfo * restrict kinfo,
-                          const struct _nss_vinfo * restrict vinfo)
+_nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
+                          const struct _nss_kinfo * const restrict kinfo,
+                          const struct _nss_vinfo * const restrict vinfo)
 {
     /* TODO */
     return NSS_STATUS_SUCCESS;
@@ -175,9 +177,9 @@ _nss_mcdb_decode_aliasent(struct mcdb * restrict m,
 
 
 static enum nss_status
-_nss_mcdb_decode_ether_addr(struct mcdb * restrict m,
-                            const struct _nss_kinfo * restrict kinfo,
-                            const struct _nss_vinfo * restrict vinfo)
+_nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
+                            const struct _nss_kinfo * const restrict kinfo,
+                            const struct _nss_vinfo * const restrict vinfo)
 {
     /* TODO: decode into struct ether_addr and hostname in buf, if not NULL */
     return NSS_STATUS_SUCCESS;
