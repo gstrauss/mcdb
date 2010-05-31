@@ -95,18 +95,18 @@ gethost_filladdr(const void * const restrict addr, const int type,
   __attribute_nonnull__;
 
 
-void _nss_files_sethostent(void)  { _nss_mcdb_setent(NSS_DBTYPE_HOSTS);     }
-void _nss_files_endhostent(void)  { _nss_mcdb_endent(NSS_DBTYPE_HOSTS);     }
-void _nss_files_setnetgrent(void) { _nss_mcdb_setent(NSS_DBTYPE_NETGROUP);  }
-void _nss_files_endnetgrent(void) { _nss_mcdb_endent(NSS_DBTYPE_NETGROUP);  }
-void _nss_files_setnetent(void)   { _nss_mcdb_setent(NSS_DBTYPE_NETWORKS);  }
-void _nss_files_endnetent(void)   { _nss_mcdb_endent(NSS_DBTYPE_NETWORKS);  }
-void _nss_files_setprotoent(void) { _nss_mcdb_setent(NSS_DBTYPE_PROTOCOLS); }
-void _nss_files_endprotoent(void) { _nss_mcdb_endent(NSS_DBTYPE_PROTOCOLS); }
-void _nss_files_setrpcent(void)   { _nss_mcdb_setent(NSS_DBTYPE_RPC);       }
-void _nss_files_endrpcent(void)   { _nss_mcdb_endent(NSS_DBTYPE_RPC);       }
-void _nss_files_setservent(void)  { _nss_mcdb_setent(NSS_DBTYPE_SERVICES);  }
-void _nss_files_endservent(void)  { _nss_mcdb_endent(NSS_DBTYPE_SERVICES);  }
+void _nss_mcdb_sethostent(void)  { _nss_mcdb_setent(NSS_DBTYPE_HOSTS);     }
+void _nss_mcdb_endhostent(void)  { _nss_mcdb_endent(NSS_DBTYPE_HOSTS);     }
+void _nss_mcdb_setnetgrent(void) { _nss_mcdb_setent(NSS_DBTYPE_NETGROUP);  }
+void _nss_mcdb_endnetgrent(void) { _nss_mcdb_endent(NSS_DBTYPE_NETGROUP);  }
+void _nss_mcdb_setnetent(void)   { _nss_mcdb_setent(NSS_DBTYPE_NETWORKS);  }
+void _nss_mcdb_endnetent(void)   { _nss_mcdb_endent(NSS_DBTYPE_NETWORKS);  }
+void _nss_mcdb_setprotoent(void) { _nss_mcdb_setent(NSS_DBTYPE_PROTOCOLS); }
+void _nss_mcdb_endprotoent(void) { _nss_mcdb_endent(NSS_DBTYPE_PROTOCOLS); }
+void _nss_mcdb_setrpcent(void)   { _nss_mcdb_setent(NSS_DBTYPE_RPC);       }
+void _nss_mcdb_endrpcent(void)   { _nss_mcdb_endent(NSS_DBTYPE_RPC);       }
+void _nss_mcdb_setservent(void)  { _nss_mcdb_setent(NSS_DBTYPE_SERVICES);  }
+void _nss_mcdb_endservent(void)  { _nss_mcdb_endent(NSS_DBTYPE_SERVICES);  }
 
 
 /* POSIX.1-2001 marks gethostbyaddr() and gethostbyname() obsolescent.
@@ -115,24 +115,23 @@ void _nss_files_endservent(void)  { _nss_mcdb_endent(NSS_DBTYPE_SERVICES);  }
  * (linked list of struct addrinfo) that must be free()d with freeaddrinfo(). */
 
 enum nss_status
-_nss_files_gethostent_r(struct hostent * const restrict hostbuf,
-                        char * const restrict buf, const size_t buflen,
-                        struct hostent ** const restrict hostbufp,
-                        int * const restrict h_errnop)
+_nss_mcdb_gethostent_r(struct hostent * const restrict hostbuf,
+                       char * const restrict buf, const size_t buflen,
+                       int * const restrict errnop,
+                       int * const restrict h_errnop)
 {
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_hostent,
                                       .vstruct = hostbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= hostbufp };
+                                      .errnop  = errnop };
     enum nss_status status;
-    *hostbufp = NULL;
     if (buflen > 3) {
         buf[0] = buf[1] = buf[2] = buf[3] = '\0'; /* addr type AF_UNSPEC == 0 */
         status = _nss_mcdb_getent(NSS_DBTYPE_HOSTS, &vinfo);
     }
     else {
-        errno = ERANGE;
+        *errnop = errno = ERANGE;
         status = NSS_STATUS_TRYAGAIN;
     }
     return (status == NSS_STATUS_SUCCESS)
@@ -141,11 +140,11 @@ _nss_files_gethostent_r(struct hostent * const restrict hostbuf,
 }
 
 enum nss_status
-_nss_files_gethostbyname2_r(const char * const restrict name, const int type,
-                            struct hostent * const restrict hostbuf,
-                            char * const restrict buf, const size_t buflen,
-                            struct hostent ** const restrict hostbufp,
-                            int * const restrict h_errnop)
+_nss_mcdb_gethostbyname2_r(const char * const restrict name, const int type,
+                           struct hostent * const restrict hostbuf,
+                           char * const restrict buf, const size_t buflen,
+                           int * const restrict errnop,
+                           int * const restrict h_errnop)
 {
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -154,10 +153,9 @@ _nss_files_gethostbyname2_r(const char * const restrict name, const int type,
                                       .vstruct = hostbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= hostbufp };
+                                      .errnop  = errnop };
     uint64_t addr[2] = {0,0};/* support addr sizes up to 128-bits (e.g. IPv6) */
     const int is_addr = inet_pton(type, name, &addr);
-    *hostbufp = NULL;
     if (is_addr == 0) /* name is not valid address for specified addr family */
         return gethost_query((uint32_t)type, &kinfo, &vinfo, h_errnop);
     else if (is_addr > 0) /* name is valid address for specified addr family */
@@ -167,23 +165,23 @@ _nss_files_gethostbyname2_r(const char * const restrict name, const int type,
 }
 
 enum nss_status
-_nss_files_gethostbyname_r(const char * const restrict name,
-                           struct hostent * const restrict hostbuf,
-                           char * const restrict buf, const size_t buflen,
-                           struct hostent ** const restrict hostbufp,
-                           int * const restrict h_errnop)
+_nss_mcdb_gethostbyname_r(const char * const restrict name,
+                          struct hostent * const restrict hostbuf,
+                          char * const restrict buf, const size_t buflen,
+                          int * const restrict errnop,
+                          int * const restrict h_errnop)
 {
-    return _nss_files_gethostbyname2_r(name, AF_INET, hostbuf,
-                                       buf, buflen, hostbufp, h_errnop);
+    return _nss_mcdb_gethostbyname2_r(name, AF_INET, hostbuf,
+                                      buf, buflen, errnop, h_errnop);
 }
 
 enum nss_status
-_nss_files_gethostbyaddr_r(const void * const restrict addr,
-                           const socklen_t len, const int type,
-                           struct hostent * const restrict hostbuf,
-                           char * const restrict buf, const size_t buflen,
-                           struct hostent ** const restrict hostbufp,
-                           int * const restrict h_errnop)
+_nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
+                          const socklen_t len, const int type,
+                          struct hostent * const restrict hostbuf,
+                          char * const restrict buf, const size_t buflen,
+                          int * const restrict errnop,
+                          int * const restrict h_errnop)
 {
     char hexstr[32];  /* support 128-bit IPv6 addresses */
     const struct _nss_kinfo kinfo = { .key     = hexstr,
@@ -193,9 +191,8 @@ _nss_files_gethostbyaddr_r(const void * const restrict addr,
                                       .vstruct = hostbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= hostbufp };
+                                      .errnop  = errnop };
     uint32_t u[4];  /* align data to uint32_t for uphex conversion routines */
-    *hostbufp = NULL;
     switch (len) {
       case 4:  /* e.g. AF_INET4 */
                memcpy(&u, addr, 4);
@@ -216,10 +213,11 @@ _nss_files_gethostbyaddr_r(const void * const restrict addr,
 
 
 enum nss_status
-_nss_files_getnetgrent_r(char ** const restrict host,
-                         char ** const restrict user,
-                         char ** const restrict domain,
-                         char * const restrict buf, const size_t buflen)
+_nss_mcdb_getnetgrent_r(char ** const restrict host,
+                        char ** const restrict user,
+                        char ** const restrict domain,
+                        char * const restrict buf, const size_t buflen,
+                        int * const restrict errnop)
 {
     /* man setnetgrent() documents param const char *netgroup and subsequent
      * queries are limited to that netgroup.  When implementing setnetgrent()
@@ -231,7 +229,7 @@ _nss_files_getnetgrent_r(char ** const restrict host,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= NULL };
+                                      .errnop  = errnop };
     const enum nss_status status =
       _nss_mcdb_getent(NSS_DBTYPE_NETGROUP, &vinfo);
     if (status == NSS_STATUS_SUCCESS) {
@@ -245,24 +243,29 @@ _nss_files_getnetgrent_r(char ** const restrict host,
 
 
 enum nss_status
-_nss_files_getnetent_r(struct netent * const restrict netbuf,
-                       char * const restrict buf, const size_t buflen,
-                       struct netent ** const restrict netbufp)
+_nss_mcdb_getnetent_r(struct netent * const restrict netbuf,
+                      char * const restrict buf, const size_t buflen,
+                      int * const restrict errnop,
+                      int * const restrict h_errnop)
 {
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_netent,
                                       .vstruct = netbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= netbufp };
-    *netbufp = NULL;
-    return _nss_mcdb_getent(NSS_DBTYPE_NETWORKS, &vinfo);
+                                      .errnop  = errnop };
+    const enum nss_status status =
+      _nss_mcdb_getent(NSS_DBTYPE_NETWORKS, &vinfo);
+    return (status == NSS_STATUS_SUCCESS)
+      ? NSS_STATUS_SUCCESS
+      : gethost_fill_h_errnop(status, h_errnop);
 }
 
 enum nss_status
-_nss_files_getnetbyname_r(const char * const restrict name,
-                          struct netent * const restrict netbuf,
-                          char * const restrict buf, const size_t buflen,
-                          struct netent ** const restrict netbufp)
+_nss_mcdb_getnetbyname_r(const char * const restrict name,
+                         struct netent * const restrict netbuf,
+                         char * const restrict buf, const size_t buflen,
+                         int * const restrict errnop,
+                         int * const restrict h_errnop)
 {
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -271,16 +274,20 @@ _nss_files_getnetbyname_r(const char * const restrict name,
                                       .vstruct = netbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= netbufp };
-    *netbufp = NULL;
-    return _nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
+                                      .errnop  = errnop };
+    const enum nss_status status =
+      _nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
+    return (status == NSS_STATUS_SUCCESS)
+      ? NSS_STATUS_SUCCESS
+      : gethost_fill_h_errnop(status, h_errnop);
 }
 
 enum nss_status
-_nss_files_getnetbyaddr_r(const uint32_t net, const int type,
-                          struct netent * const restrict netbuf,
-                          char * const restrict buf, const size_t buflen,
-                          struct netent ** const restrict netbufp)
+_nss_mcdb_getnetbyaddr_r(const uint32_t net, const int type,
+                         struct netent * const restrict netbuf,
+                         char * const restrict buf, const size_t buflen,
+                         int * const restrict errnop,
+                         int * const restrict h_errnop)
 {
     char hexstr[16];
     const struct _nss_kinfo kinfo = { .key     = hexstr,
@@ -290,33 +297,35 @@ _nss_files_getnetbyaddr_r(const uint32_t net, const int type,
                                       .vstruct = netbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= netbufp };
-    *netbufp = NULL;
+                                      .errnop  = errnop };
+    enum nss_status status;
     uint32_to_ascii8uphex(net, hexstr);
     uint32_to_ascii8uphex((uint32_t)type, hexstr+8);
-    return _nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
+    status = _nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &kinfo, &vinfo);
+    return (status == NSS_STATUS_SUCCESS)
+      ? NSS_STATUS_SUCCESS
+      : gethost_fill_h_errnop(status, h_errnop);
 }
 
 
 enum nss_status
-_nss_files_getprotoent_r(struct protoent * const restrict protobuf,
-                         char * const restrict buf, const size_t buflen,
-                         struct protoent ** const restrict protobufp)
+_nss_mcdb_getprotoent_r(struct protoent * const restrict protobuf,
+                        char * const restrict buf, const size_t buflen,
+                        int * const restrict errnop)
 {
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_protoent,
                                       .vstruct = protobuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= protobufp };
-    *protobufp = NULL;
+                                      .errnop  = errnop };
     return _nss_mcdb_getent(NSS_DBTYPE_PROTOCOLS, &vinfo);
 }
 
 enum nss_status
-_nss_files_getprotobyname_r(const char * const restrict name,
-                            struct protoent * const restrict protobuf,
-                            char * const restrict buf, const size_t buflen,
-                            struct protoent ** const restrict protobufp)
+_nss_mcdb_getprotobyname_r(const char * const restrict name,
+                           struct protoent * const restrict protobuf,
+                           char * const restrict buf, const size_t buflen,
+                           int * const restrict errnop)
 {
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -325,16 +334,15 @@ _nss_files_getprotobyname_r(const char * const restrict name,
                                       .vstruct = protobuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= protobufp };
-    *protobufp = NULL;
+                                      .errnop  = errnop };
     return _nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &kinfo, &vinfo);
 }
 
 enum nss_status
-_nss_files_getprotobynumber_r(const int proto,
-                              struct protoent * const restrict protobuf,
-                              char * const restrict buf, const size_t buflen,
-                              struct protoent ** const restrict protobufp)
+_nss_mcdb_getprotobynumber_r(const int proto,
+                             struct protoent * const restrict protobuf,
+                             char * const restrict buf, const size_t buflen,
+                             int * const restrict errnop)
 {
     char hexstr[8];
     const struct _nss_kinfo kinfo = { .key     = hexstr,
@@ -344,32 +352,30 @@ _nss_files_getprotobynumber_r(const int proto,
                                       .vstruct = protobuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= protobufp };
-    *protobufp = NULL;
+                                      .errnop  = errnop };
     uint32_to_ascii8uphex((uint32_t)proto, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &kinfo, &vinfo);
 }
 
 
 enum nss_status
-_nss_files_getrpcent_r(struct rpcent * const restrict rpcbuf,
-                       char * const restrict buf, const size_t buflen,
-                       struct rpcent ** const restrict rpcbufp)
+_nss_mcdb_getrpcent_r(struct rpcent * const restrict rpcbuf,
+                      char * const restrict buf, const size_t buflen,
+                      int * const restrict errnop)
 {
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_rpcent,
                                       .vstruct = rpcbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= rpcbufp };
-    *rpcbufp = NULL;
+                                      .errnop  = errnop };
     return _nss_mcdb_getent(NSS_DBTYPE_RPC, &vinfo);
 }
 
 enum nss_status
-_nss_files_getrpcbyname_r(const char * const restrict name,
-                          struct rpcent * const restrict rpcbuf,
-                          char * const restrict buf, const size_t buflen,
-                          struct rpcent ** const restrict rpcbufp)
+_nss_mcdb_getrpcbyname_r(const char * const restrict name,
+                         struct rpcent * const restrict rpcbuf,
+                         char * const restrict buf, const size_t buflen,
+                         int * const restrict errnop)
 {
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -378,16 +384,15 @@ _nss_files_getrpcbyname_r(const char * const restrict name,
                                       .vstruct = rpcbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= rpcbufp };
-    *rpcbufp = NULL;
+                                      .errnop  = errnop };
     return _nss_mcdb_get_generic(NSS_DBTYPE_RPC, &kinfo, &vinfo);
 }
 
 enum nss_status
-_nss_files_getrpcbynumber_r(const int number,
-                            struct rpcent * const restrict rpcbuf,
-                            char * const restrict buf, const size_t buflen,
-                            struct rpcent ** const restrict rpcbufp)
+_nss_mcdb_getrpcbynumber_r(const int number,
+                           struct rpcent * const restrict rpcbuf,
+                           char * const restrict buf, const size_t buflen,
+                           int * const restrict errnop)
 {
     char hexstr[8];
     const struct _nss_kinfo kinfo = { .key     = hexstr,
@@ -397,40 +402,38 @@ _nss_files_getrpcbynumber_r(const int number,
                                       .vstruct = rpcbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= rpcbufp };
-    *rpcbufp = NULL;
+                                      .errnop  = errnop };
     uint32_to_ascii8uphex((uint32_t)number, hexstr);
     return _nss_mcdb_get_generic(NSS_DBTYPE_RPC, &kinfo, &vinfo);
 }
 
 
 enum nss_status
-_nss_files_getservent_r(struct servent * const restrict servbuf,
-                        char * const restrict buf, const size_t buflen,
-                        struct servent ** const restrict servbufp)
+_nss_mcdb_getservent_r(struct servent * const restrict servbuf,
+                       char * const restrict buf, const size_t buflen,
+                       int * const restrict errnop)
 {
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_servent,
                                       .vstruct = servbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= servbufp };
-    *servbufp = NULL;
+                                      .errnop  = errnop };
     if (buflen > 0) {
         *buf = '\0';
         return _nss_mcdb_getent(NSS_DBTYPE_SERVICES, &vinfo);
     }
     else {
-        errno = ERANGE;
+        *errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 enum nss_status
-_nss_files_getservbyname_r(const char * const restrict name,
-                           const char * const restrict proto,
-                           struct servent * const restrict servbuf,
-                           char * const restrict buf, const size_t buflen,
-                           struct servent ** const restrict servbufp)
+_nss_mcdb_getservbyname_r(const char * const restrict name,
+                          const char * const restrict proto,
+                          struct servent * const restrict servbuf,
+                          char * const restrict buf, const size_t buflen,
+                          int * const restrict errnop)
 {
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -439,9 +442,8 @@ _nss_files_getservbyname_r(const char * const restrict name,
                                       .vstruct = servbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= servbufp };
+                                      .errnop  = errnop };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
-    *servbufp = NULL;
     if (buflen > plen) {
         if (plen)  /*copy proto for later match in _nss_mcdb_decode_servent()*/
             memcpy(buf, proto, plen+1);
@@ -450,16 +452,16 @@ _nss_files_getservbyname_r(const char * const restrict name,
         return _nss_mcdb_get_generic(NSS_DBTYPE_SERVICES, &kinfo, &vinfo);
     }
     else {
-        errno = ERANGE;
+        *errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 enum nss_status
-_nss_files_getservbyport_r(const int port, const char * const restrict proto,
-                           struct servent * const restrict servbuf,
-                           char * const restrict buf, const size_t buflen,
-                           struct servent ** const restrict servbufp)
+_nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
+                          struct servent * const restrict servbuf,
+                          char * const restrict buf, const size_t buflen,
+                          int * const restrict errnop)
 {
     char hexstr[8];
     const struct _nss_kinfo kinfo = { .key     = hexstr,
@@ -469,9 +471,8 @@ _nss_files_getservbyport_r(const int port, const char * const restrict proto,
                                       .vstruct = servbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= servbufp };
+                                      .errnop  = errnop };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
-    *servbufp = NULL;
     if (buflen > plen) {
         if (plen)  /*copy proto for later match in _nss_mcdb_decode_servent()*/
             memcpy(buf, proto, plen+1);
@@ -481,7 +482,7 @@ _nss_files_getservbyport_r(const int port, const char * const restrict proto,
         return _nss_mcdb_get_generic(NSS_DBTYPE_SERVICES, &kinfo, &vinfo);
     }
     else {
-        errno = ERANGE;
+        *errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
@@ -495,7 +496,7 @@ gethost_fill_h_errnop(enum nss_status status, int * const restrict h_errnop)
       case NSS_STATUS_UNAVAIL:  *h_errnop = NO_RECOVERY; break;
       case NSS_STATUS_NOTFOUND: *h_errnop = HOST_NOT_FOUND; break;
       case NSS_STATUS_SUCCESS:  break;
-      case NSS_STATUS_RETURN:   *h_errnop = TRY_AGAIN; break;
+      case NSS_STATUS_RETURN:   *h_errnop = NO_RECOVERY; break;
     }
     return status;
 }
@@ -517,7 +518,7 @@ gethost_query(const uint32_t type,
         status = _nss_mcdb_get_generic(NSS_DBTYPE_HOSTS, kinfo, vinfo);
     }
     else {
-        errno = ERANGE;
+        *vinfo->errnop = errno = ERANGE;
         status = NSS_STATUS_TRYAGAIN;
     }
     return (status == NSS_STATUS_SUCCESS)
@@ -532,7 +533,6 @@ gethost_filladdr(const void * const restrict addr, const int type,
                  int * const restrict h_errnop)
 {
     struct hostent * const restrict hostbuf = (struct hostent *)vinfo->vstruct;
-    struct hostent ** const restrict hostbufp=(struct hostent**)vinfo->vstructp;
     const size_t buflen = vinfo->buflen;
     char * const restrict buf = vinfo->buf;
     char * const aligned = (char *)((uintptr_t)(buf+7) & ~0x7);
@@ -555,7 +555,6 @@ gethost_filladdr(const void * const restrict addr, const int type,
     hostbuf->h_addr_list = (char **)(aligned+8);
     hostbuf->h_aliases[0]   = NULL;
     hostbuf->h_addr_list[0] = memcpy(aligned+16, addr, h_length);
-    *hostbufp = hostbuf;
     return NSS_STATUS_SUCCESS;
 }
 
@@ -616,7 +615,6 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, he_mem_num correct) */
     if (((char *)he_mem)-buf+((he_mem_num+1+he_lst_num+1)<<3) <= vinfo->buflen){
-        *((struct hostent **)vinfo->vstructp) = he;
         memcpy(buf, dptr+IDX_HE_HDRSZ, mcdb_datalen(m)-IDX_HE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_he_mem_str-1] = '\0';        /* terminate h_name */
@@ -641,8 +639,7 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *((struct hostent **)vinfo->vstructp) = NULL;
-        errno = ERANGE;
+        *vinfo->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
@@ -682,7 +679,6 @@ _nss_mcdb_decode_netent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, ne_mem_num correct) */
     if (((char *)ne_mem)-buf+((ne_mem_num+1)<<3) <= vinfo->buflen) {
-        *((struct netent **)vinfo->vstructp) = ne;
         memcpy(buf, dptr+IDX_NE_HDRSZ, mcdb_datalen(m)-IDX_NE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_ne_mem_str-1] = '\0';        /* terminate n_name */
@@ -698,8 +694,7 @@ _nss_mcdb_decode_netent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *((struct netent **)vinfo->vstructp) = NULL;
-        errno = ERANGE;
+        *vinfo->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
@@ -737,7 +732,6 @@ _nss_mcdb_decode_protoent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, pe_mem_num correct) */
     if (((char *)pe_mem)-buf+((pe_mem_num+1)<<3) <= vinfo->buflen) {
-        *((struct protoent **)vinfo->vstructp) = pe;
         memcpy(buf, dptr+IDX_PE_HDRSZ, mcdb_datalen(m)-IDX_PE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_pe_mem_str-1] = '\0';        /* terminate p_name */
@@ -753,8 +747,7 @@ _nss_mcdb_decode_protoent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *((struct protoent **)vinfo->vstructp) = NULL;
-        errno = ERANGE;
+        *vinfo->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
@@ -792,7 +785,6 @@ _nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, re_mem_num correct) */
     if (((char *)re_mem)-buf+((re_mem_num+1)<<3) <= vinfo->buflen) {
-        *((struct rpcent **)vinfo->vstructp) = re;
         memcpy(buf, dptr+IDX_RE_HDRSZ, mcdb_datalen(m)-IDX_RE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_re_mem_str-1] = '\0';        /* terminate r_name */
@@ -808,8 +800,7 @@ _nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *((struct rpcent **)vinfo->vstructp) = NULL;
-        errno = ERANGE;
+        *vinfo->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
@@ -863,7 +854,6 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, se_mem_num correct) */
     if (((char *)se_mem)-buf+((se_mem_num+1)<<3) <= vinfo->buflen) {
-        *((struct servent **)vinfo->vstructp) = se;
         memcpy(buf, dptr+IDX_SE_HDRSZ, mcdb_datalen(m)-IDX_SE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_s_name-1]     = '\0';        /* terminate s_proto */
@@ -880,8 +870,7 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *((struct servent **)vinfo->vstructp) = NULL;
-        errno = ERANGE;
+        *vinfo->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }

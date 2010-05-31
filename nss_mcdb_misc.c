@@ -17,6 +17,11 @@
 #include <netinet/in.h>    /* htonl() htons() ntohl() ntohs() */
 #include <arpa/inet.h>     /* htonl() htons() ntohl() ntohs() */
 
+#ifdef __sun
+#include <rpc/des_crypt.h>
+int xdecrypt(char *secret, char *passwd);
+#endif
+
 /*
  * man aliases(5) getaliasbyname setaliasent getaliasent endaliasent
  *     /etc/aliases
@@ -41,31 +46,30 @@ _nss_mcdb_decode_ether_addr(struct mcdb * restrict,
   __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
 
-void _nss_files_setaliasent(void) { _nss_mcdb_setent(NSS_DBTYPE_ALIASES); }
-void _nss_files_endaliasent(void) { _nss_mcdb_endent(NSS_DBTYPE_ALIASES); }
-void _nss_files_setetherent(void) { _nss_mcdb_setent(NSS_DBTYPE_ETHERS);  }
-void _nss_files_endetherent(void) { _nss_mcdb_endent(NSS_DBTYPE_ETHERS);  }
+void _nss_mcdb_setaliasent(void) { _nss_mcdb_setent(NSS_DBTYPE_ALIASES); }
+void _nss_mcdb_endaliasent(void) { _nss_mcdb_endent(NSS_DBTYPE_ALIASES); }
+void _nss_mcdb_setetherent(void) { _nss_mcdb_setent(NSS_DBTYPE_ETHERS);  }
+void _nss_mcdb_endetherent(void) { _nss_mcdb_endent(NSS_DBTYPE_ETHERS);  }
 
 
 enum nss_status
-_nss_files_getaliasent_r(struct aliasent * const restrict aliasbuf,
-                         char * const restrict buf, const size_t buflen,
-                         struct aliasent ** const restrict aliasbufp)
+_nss_mcdb_getaliasent_r(struct aliasent * const restrict aliasbuf,
+                        char * const restrict buf, const size_t buflen,
+                        int * const restrict errnop)
 {
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_aliasent,
                                       .vstruct = aliasbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= aliasbufp };
-    *aliasbufp = NULL;
+                                      .errnop  = errnop };
     return _nss_mcdb_getent(NSS_DBTYPE_ALIASES, &vinfo);
 }
 
 enum nss_status
-_nss_files_getaliasbyname_r(const char * const restrict name,
-                            struct aliasent * const restrict aliasbuf,
-                            char * const restrict buf, const size_t buflen,
-                            struct aliasent ** const restrict aliasbufp)
+_nss_mcdb_getaliasbyname_r(const char * const restrict name,
+                           struct aliasent * const restrict aliasbuf,
+                           char * const restrict buf, const size_t buflen,
+                           int * const restrict errnop)
 {
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -74,15 +78,15 @@ _nss_files_getaliasbyname_r(const char * const restrict name,
                                       .vstruct = aliasbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= aliasbufp };
-    *aliasbufp = NULL;
+                                      .errnop  = errnop };
     return _nss_mcdb_get_generic(NSS_DBTYPE_ALIASES, &kinfo, &vinfo);
 }
 
 
 enum nss_status
-_nss_files_getpublickey(const char * const restrict name,
-                        char * const restrict buf, const size_t buflen)
+_nss_mcdb_getpublickey(const char * const restrict name,
+                       char * const restrict buf, const size_t buflen,
+                       int * const restrict errnop)
 {   /*  man getpublickey() *//* Solaris */
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -91,15 +95,16 @@ _nss_files_getpublickey(const char * const restrict name,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= NULL };
+                                      .errnop  = errnop };
     return _nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &kinfo, &vinfo);
 }
 
 
 enum nss_status
-_nss_files_getsecretkey(const char * const restrict name,
-                        const char * const restrict decryptkey,
-                        char * const restrict buf, const size_t buflen)
+_nss_mcdb_getsecretkey(const char * const restrict name,
+                       const char * const restrict decryptkey,
+                       char * const restrict buf, const size_t buflen,
+                       int * const restrict errnop)
 {   /*  man getsecretkey() *//* Solaris */
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -108,31 +113,37 @@ _nss_files_getsecretkey(const char * const restrict name,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= NULL };
+                                      .errnop  = errnop };
     const enum nss_status status =
       _nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &kinfo, &vinfo);
-    /* TODO: decrypt buf using decryptkey */
+    if (status == NSS_STATUS_SUCCESS) {
+      /* TODO: decrypt buf using decryptkey */
+      #ifdef __sun
+        if (!xdecrypt(buf, decryptkey))
+            return NSS_STATUS_RETURN;
+      #endif
+    }
     return status;
 }
 
 
 enum nss_status
-_nss_files_getetherent_r(struct ether_addr * const restrict etherbuf,
-                         char * const restrict buf, const size_t buflen,
-                         struct ether_addr ** const restrict etherbufp)
+_nss_mcdb_getetherent_r(struct ether_addr * const restrict etherbuf,
+                        char * const restrict buf, const size_t buflen,
+                        int * const restrict errnop)
 {   /*  man ether_line()  */
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_ether_addr,
                                       .vstruct = etherbuf,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= etherbufp };
-    *etherbufp = NULL;
+                                      .errnop  = errnop };
     return _nss_mcdb_getent(NSS_DBTYPE_ETHERS, &vinfo);
 }
 
 enum nss_status
-_nss_files_gethostton_r(const char * const restrict name,
-                        struct ether_addr * const restrict etherbuf)
+_nss_mcdb_gethostton_r(const char * const restrict name,
+                       struct ether_addr * const restrict etherbuf,
+                       int * const restrict errnop)
 {   /*  man ether_hostton()  */
     const struct _nss_kinfo kinfo = { .key     = name,
                                       .klen    = strlen(name),
@@ -141,13 +152,14 @@ _nss_files_gethostton_r(const char * const restrict name,
                                       .vstruct = etherbuf,
                                       .buf     = NULL,
                                       .buflen  = 0,
-                                      .vstructp= NULL };
+                                      .errnop  = errnop };
     return _nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &kinfo, &vinfo);
 }
 
 enum nss_status
-_nss_files_getntohost_r(struct ether_addr * const restrict ether,
-                        char * const restrict buf, const size_t buflen)
+_nss_mcdb_getntohost_r(struct ether_addr * const restrict ether,
+                       char * const restrict buf, const size_t buflen,
+                       int * const restrict errnop)
 {   /*  man ether_ntohost()  */
     char hexstr[12]; /* (6) 8-bit octets = 48-bits */
     const struct _nss_kinfo kinfo = { .key     = hexstr,
@@ -157,7 +169,7 @@ _nss_files_getntohost_r(struct ether_addr * const restrict ether,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .buflen  = buflen,
-                                      .vstructp= NULL };
+                                      .errnop  = errnop };
     /* (assumes hexstr[] on stack is aligned to at least 4-byte boundary) */
     memcpy(hexstr, &(ether->ether_addr_octet[0]), sizeof(hexstr));
     uint32_to_ascii8uphex(ntohl(*((uint32_t *)&hexstr[0])), hexstr);
@@ -198,7 +210,6 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ','
      * (assume data consistent, ae_mem_num correct) */
     if (((char *)ae_mem)-buf+(ae_mem_num<<3) <= vinfo->buflen) {
-        *((struct aliasent **)vinfo->vstructp) = ae;
         memcpy(buf, dptr+IDX_AE_HDRSZ, mcdb_datalen(m)-IDX_AE_HDRSZ);
         /* terminate strings; replace ':' separator in data with '\0'. */
         buf[idx_ae_mem_str-1] = '\0';        /* terminate ae_name */
@@ -213,8 +224,7 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *((struct aliasent **)vinfo->vstructp) = NULL;
-        errno = ERANGE;
+        *vinfo->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
@@ -240,8 +250,6 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
         ether_addr->ether_addr_octet[3] = (uxton(dptr[6]) <<4)| uxton(dptr[7]);
         ether_addr->ether_addr_octet[4] = (uxton(dptr[8]) <<4)| uxton(dptr[9]);
         ether_addr->ether_addr_octet[5] = (uxton(dptr[10])<<4)| uxton(dptr[11]);
-        if (vinfo->vstructp != NULL)
-            *((struct ether_addr **)vinfo->vstructp) = ether_addr;
     }
 
     if (buf != NULL) {
@@ -250,9 +258,7 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
             buf[dlen] = '\0';              /* terminate hostname */
         }
         else {
-            if (vinfo->vstructp != NULL)
-                *((struct ether_addr **)vinfo->vstructp) = NULL;
-            errno = ERANGE;
+            *vinfo->errnop = errno = ERANGE;
             return NSS_STATUS_TRYAGAIN;
         }
     }

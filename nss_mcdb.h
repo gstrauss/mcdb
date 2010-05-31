@@ -44,7 +44,7 @@ struct _nss_vinfo {
   void * restrict vstruct;
   char * restrict buf;
   size_t buflen;
-  void * vstructp;
+  int  * errnop;
 };
 
 

@@ -32,8 +32,11 @@
 /*
  * man nsswitch.conf
  *     /etc/nsswitch.conf
- *     /lib/libnss_XXXXX.so, e.g. /lib/libnss_files.so
+ *     /lib/libnss_XXXXX.so.2, e.g. /lib/libnss_files.so.2
  *     rpm -qil nss_db nss_ldap
+ * The GNU C Library (manual)
+ *   http://www.delorie.com/gnu/docs/glibc/libc_602.html
+ *   28.4.2 Internals of the NSS Module Functions
  */
 
 /* compile-time setting for security */
@@ -118,6 +121,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
             if (dfd != -1) /* caller must have open STDIN, STDOUT, STDERR */
                 (void) nointr_close(dfd);
             pthread_mutex_unlock(&_nss_mcdb_global_mutex);
+            errno = EBADF;
             return false;
         }
     }
@@ -127,6 +131,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
     if (snprintf(map->fname, sizeof(map->fname), "%s%s",
                  NSS_DBPATH, _nss_dbnames[dbtype]) >= sizeof(map->fname)) {
         pthread_mutex_unlock(&_nss_mcdb_global_mutex);
+        errno = ENAMETOOLONG;
         return false;
     }
   #endif
@@ -210,7 +215,7 @@ _nss_mcdb_endent(const enum nss_dbtype dbtype)
         MCDB_REGISTER_DONE | MCDB_REGISTER_MUNMAP_SKIP;
     return (m->map == NULL || _nss_mcdb_db_relshared(m->map, mcdb_flags))
       ? NSS_STATUS_SUCCESS
-      : NSS_STATUS_TRYAGAIN; /* (fails only if obtaining mutex fails) */
+      : NSS_STATUS_RETURN; /* (fails only if obtaining mutex fails) */
 }
 
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
@@ -223,8 +228,10 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
     uint32_t eod;
     uint32_t klen;
     if (__builtin_expect(m->map == NULL, false)
-        && _nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS)
+        && _nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS) {
+        *vinfo->errnop = errno;
         return NSS_STATUS_UNAVAIL;
+    }
     map = m->map->ptr;
     eod = uint32_strunpack_bigendian_aligned_macro(map) - 7;
     while (m->hpos < eod) {
@@ -236,6 +243,7 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
             /* valid data in mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
             return vinfo->decode(m, NULL, vinfo);
     }
+    *vinfo->errnop = errno = ENOENT;
     return NSS_STATUS_NOTFOUND;
 }
 
@@ -254,8 +262,10 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
      * grab/release mutex to register, then grab/release mutex to unregister */
 
     m.map = _nss_mcdb_db_getshared(dbtype, mcdb_flags_lock);
-    if (__builtin_expect(m.map == NULL, false))
+    if (__builtin_expect(m.map == NULL, false)) {
+        *vinfo->errnop = errno;
         return NSS_STATUS_UNAVAIL;
+    }
 
     if (  mcdb_findtagstart(&m, kinfo->key, kinfo->klen, kinfo->tagc)
         && mcdb_findtagnext(&m, kinfo->key, kinfo->klen, kinfo->tagc)  )
@@ -285,6 +295,7 @@ _nss_mcdb_decode_buf(struct mcdb * const restrict m,
         vinfo->buf[dlen] = '\0';
         return NSS_STATUS_SUCCESS;
     }
+    *vinfo->errnop = errno = ERANGE;
     return NSS_STATUS_TRYAGAIN;
 }
 
@@ -303,21 +314,14 @@ TODO: split each set of nss database access routines into a separate .c file
 /* GPS: verify what nss passes in and what it wants as exit values
  * It probably always wants enum nss_status
  *
- * If gethost* buffer sizes are not large enough, man page says return ERANGE ?
- * in errno?  not in enum nss_status ?  Return NSS_STATUS_TRYAGAIN?
+ * If gethost* buffer sizes are not large enough:
+ *   Set errno = ERANGE; return NSS_STATUS_TRYAGAIN;
  */
 
-_nss_files_parse_etherent
-_nss_files_parse_grent@@GLIBC_PRIVATE
-_nss_files_parse_netent
-_nss_files_parse_protoent
-_nss_files_parse_pwent@@GLIBC_PRIVATE
-_nss_files_parse_rpcent
-_nss_files_parse_servent
-_nss_files_parse_spent@@GLIBC_PRIVATE
-_nss_netgroup_parseline
-
 GPS: how about a mcdb for /etc/nsswitch.conf ?
+     (would need to modify glibc to support it)
+     (see if glibc can be modified to use mmap and not do extra read() calls)
+       (check latest versions before working on patch)
 GPS: where does nscd socket get plugged in to all this?
      and should I add something to nscd.conf to implicitly use mcdb
      before its cache?
