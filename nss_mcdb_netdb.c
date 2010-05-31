@@ -205,7 +205,7 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
                uint32_to_ascii8uphex(u[2], hexstr+16);
                uint32_to_ascii8uphex(u[3], hexstr+24);
                break;
-      default: *vinfo->errnop = errno = ENOENT;
+      default: *errnop = errno = ENOENT;
                return NSS_STATUS_UNAVAIL; /* other types not implemented */
     }
 
@@ -538,7 +538,7 @@ gethost_filladdr(const void * const restrict addr, const int type,
     char * const restrict buf = vinfo->buf;
     char * const aligned = (char *)((uintptr_t)(buf+7) & ~0x7);
     /* supports only AF_INET and AF_INET6
-     * (future: create static array of addr sizes indexed by AF_*) */
+     * (if expanding, might create static array of addr sizes indexed by AF_*)*/
     int h_length;
     switch (type) {
       case AF_INET:  h_length = sizeof(struct in_addr);  break;

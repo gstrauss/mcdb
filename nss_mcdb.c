@@ -156,9 +156,11 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
     return rc;
 }
 
-/* Flag to skip mcdb stat() check for protocols, rpc, services dbs.
- * (similar to set*ent(int stayopen) flag in glibc, but default enabled here)
+/* Flag to skip mcdb stat() check for protocols, rpc, services databases.
+ * Default: enabled
+ * (similar to set*ent(int stayopen) flag in glibc for netdb databases)
  * (protocols, rpc, services are unlikely to change frequently in most configs)
+ * (hosts and networks database lookups differ: they perform mcdb stat() check)
  * (future: might provide accessor routine to enable/disable) */
 static bool _nss_mcdb_stayopen = true;
 
@@ -205,7 +207,7 @@ _nss_mcdb_setent(const enum nss_dbtype dbtype)
     const enum mcdb_register_flags mcdb_flags = MCDB_REGISTER_USE;
     if (m->map != NULL
         || (m->map = _nss_mcdb_db_getshared(dbtype, mcdb_flags)) != NULL) {
-        m->hpos = 0;
+        m->hpos = MCDB_HEADER_SZ;
         return NSS_STATUS_SUCCESS;
     }
     return NSS_STATUS_UNAVAIL;
@@ -245,7 +247,7 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
         klen    = uint32_strunpack_bigendian_macro(p);
         m->dlen = uint32_strunpack_bigendian_macro(p+4);
         m->hpos = (m->dpos = (m->kpos = m->hpos + 8) + klen) + m->dlen;
-        if (p[8+klen] == (unsigned char)'=')
+        if (p[8] == (unsigned char)'=')
             /* valid data in mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
             return vinfo->decode(m, NULL, vinfo);
     }
