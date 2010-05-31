@@ -195,7 +195,7 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
 
     return mcdb_register_access(&_nss_mcdb_mmap[dbtype], mcdb_flags)
       ? _nss_mcdb_mmap[dbtype]
-      : NULL;
+      : NULL;  /* (fails if obtaining mutex fails, i.e. EAGAIN) */
 }
 
 enum nss_status  __attribute_noinline__  /*(skip inline into _nss_mcdb_getent)*/
@@ -221,7 +221,7 @@ _nss_mcdb_endent(const enum nss_dbtype dbtype)
     m->map = NULL;  /* set thread-local ptr NULL even though munmap skipped */
     return (map == NULL || _nss_mcdb_db_relshared(map, mcdb_flags))
       ? NSS_STATUS_SUCCESS
-      : NSS_STATUS_RETURN; /* (fails only if obtaining mutex fails) */
+      : NSS_STATUS_UNAVAIL; /* (fails if obtaining mutex fails, i.e. EAGAIN) */
 }
 
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
@@ -259,7 +259,7 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
                       const struct _nss_vinfo * const restrict vinfo)
 {
     struct mcdb m;
-    enum nss_status status = NSS_STATUS_NOTFOUND;
+    enum nss_status status;
     const enum mcdb_register_flags mcdb_flags_lock =
       MCDB_REGISTER_USE | MCDB_REGISTER_MUTEX_LOCK_HOLD;
 
@@ -276,6 +276,10 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
     if (  mcdb_findtagstart(&m, kinfo->key, kinfo->klen, kinfo->tagc)
         && mcdb_findtagnext(&m, kinfo->key, kinfo->klen, kinfo->tagc)  )
         status = vinfo->decode(&m, kinfo, vinfo);
+    else {
+        status = NSS_STATUS_NOTFOUND;
+        *vinfo->errnop = errno = ENOENT;
+    }
 
     /* set*ent(),get*ent(),end*end() session not open/reused in current thread*/
     if (_nss_mcdb_st[dbtype].map == NULL) {
@@ -304,38 +308,3 @@ _nss_mcdb_decode_buf(struct mcdb * const restrict m,
     *vinfo->errnop = errno = ERANGE;
     return NSS_STATUS_TRYAGAIN;
 }
-
-
-#if 0
------
------
-NOTES
------
------
-
-TODO: split each set of nss database access routines into a separate .c file
-      (separate, too, reading and creation/writing)
-      (store offsets for serialized record in header file)
-
-/* GPS: verify what nss passes in and what it wants as exit values
- * It probably always wants enum nss_status
- *
- * If gethost* buffer sizes are not large enough:
- *   Set errno = ERANGE; return NSS_STATUS_TRYAGAIN;
- */
-
-GPS: how about a mcdb for /etc/nsswitch.conf ?
-     (would need to modify glibc to support it)
-     (see if glibc can be modified to use mmap and not do extra read() calls)
-       (check latest versions before working on patch)
-GPS: where does nscd socket get plugged in to all this?
-     and should I add something to nscd.conf to implicitly use mcdb
-     before its cache?
-
-/* TODO create an atexit() routine to walk static maps and munmap each map
- * (might only do if compiled with -D_FORTIFY_SOURCE or something so that we
- *  free() memory allocated to demonstrate lack of leaking)
- * Set flag in _nss_mcdb_db_openshared() so atexit() is run only once.
- */
-
-#endif

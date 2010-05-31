@@ -160,7 +160,7 @@ _nss_mcdb_gethostbyname2_r(const char * const restrict name, const int type,
         return gethost_query((uint32_t)type, &kinfo, &vinfo, h_errnop);
     else if (is_addr > 0) /* name is valid address for specified addr family */
         return gethost_filladdr(&addr, type, &kinfo, &vinfo, h_errnop);
-    else
+    else /* invalid address family EAFNOSUPPORT => NSS_STATUS_RETURN */
         return gethost_fill_h_errnop(NSS_STATUS_RETURN, h_errnop);
 }
 
@@ -205,7 +205,8 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
                uint32_to_ascii8uphex(u[2], hexstr+16);
                uint32_to_ascii8uphex(u[3], hexstr+24);
                break;
-      default: return NSS_STATUS_UNAVAIL; /* other types not implemented */
+      default: *vinfo->errnop = errno = ENOENT;
+               return NSS_STATUS_UNAVAIL; /* other types not implemented */
     }
 
     return gethost_query((uint32_t)type, &kinfo, &vinfo, h_errnop);
@@ -542,12 +543,15 @@ gethost_filladdr(const void * const restrict addr, const int type,
     switch (type) {
       case AF_INET:  h_length = sizeof(struct in_addr);  break;
       case AF_INET6: h_length = sizeof(struct in6_addr); break;
-      default: return gethost_fill_h_errnop(NSS_STATUS_RETURN, h_errnop);
+      default: *vinfo->errnop = errno = ENOENT;
+               return gethost_fill_h_errnop(NSS_STATUS_UNAVAIL, h_errnop);
     }          /* other addr types not implemented */
     /* (pointers in struct hostent must be aligned; align to 8 bytes) */
     /* (align+(char **h_aliases)+(char **h_addr_list)+h_length+addrstr+'\0') */
-    if ((aligned - buf) + 8 + 8 + h_length + kinfo->klen + 1 >= buflen)
+    if ((aligned - buf) + 8 + 8 + h_length + kinfo->klen + 1 >= buflen) {
+        *vinfo->errnop = errno = ERANGE;
         return gethost_fill_h_errnop(NSS_STATUS_TRYAGAIN, h_errnop);
+    }
     hostbuf->h_name      = memcpy(aligned+16+h_length,kinfo->key,kinfo->klen+1);
     hostbuf->h_aliases   = (char **)aligned;
     hostbuf->h_addrtype  = type;
@@ -588,9 +592,12 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
     /* match type (e.g. AF_INET, AF_INET6), if not zero (AF_UNSPEC) */
     if (type != 0) {
         while (type != uint32_from_ascii8uphex(dptr+IDX_H_ADDRTYPE)) {
-            if (!mcdb_findtagnext(m, kinfo->key, kinfo->klen, kinfo->tagc))
+            if (mcdb_findtagnext(m, kinfo->key, kinfo->klen, kinfo->tagc))
+                dptr = (char *)mcdb_dataptr(m);
+            else {
+                *vinfo->errnop = errno = ENOENT;
                 return NSS_STATUS_NOTFOUND;
-            dptr = (char *)mcdb_dataptr(m);
+            }
         }
     }
 
@@ -828,11 +835,13 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
     if (*buf != '\0') {
         const size_t protolen = strlen(buf);
         while (*dptr != *buf
-               || memcmp(dptr, buf, protolen) != 0
-               || dptr[protolen] != ' ') {
-            if (!mcdb_findtagnext(m, kinfo->key, kinfo->klen, kinfo->tagc))
+               || memcmp(dptr, buf, protolen) != 0 || dptr[protolen] != ' ') {
+            if (mcdb_findtagnext(m, kinfo->key, kinfo->klen, kinfo->tagc))
+                dptr = (char *)mcdb_dataptr(m);
+            else {
+                *vinfo->errnop = errno = ENOENT;
                 return NSS_STATUS_NOTFOUND;
-            dptr = (char *)mcdb_dataptr(m);
+            }
         }
     }
 
