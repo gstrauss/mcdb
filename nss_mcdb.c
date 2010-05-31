@@ -1,6 +1,9 @@
 #ifndef _ATFILE_SOURCE /* fstatat(), openat() */
 #define _ATFILE_SOURCE
 #endif
+#ifndef _GNU_SOURCE /* enable O_CLOEXEC on GNU systems */
+#define _GNU_SOURCE 1
+#endif
 
 #include "nss_mcdb.h"
 #include "mcdb.h"
@@ -212,9 +215,11 @@ enum nss_status
 _nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
+    struct mcdb_mmap *map = m->map;
     const enum mcdb_register_flags mcdb_flags =
         MCDB_REGISTER_DONE | MCDB_REGISTER_MUNMAP_SKIP;
-    return (m->map == NULL || _nss_mcdb_db_relshared(m->map, mcdb_flags))
+    m->map = NULL;  /* set thread-local ptr NULL even though munmap skipped */
+    return (map == NULL || _nss_mcdb_db_relshared(map, mcdb_flags))
       ? NSS_STATUS_SUCCESS
       : NSS_STATUS_RETURN; /* (fails only if obtaining mutex fails) */
 }

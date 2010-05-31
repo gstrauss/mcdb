@@ -6,6 +6,9 @@
 #ifndef _ATFILE_SOURCE /* fstatat(), openat() */
 #define _ATFILE_SOURCE
 #endif
+#ifndef _GNU_SOURCE /* enable O_CLOEXEC on GNU systems */
+#define _GNU_SOURCE 1
+#endif
 
 #include "mcdb.h"
 #include "nointr.h"

@@ -61,7 +61,7 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
 	buf[pw_gecos_offset-1] = ':';  /*(between pw_passwd and pw_gecos)*/
 	buf[pw_dir_offset-1]   = ':';  /*(between pw_gecos and pw_dir)*/
 	buf[pw_shell_offset-1] = ':';  /*(between pw_dir and pw_shell)*/
-	return pw_shell_end;
+	return IDX_PW_HDRSZ + pw_shell_end;
     }
     else {
 	errno = ERANGE;
@@ -119,7 +119,7 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 	    /* separate entries with ':' for readability */
 	    buf[gr_passwd_offset-1] =':'; /*(between gr_name and gr_passwd)*/
 	    buf[gr_mem_str_offt-1]  =':'; /*(between gr_passwd and gr_mem str)*/
-	    return offset;
+	    return IDX_GR_HDRSZ + offset;
 	}
     }
 
