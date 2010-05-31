@@ -35,7 +35,8 @@
  *     /lib/libnss_XXXXX.so.2, e.g. /lib/libnss_files.so.2
  *     rpm -qil nss_db nss_ldap
  * The GNU C Library (manual)
- *   http://www.delorie.com/gnu/docs/glibc/libc_602.html
+ * http://www.gnu.org/s/libc/manual/html_node/Name-Service-Switch.html
+ * http://www.gnu.org/s/libc/manual/html_node/NSS-Module-Function-Internals.html
  *   28.4.2 Internals of the NSS Module Functions
  */
 
