@@ -23,6 +23,7 @@
  * input is database struct so that code is written to consumes it produces.
  */
 
+/* buf size passed should be _SC_GETPW_R_SIZE_MAX + IDX_GR_HDRSZ (not checked)*/
 size_t
 cdb_pw2str(char * restrict buf, const size_t bufsz,
 	   struct passwd * const restrict pw)
@@ -43,7 +44,7 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
     const uintptr_t pw_shell_offset  = pw_dir_offset    + pw_dir_len    + 1;
     const uintptr_t pw_shell_end     = pw_shell_offset  + pw_shell_len;
     /*(pw_shell_end < bufsz to leave +1 in buffer for final '\n' or '\0')*/
-    if (   __builtin_expect(pw_shell_end     <  bufsz,     1)
+    if (   __builtin_expect(IDX_PW_HDRSZ + pw_shell_end < bufsz, 1)
 	&& __builtin_expect(pw_passwd_offset <= USHRT_MAX, 1)
 	&& __builtin_expect(pw_gecos_offset  <= USHRT_MAX, 1)
 	&& __builtin_expect(pw_dir_offset    <= USHRT_MAX, 1)
@@ -67,6 +68,7 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
 	buf[pw_gecos_offset-1] = ':';  /*(between pw_passwd and pw_gecos)*/
 	buf[pw_dir_offset-1]   = ':';  /*(between pw_gecos and pw_dir)*/
 	buf[pw_shell_offset-1] = ':';  /*(between pw_dir and pw_shell)*/
+	buf[pw_shell_end] = '\0';      /* end string section */
 	return IDX_PW_HDRSZ + pw_shell_end;
     }
     else {
@@ -76,6 +78,7 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
 }
 
 
+/* buf size passed should be _SC_GETGR_R_SIZE_MAX + IDX_GR_HDRSZ (not checked)*/
 size_t
 cdb_gr2str(char * restrict buf, const size_t bufsz,
 	   struct group * const restrict gr)
@@ -109,7 +112,8 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 		return 0;
 	    }
 	}
-	if (   __builtin_expect(offset     <= USHRT_MAX, 1)
+	offset -= IDX_GR_HDRSZ;
+	if (   __builtin_expect(IDX_GR_HDRSZ + offset < bufsz, 1)
 	    && __builtin_expect(gr_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(gr_mem[gr_mem_num] == NULL,  1)
 	    && __builtin_expect((gr_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
@@ -130,6 +134,7 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 	    /* separate entries with ':' for readability */
 	    buf[gr_passwd_offset-1] =':'; /*(between gr_name and gr_passwd)*/
 	    buf[gr_mem_str_offt-1]  =':'; /*(between gr_passwd and gr_mem str)*/
+	    buf[offset] = '\0';           /* end string section */
 	    return IDX_GR_HDRSZ + offset;
 	}
     }
