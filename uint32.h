@@ -41,34 +41,46 @@ extern "C" {
 uint32_t  C99INLINE  __attribute_pure__
 uint32_strunpack(const char s[4])
   __attribute_warn_unused_result__;
+#if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
 uint32_strunpack(const char s[4])
 {
     const unsigned char * const restrict n = (const unsigned char *)s;
     return uint32_strunpack_macro(n);
 }
+#endif
 
 uint32_t  C99INLINE  __attribute_pure__
 uint32_strunpack_bigendian(const char s[4])
   __attribute_warn_unused_result__;
+#if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
 uint32_strunpack_bigendian(const char s[4])
 {
     const unsigned char * const restrict n = (const unsigned char *)s;
     return uint32_strunpack_bigendian_macro(n);
 }
+#endif
 
+void  C99INLINE
+uint32_strpack(char s[4], const uint32_t u);
+#if !defined(NO_C99INLINE)
 void  C99INLINE
 uint32_strpack(char s[4], const uint32_t u)
 {
     uint32_strpack_macro(s,u);
 }
+#endif
 
+void  C99INLINE
+uint32_strpack_bigendian(char s[4], const uint32_t u);
+#if !defined(NO_C99INLINE)
 void  C99INLINE
 uint32_strpack_bigendian(char s[4], const uint32_t u)
 {
     uint32_strpack_bigendian_macro(s,u);
 }
+#endif
 
 
 /* djb cdb hash function: http://cr.yp.to/cdb/cdb.txt */
@@ -80,6 +92,7 @@ uint32_strpack_bigendian(char s[4], const uint32_t u)
 uint32_t  C99INLINE  __attribute_pure__
 uint32_hash_djb(uint32_t, const void *, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+#if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
 uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
 {
@@ -91,6 +104,7 @@ uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
         h = (h + (h << 5)) ^ buf[i];
     return h;
 }
+#endif
 
 
 /* 
@@ -164,6 +178,7 @@ uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
 void  C99INLINE
 uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
   __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
 void  C99INLINE
 uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
 {
@@ -185,6 +200,7 @@ uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
     buf[6] = ntoux(n6);
     buf[7] = ntoux(n7);
 }
+#endif
 
 /* convert unsigned 16-bit value into string of 4 ASCII uppercase hex chars
  * (used to convert numerical data to architecture-independent string data)
@@ -196,6 +212,7 @@ uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
 void  C99INLINE
 uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
   __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
 void  C99INLINE
 uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
 {
@@ -209,6 +226,7 @@ uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
     buf[2] = ntoux(n2);
     buf[3] = ntoux(n3);
 }
+#endif
 
 /* convert string of 8 ASCII uppercase hex chars to unsigned 32-bit value
  * (used to convert architecture-independent string data to numerical data)
@@ -216,6 +234,7 @@ uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
 uint32_t  C99INLINE  __attribute_pure__
 uint32_from_ascii8uphex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+#if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
 uint32_from_ascii8uphex(const char * const restrict buf)
 {
@@ -239,6 +258,7 @@ uint32_from_ascii8uphex(const char * const restrict buf)
 
     return (n0 | n1 | n2 | n3 | n4 | n5 | n6 | n7);
 }
+#endif
 
 /* convert string of 4 ASCII uppercase hex chars to unsigned 16-bit value
  * (used to convert architecture-independent string data to numerical data)
@@ -247,6 +267,7 @@ uint32_from_ascii8uphex(const char * const restrict buf)
 uint16_t  C99INLINE  __attribute_pure__
 uint16_from_ascii4uphex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+#if !defined(NO_C99INLINE)
 uint16_t  C99INLINE
 uint16_from_ascii4uphex(const char * const restrict buf)
 {
@@ -262,6 +283,7 @@ uint16_from_ascii4uphex(const char * const restrict buf)
 
     return (uint16_t)(n0 | n1 | n2 | n3);
 }
+#endif
 
 #define uint32_to_ascii8hex(n,buf) uint32_to_ascii8uphex((n),(buf))
 

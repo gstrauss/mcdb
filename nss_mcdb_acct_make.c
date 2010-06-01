@@ -1,3 +1,8 @@
+/* memccpy() on Linux requires _XOPEN_SOURCE or _BSD_SOURCE or _SVID_SOURCE */
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
+
 #include "nss_mcdb_acct_make.h"
 #include "nss_mcdb_acct.h"
 #include "nss_mcdb.h"
@@ -12,10 +17,11 @@
 #include <grp.h>
 #include <shadow.h>
 
-/* TODO: ... this might end up being a Perl script ... */
-
-/* FIXME: instead of getpwent() and getgrent(),
- * will need to parse /etc/passwd and /etc/group */
+/*
+ * validate data sufficiently for successful serialize/deserialize into mcdb.
+ *
+ * input is database struct so that code is written to consumes it produces.
+ */
 
 size_t
 cdb_pw2str(char * restrict buf, const size_t bufsz,
@@ -93,10 +99,15 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 	&& __builtin_expect(offset        < bufsz,      1)) {
 	while ((str = gr_mem[gr_mem_num]) != NULL
 	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    memcpy(buf+offset, str, len);
-	    buf[(offset+=len)] = ',';
-	    ++offset;
-	    ++gr_mem_num;
+	    if (memccpy(buf+offset, str, ',', len) == NULL) {
+		buf[(offset+=len)] = ',';
+		++offset;
+		++gr_mem_num;
+	    }
+	    else { /* bad group; comma-separated data may not contain commas */
+		errno = EINVAL;
+		return 0;
+	    }
 	}
 	if (   __builtin_expect(offset     <= USHRT_MAX, 1)
 	    && __builtin_expect(gr_mem_num <= USHRT_MAX, 1)
@@ -127,3 +138,42 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
     return 0;
 }
 
+
+size_t
+cdb_spwd2str(char * restrict buf, const size_t bufsz,
+	     struct spwd * const restrict sp)
+  __attribute_nonnull__;
+size_t
+cdb_spwd2str(char * restrict buf, const size_t bufsz,
+	     struct spwd * const restrict sp)
+{
+    const size_t sp_namp_len = strlen(sp->sp_namp);
+    const size_t sp_pwdp_len = strlen(sp->sp_pwdp);
+    const uintptr_t sp_namp_offset = 0;
+    const uintptr_t sp_pwdp_offset = sp_namp_offset + sp_namp_len + 1;
+    const uintptr_t sp_pwdp_end    = sp_pwdp_offset + sp_pwdp_len;
+    /*(sp_pwdp_end < bufsz to leave +1 in buffer for final '\n' or '\0')*/
+    if (   __builtin_expect(sp_pwdp_end    <  bufsz,     1)
+	&& __builtin_expect(sp_pwdp_offset <= USHRT_MAX, 1)) {
+	/* store string offsets into buffer */
+	uint16_to_ascii4uphex((uint32_t)sp_pwdp_offset, buf+IDX_SP_PWDP);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_lstchg,  buf+IDX_SP_LSTCHG);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_min,     buf+IDX_SP_MIN);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_max,     buf+IDX_SP_MAX);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_warn,    buf+IDX_SP_WARN);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_inact,   buf+IDX_SP_INACT);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_expire,  buf+IDX_SP_EXPIRE);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_flag,    buf+IDX_SP_FLAG);
+	/* copy strings into buffer */
+        buf += IDX_SP_HDRSZ;
+	memcpy(buf+sp_namp_offset, sp->sp_namp, sp_namp_len);
+	memcpy(buf+sp_pwdp_offset, sp->sp_pwdp, sp_pwdp_len);
+	/* separate entries with ':' for readability */
+	buf[sp_pwdp_offset-1]  = ':';  /*(between sp_namp and sp_pwdp)*/
+	return IDX_SP_HDRSZ + sp_pwdp_end;
+    }
+    else {
+	errno = ERANGE;
+	return 0;
+    }
+}

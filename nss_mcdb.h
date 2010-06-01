@@ -31,20 +31,20 @@ enum nss_dbtype {
  * the session. */
 
 struct _nss_kinfo {
-  const char * restrict key;
-  size_t klen;
-  unsigned char tagc;
+  const char * const restrict key;
+  const size_t klen;
+  const unsigned char tagc;
 };
 
 struct _nss_vinfo {
   /* fail with errno = ERANGE if insufficient buf space supplied */
-  enum nss_status (*decode)(struct mcdb * restrict,
-                            const struct _nss_kinfo * restrict,
-                            const struct _nss_vinfo * restrict);
-  void * restrict vstruct;
-  char * restrict buf;
-  size_t buflen;
-  int  * errnop;
+  enum nss_status (* const decode)(struct mcdb * restrict,
+                                   const struct _nss_kinfo * restrict,
+                                   const struct _nss_vinfo * restrict);
+  void * const restrict vstruct;
+  char * const restrict buf;
+  const size_t buflen;
+  int  * const errnop;
 };
 
 

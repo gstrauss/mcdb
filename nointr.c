@@ -15,6 +15,7 @@
  */
 #if defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
 #define C99INLINE
+#undef  NO_C99INLINE
 #endif
 
 #include "nointr.h"
