@@ -200,7 +200,7 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
       : NULL;  /* (fails if obtaining mutex fails, i.e. EAGAIN) */
 }
 
-enum nss_status  __attribute_noinline__  /*(skip inline into _nss_mcdb_getent)*/
+nss_status_t  __attribute_noinline__  /*(skip inline into _nss_mcdb_getent)*/
 _nss_mcdb_setent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
@@ -213,7 +213,7 @@ _nss_mcdb_setent(const enum nss_dbtype dbtype)
     return NSS_STATUS_UNAVAIL;
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
@@ -227,7 +227,7 @@ _nss_mcdb_endent(const enum nss_dbtype dbtype)
 }
 
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
-enum nss_status
+nss_status_t
 _nss_mcdb_getent(const enum nss_dbtype dbtype,
                  const struct _nss_vinfo * const restrict vinfo)
 {
@@ -255,13 +255,13 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
     return NSS_STATUS_NOTFOUND;
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
                       const struct _nss_kinfo * const restrict kinfo,
                       const struct _nss_vinfo * const restrict vinfo)
 {
     struct mcdb m;
-    enum nss_status status;
+    nss_status_t status;
     const enum mcdb_register_flags mcdb_flags_lock =
       MCDB_REGISTER_USE | MCDB_REGISTER_MUTEX_LOCK_HOLD;
 
@@ -295,7 +295,7 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
     return status;
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_decode_buf(struct mcdb * const restrict m,
                      const struct _nss_kinfo * const restrict kinfo
                        __attribute_unused__,

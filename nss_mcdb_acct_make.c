@@ -57,7 +57,7 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
 	uint32_to_ascii8uphex((uint32_t)pw->pw_uid,       buf+IDX_PW_UID);
 	uint32_to_ascii8uphex((uint32_t)pw->pw_gid,       buf+IDX_PW_GID);
 	/* copy strings into buffer */
-        buf += IDX_PW_HDRSZ;
+	buf += IDX_PW_HDRSZ;
 	memcpy(buf+pw_name_offset,   pw->pw_name,   pw_name_len);
 	memcpy(buf+pw_passwd_offset, pw->pw_passwd, pw_passwd_len);
 	memcpy(buf+pw_gecos_offset,  pw->pw_gecos,  pw_gecos_len);
@@ -128,7 +128,7 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 	    uint16_to_ascii4uphex((uint32_t)gr_mem_num,     buf+IDX_GR_MEM_NUM);
 	    uint32_to_ascii8uphex((uint32_t)gr->gr_gid,     buf+IDX_GR_GID);
 	    /* copy strings into buffer */
-            buf += IDX_GR_HDRSZ;
+	    buf += IDX_GR_HDRSZ;
 	    memcpy(buf+gr_name_offset,   gr->gr_name,   gr_name_len);
 	    memcpy(buf+gr_passwd_offset, gr->gr_passwd, gr_passwd_len);
 	    /* separate entries with ':' for readability */
@@ -170,11 +170,12 @@ cdb_spwd2str(char * restrict buf, const size_t bufsz,
 	uint32_to_ascii8uphex((uint32_t)sp->sp_expire,  buf+IDX_SP_EXPIRE);
 	uint32_to_ascii8uphex((uint32_t)sp->sp_flag,    buf+IDX_SP_FLAG);
 	/* copy strings into buffer */
-        buf += IDX_SP_HDRSZ;
+	buf += IDX_SP_HDRSZ;
 	memcpy(buf+sp_namp_offset, sp->sp_namp, sp_namp_len);
 	memcpy(buf+sp_pwdp_offset, sp->sp_pwdp, sp_pwdp_len);
 	/* separate entries with ':' for readability */
 	buf[sp_pwdp_offset-1]  = ':';  /*(between sp_namp and sp_pwdp)*/
+	buf[sp_pwdp_end] = '\0';       /* end string section */
 	return IDX_SP_HDRSZ + sp_pwdp_end;
     }
     else {

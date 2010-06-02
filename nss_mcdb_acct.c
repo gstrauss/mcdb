@@ -20,19 +20,19 @@
  *     /etc/shadow
  */
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_passwd(struct mcdb * restrict,
                         const struct _nss_kinfo * restrict __attribute_unused__,
                         const struct _nss_vinfo * restrict)
   __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_group(struct mcdb * restrict,
                        const struct _nss_kinfo * restrict __attribute_unused__,
                        const struct _nss_vinfo * restrict)
   __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_spwd(struct mcdb * restrict,
                       const struct _nss_kinfo * restrict __attribute_unused__,
                       const struct _nss_vinfo * restrict)
@@ -47,7 +47,7 @@ void _nss_mcdb_setspent(void) { _nss_mcdb_setent(NSS_DBTYPE_SHADOW); }
 void _nss_mcdb_endspent(void) { _nss_mcdb_endent(NSS_DBTYPE_SHADOW); }
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getpwent_r(struct passwd * const restrict pwbuf,
                      char * const restrict buf, const size_t buflen,
                      int * const restrict errnop)
@@ -60,7 +60,7 @@ _nss_mcdb_getpwent_r(struct passwd * const restrict pwbuf,
     return _nss_mcdb_getent(NSS_DBTYPE_PASSWD, &vinfo);
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getpwnam_r(const char * const restrict name,
                      struct passwd * const restrict pwbuf,
                      char * const restrict buf, const size_t buflen,
@@ -77,7 +77,7 @@ _nss_mcdb_getpwnam_r(const char * const restrict name,
     return _nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &kinfo, &vinfo);
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getpwuid_r(const uid_t uid,
                      struct passwd * const restrict pwbuf,
                      char * const restrict buf, const size_t buflen,
@@ -97,7 +97,7 @@ _nss_mcdb_getpwuid_r(const uid_t uid,
 }
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getgrent_r(struct group * const restrict grbuf,
                      char * const restrict buf, const size_t buflen,
                      int * const restrict errnop)
@@ -110,7 +110,7 @@ _nss_mcdb_getgrent_r(struct group * const restrict grbuf,
     return _nss_mcdb_getent(NSS_DBTYPE_GROUP, &vinfo);
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getgrnam_r(const char * const restrict name,
                      struct group * const restrict grbuf,
                      char * const restrict buf, const size_t buflen,
@@ -127,7 +127,7 @@ _nss_mcdb_getgrnam_r(const char * const restrict name,
     return _nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &kinfo, &vinfo);
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getgrgid_r(const gid_t gid,
                      struct group * const restrict grbuf,
                      char * const restrict buf, const size_t buflen,
@@ -147,7 +147,7 @@ _nss_mcdb_getgrgid_r(const gid_t gid,
 }
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getspent_r(struct spwd * const restrict spbuf,
                      char * const restrict buf, const size_t buflen,
                      int * const restrict errnop)
@@ -160,7 +160,7 @@ _nss_mcdb_getspent_r(struct spwd * const restrict spbuf,
     return _nss_mcdb_getent(NSS_DBTYPE_SHADOW, &vinfo);
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getspnam_r(const char * const restrict name,
                      struct spwd * const restrict spbuf,
                      char * const restrict buf, const size_t buflen,
@@ -185,7 +185,7 @@ _nss_mcdb_getspnam_r(const char * const restrict name,
  * and back.  Also, store '\0' in data instead of replacing after memcpy() */
 
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_passwd(struct mcdb * const restrict m,
                         const struct _nss_kinfo * restrict kinfo,
                         const struct _nss_vinfo * restrict vinfo)
@@ -224,7 +224,7 @@ _nss_mcdb_decode_passwd(struct mcdb * const restrict m,
 }
 
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_group(struct mcdb * const restrict m,
                        const struct _nss_kinfo * const restrict kinfo,
                        const struct _nss_vinfo * const restrict vinfo)
@@ -272,7 +272,7 @@ _nss_mcdb_decode_group(struct mcdb * const restrict m,
 }
 
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_spwd(struct mcdb * const restrict m,
                       const struct _nss_kinfo * const restrict kinfo,
                       const struct _nss_vinfo * const restrict vinfo)

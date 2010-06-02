@@ -40,6 +40,7 @@ writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
             else {
                 iov->iov_len -= len;
                 iov->iov_base = ((char *)(iov->iov_base)) + len;
+                break; /* len = 0; */
             }
         }
     }

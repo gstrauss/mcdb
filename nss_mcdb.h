@@ -4,7 +4,17 @@
 #include "mcdb.h"
 #include "code_attributes.h"
 
+#ifdef __linux
 #include <nss.h>    /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
+typedef enum nss_status nss_status_t;
+#else
+#include <nss_common.h> /* NSS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
+#define NSS_STATUS_SUCCESS  NSS_SUCCESS
+#define NSS_STATUS_NOTFOUND NSS_NOTFOUND
+#define NSS_STATUS_TRYAGAIN NSS_TRYAGAIN
+#define NSS_STATUS_UNAVAIL  NSS_UNAVAIL
+#define NSS_STATUS_RETURN   NSS_NOTFOUND
+#endif
 
 /* enum nss_dbtype index must match path in nss_mcdb.c char *_nss_dbnames[] */
 enum nss_dbtype {
@@ -38,9 +48,9 @@ struct _nss_kinfo {
 
 struct _nss_vinfo {
   /* fail with errno = ERANGE if insufficient buf space supplied */
-  enum nss_status (* const decode)(struct mcdb * restrict,
-                                   const struct _nss_kinfo * restrict,
-                                   const struct _nss_vinfo * restrict);
+  nss_status_t (* const decode)(struct mcdb * restrict,
+                                const struct _nss_kinfo * restrict,
+                                const struct _nss_vinfo * restrict);
   void * const restrict vstruct;
   char * const restrict buf;
   const size_t buflen;
@@ -48,28 +58,28 @@ struct _nss_vinfo {
 };
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_setent(const enum nss_dbtype)
   __attribute_nonnull__;
 
-enum nss_status
+nss_status_t
 _nss_mcdb_endent(const enum nss_dbtype)
   __attribute_nonnull__;
 
-enum nss_status
+nss_status_t
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
 _nss_mcdb_getent(const enum nss_dbtype,
                  const struct _nss_vinfo * const restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_get_generic(const enum nss_dbtype,
                       const struct _nss_kinfo * const restrict,
                       const struct _nss_vinfo * const restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
-enum nss_status
+nss_status_t
 _nss_mcdb_decode_buf(struct mcdb * const restrict,
                      const struct _nss_kinfo * const restrict,
                      const struct _nss_vinfo * const restrict)

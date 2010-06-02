@@ -31,14 +31,14 @@ int xdecrypt(char *secret, char *passwd);
  * man getsecretkey (Solaris)
  */
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_aliasent(struct mcdb * restrict,
                           const struct _nss_kinfo * restrict
                             __attribute_unused__,
                           const struct _nss_vinfo * restrict)
   __attribute_nonnull_x__((1,3))  __attribute_warn_unused_result__;
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_ether_addr(struct mcdb * restrict,
                             const struct _nss_kinfo * restrict
                               __attribute_unused__,
@@ -52,7 +52,7 @@ void _nss_mcdb_setetherent(void) { _nss_mcdb_setent(NSS_DBTYPE_ETHERS);  }
 void _nss_mcdb_endetherent(void) { _nss_mcdb_endent(NSS_DBTYPE_ETHERS);  }
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getaliasent_r(struct aliasent * const restrict aliasbuf,
                         char * const restrict buf, const size_t buflen,
                         int * const restrict errnop)
@@ -65,7 +65,7 @@ _nss_mcdb_getaliasent_r(struct aliasent * const restrict aliasbuf,
     return _nss_mcdb_getent(NSS_DBTYPE_ALIASES, &vinfo);
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getaliasbyname_r(const char * const restrict name,
                            struct aliasent * const restrict aliasbuf,
                            char * const restrict buf, const size_t buflen,
@@ -83,7 +83,7 @@ _nss_mcdb_getaliasbyname_r(const char * const restrict name,
 }
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getpublickey(const char * const restrict name,
                        char * const restrict buf, const size_t buflen,
                        int * const restrict errnop)
@@ -100,7 +100,7 @@ _nss_mcdb_getpublickey(const char * const restrict name,
 }
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getsecretkey(const char * const restrict name,
                        const char * const restrict decryptkey,
                        char * const restrict buf, const size_t buflen,
@@ -114,7 +114,7 @@ _nss_mcdb_getsecretkey(const char * const restrict name,
                                       .buf     = buf,
                                       .buflen  = buflen,
                                       .errnop  = errnop };
-    const enum nss_status status =
+    const nss_status_t status =
       _nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &kinfo, &vinfo);
     if (status == NSS_STATUS_SUCCESS) {
       /* TODO: decrypt buf using decryptkey */
@@ -127,7 +127,7 @@ _nss_mcdb_getsecretkey(const char * const restrict name,
 }
 
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getetherent_r(struct ether_addr * const restrict etherbuf,
                         char * const restrict buf, const size_t buflen,
                         int * const restrict errnop)
@@ -140,7 +140,7 @@ _nss_mcdb_getetherent_r(struct ether_addr * const restrict etherbuf,
     return _nss_mcdb_getent(NSS_DBTYPE_ETHERS, &vinfo);
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_gethostton_r(const char * const restrict name,
                        struct ether_addr * const restrict etherbuf,
                        int * const restrict errnop)
@@ -156,7 +156,7 @@ _nss_mcdb_gethostton_r(const char * const restrict name,
     return _nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &kinfo, &vinfo);
 }
 
-enum nss_status
+nss_status_t
 _nss_mcdb_getntohost_r(struct ether_addr * const restrict ether,
                        char * const restrict buf, const size_t buflen,
                        int * const restrict errnop)
@@ -178,7 +178,7 @@ _nss_mcdb_getntohost_r(struct ether_addr * const restrict ether,
 }
 
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
                           const struct _nss_kinfo * const restrict kinfo,
                           const struct _nss_vinfo * const restrict vinfo)
@@ -230,7 +230,7 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
 }
 
 
-static enum nss_status
+static nss_status_t
 _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
                             const struct _nss_kinfo * const restrict kinfo,
                             const struct _nss_vinfo * const restrict vinfo)
