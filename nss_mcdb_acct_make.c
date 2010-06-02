@@ -102,7 +102,7 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 	&& __builtin_expect(offset        < bufsz,      1)) {
 	while ((str = gr_mem[gr_mem_num]) != NULL
 	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (memccpy(buf+offset, str, ',', len) == NULL) {
+	    if (__builtin_expect(memccpy(buf+offset, str, ' ', len) == NULL,1)){
 		buf[(offset+=len)] = ',';
 		++offset;
 		++gr_mem_num;
