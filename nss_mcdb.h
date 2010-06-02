@@ -9,6 +9,7 @@
 typedef enum nss_status nss_status_t;
 #else
 #include <nss_common.h> /* NSS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
+#include <nss_dbdefs.h>
 #define NSS_STATUS_SUCCESS  NSS_SUCCESS
 #define NSS_STATUS_NOTFOUND NSS_NOTFOUND
 #define NSS_STATUS_TRYAGAIN NSS_TRYAGAIN
