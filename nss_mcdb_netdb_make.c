@@ -65,9 +65,7 @@ cdb_he2str(char * restrict buf, const size_t bufsz,
 		return 0;
 	    }
 	}
-	offset -= IDX_HE_HDRSZ;
-	if (   __builtin_expect(IDX_HE_HDRSZ + offset < bufsz, 1)
-	    && __builtin_expect(he_mem_num <= USHRT_MAX, 1)
+	if (   __builtin_expect(he_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(he_lst_num <= USHRT_MAX, 1)
 	    && __builtin_expect(he_mem[he_mem_num] == NULL,  1)
 	    && __builtin_expect(he_lst[he_lst_num] == NULL,  1)
@@ -80,9 +78,10 @@ cdb_he2str(char * restrict buf, const size_t bufsz,
 	    uint32_to_ascii8uphex((uint32_t)he->h_addrtype, buf+IDX_H_ADDRTYPE);
 	    uint32_to_ascii8uphex((uint32_t)he->h_length,   buf+IDX_H_LENGTH);
 	    /* store string offsets into buffer */
+	    offset -= IDX_HE_HDRSZ;
+	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_HE_MEM);
 	    uint16_to_ascii4uphex((uint32_t)he_mem_str_offt,buf+IDX_HE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)he_lst_str_offt,buf+IDX_HE_LST_STR);
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_HE_MEM);
 	    uint16_to_ascii4uphex((uint32_t)he_mem_num,     buf+IDX_HE_MEM_NUM);
 	    uint16_to_ascii4uphex((uint32_t)he_lst_num,     buf+IDX_HE_LST_NUM);
 	    /* copy strings into buffer */
@@ -132,9 +131,7 @@ cdb_ne2str(char * restrict buf, const size_t bufsz,
 		return 0;
 	    }
 	}
-	offset -= IDX_NE_HDRSZ;
-	if (   __builtin_expect(IDX_NE_HDRSZ + offset < bufsz, 1)
-	    && __builtin_expect(ne_mem_num <= USHRT_MAX, 1)
+	if (   __builtin_expect(ne_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(ne_mem[ne_mem_num] == NULL,  1)
 	    && __builtin_expect((ne_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** ne_mem array + NULL
@@ -144,8 +141,9 @@ cdb_ne2str(char * restrict buf, const size_t bufsz,
 	    uint32_to_ascii8uphex((uint32_t)ne->n_addrtype, buf+IDX_N_ADDRTYPE);
 	    uint32_to_ascii8uphex((uint32_t)ne->n_net,      buf+IDX_N_NET);
 	    /* store string offsets into buffer */
-	    uint16_to_ascii4uphex((uint32_t)ne_mem_str_offt,buf+IDX_NE_MEM_STR);
+	    offset -= IDX_NE_HDRSZ;
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_NE_MEM);
+	    uint16_to_ascii4uphex((uint32_t)ne_mem_str_offt,buf+IDX_NE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)ne_mem_num,     buf+IDX_NE_MEM_NUM);
 	    /* copy strings into buffer */
 	    buf += IDX_NE_HDRSZ;
@@ -194,9 +192,7 @@ cdb_pe2str(char * restrict buf, const size_t bufsz,
 		return 0;
 	    }
 	}
-	offset -= IDX_PE_HDRSZ;
-	if (   __builtin_expect(IDX_PE_HDRSZ + offset < bufsz, 1)
-	    && __builtin_expect(pe_mem_num <= USHRT_MAX, 1)
+	if (   __builtin_expect(pe_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(pe_mem[pe_mem_num] == NULL,  1)
 	    && __builtin_expect((pe_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** pe_mem array + NULL
@@ -205,8 +201,9 @@ cdb_pe2str(char * restrict buf, const size_t bufsz,
 
 	    uint32_to_ascii8uphex((uint32_t)pe->p_proto,    buf+IDX_P_PROTO);
 	    /* store string offsets into buffer */
-	    uint16_to_ascii4uphex((uint32_t)pe_mem_str_offt,buf+IDX_PE_MEM_STR);
+	    offset -= IDX_PE_HDRSZ;
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_PE_MEM);
+	    uint16_to_ascii4uphex((uint32_t)pe_mem_str_offt,buf+IDX_PE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)pe_mem_num,     buf+IDX_PE_MEM_NUM);
 	    /* copy strings into buffer */
 	    buf += IDX_PE_HDRSZ;
@@ -255,9 +252,7 @@ cdb_re2str(char * restrict buf, const size_t bufsz,
 		return 0;
 	    }
 	}
-	offset -= IDX_RE_HDRSZ;
-	if (   __builtin_expect(IDX_RE_HDRSZ + offset < bufsz, 1)
-	    && __builtin_expect(re_mem_num <= USHRT_MAX, 1)
+	if (   __builtin_expect(re_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(re_mem[re_mem_num] == NULL,  1)
 	    && __builtin_expect((re_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** re_mem array + NULL
@@ -266,8 +261,9 @@ cdb_re2str(char * restrict buf, const size_t bufsz,
 
 	    uint32_to_ascii8uphex((uint32_t)re->r_number,   buf+IDX_R_NUMBER);
 	    /* store string offsets into buffer */
-	    uint16_to_ascii4uphex((uint32_t)re_mem_str_offt,buf+IDX_RE_MEM_STR);
+	    offset -= IDX_RE_HDRSZ;
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_RE_MEM);
+	    uint16_to_ascii4uphex((uint32_t)re_mem_str_offt,buf+IDX_RE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)re_mem_num,     buf+IDX_RE_MEM_NUM);
 	    /* copy strings into buffer */
 	    buf += IDX_RE_HDRSZ;
@@ -318,9 +314,7 @@ cdb_se2str(char * restrict buf, const size_t bufsz,
 		return 0;
 	    }
 	}
-	offset -= IDX_SE_HDRSZ;
-	if (   __builtin_expect(IDX_SE_HDRSZ + offset < bufsz, 1)
-	    && __builtin_expect(se_mem_num <= USHRT_MAX, 1)
+	if (   __builtin_expect(se_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(se_mem[se_mem_num] == NULL,  1)
 	    && __builtin_expect((se_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** se_mem array + NULL
@@ -329,8 +323,9 @@ cdb_se2str(char * restrict buf, const size_t bufsz,
 
 	    uint32_to_ascii8uphex((uint32_t)se->s_port,     buf+IDX_S_PORT);
 	    /* store string offsets into buffer */
-	    uint16_to_ascii4uphex((uint32_t)se_mem_str_offt,buf+IDX_SE_MEM_STR);
+	    offset -= IDX_SE_HDRSZ;
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_SE_MEM);
+	    uint16_to_ascii4uphex((uint32_t)se_mem_str_offt,buf+IDX_SE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)se_mem_num,     buf+IDX_SE_MEM_NUM);
 	    /* copy strings into buffer */
 	    buf += IDX_SE_HDRSZ;

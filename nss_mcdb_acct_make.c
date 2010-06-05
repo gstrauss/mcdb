@@ -112,9 +112,7 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 		return 0;
 	    }
 	}
-	offset -= IDX_GR_HDRSZ;
-	if (   __builtin_expect(IDX_GR_HDRSZ + offset < bufsz, 1)
-	    && __builtin_expect(gr_mem_num <= USHRT_MAX, 1)
+	if (   __builtin_expect(gr_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(gr_mem[gr_mem_num] == NULL,  1)
 	    && __builtin_expect((gr_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** gr_mem array + NULL
@@ -122,9 +120,10 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 	     *  entries at cdb create time rather than in query at runtime) */
 
 	    /* store string offsets into buffer */
+	    offset -= IDX_GR_HDRSZ;
+	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_GR_MEM);
 	    uint16_to_ascii4uphex((uint32_t)gr_passwd_offset,buf+IDX_GR_PASSWD);
 	    uint16_to_ascii4uphex((uint32_t)gr_mem_str_offt,buf+IDX_GR_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_GR_MEM);
 	    uint16_to_ascii4uphex((uint32_t)gr_mem_num,     buf+IDX_GR_MEM_NUM);
 	    uint32_to_ascii8uphex((uint32_t)gr->gr_gid,     buf+IDX_GR_GID);
 	    /* copy strings into buffer */

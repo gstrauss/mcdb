@@ -183,13 +183,6 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
                           const struct _nss_kinfo * const restrict kinfo,
                           const struct _nss_vinfo * const restrict vinfo)
 {
-    enum {
-      IDX_AE_MEM_STR =  0,
-      IDX_AE_MEM     =  4, /* align target addr to 8-byte boundary for 64-bit */
-      IDX_AE_MEM_NUM =  8,
-      IDX_AE_HDRSZ   = 12
-    };
-
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     struct aliasent * const ae = (struct aliasent *)vinfo->vstruct;
     char *buf = vinfo->buf;
@@ -201,7 +194,7 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
       (char **)(((uintptr_t)(buf+idx_ae_mem+0x7u)) & ~0x7u); /* 8-byte align */
     ae->alias_members_len = ae_mem_num;
     ae->alias_members     = ae_mem;
-    ae->alias_local       = 0;          /* ??? */
+    ae->alias_local               =uint32_from_ascii8uphex(dptr+IDX_AE_LOCAL);
     /* populate ae string pointers */
     ae->alias_name        = buf;
     /* fill buf, (char **) ae_mem (allow 8-byte ptrs), and terminate strings.
@@ -235,15 +228,13 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
                             const struct _nss_kinfo * const restrict kinfo,
                             const struct _nss_vinfo * const restrict vinfo)
 {
-    /* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr) */
-    enum { IDX_ETHER_ADDR_HDRSZ = 12 };
-
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    const size_t dlen = ((size_t)mcdb_datalen(m)) - IDX_ETHER_ADDR_HDRSZ;
+    const size_t dlen = ((size_t)mcdb_datalen(m)) - IDX_EA_HDRSZ;
     struct ether_addr * const ether_addr = (struct ether_addr *)vinfo->vstruct;
     char * const buf = vinfo->buf;
 
     if (ether_addr != NULL) {
+        /* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr)*/
         ether_addr->ether_addr_octet[0] = (uxton(dptr[0]) <<4)| uxton(dptr[1]);
         ether_addr->ether_addr_octet[1] = (uxton(dptr[2]) <<4)| uxton(dptr[3]);
         ether_addr->ether_addr_octet[2] = (uxton(dptr[4]) <<4)| uxton(dptr[5]);
@@ -254,7 +245,7 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
 
     if (buf != NULL) {
         if (dlen < vinfo->buflen) {
-            memcpy(buf, dptr+IDX_ETHER_ADDR_HDRSZ, dlen);
+            memcpy(buf, dptr+IDX_EA_HDRSZ, dlen);
             buf[dlen] = '\0';              /* terminate hostname */
         }
         else {
