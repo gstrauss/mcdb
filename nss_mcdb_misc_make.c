@@ -18,8 +18,8 @@
 #include <aliases.h>
 #include <netinet/ether.h>
 
-/* buf size passed should be >= ??? + IDX_AE_HDRSZ (not checked)
- * and probably larger.  1K + IDX_AE_HDRSZ is probably reasonable */
+/* buf size passed should be >= ??? + NSS_AE_HDRSZ (not checked)
+ * and probably larger.  1K + NSS_AE_HDRSZ is probably reasonable */
 size_t
 cdb_ae2str(char * restrict buf, const size_t bufsz,
 	   const struct aliasent * const restrict ae)
@@ -34,7 +34,7 @@ cdb_ae2str(char * restrict buf, const size_t bufsz,
     char ** restrict ae_mem         = ae->alias_members;
     size_t len;
     size_t ae_mem_num = ae->alias_members_len;
-    size_t offset = IDX_AE_HDRSZ + ae_mem_str_offt;
+    size_t offset = NSS_AE_HDRSZ + ae_mem_str_offt;
     if (   __builtin_expect(ae_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
 	while (ae_mem_num--
@@ -56,19 +56,19 @@ cdb_ae2str(char * restrict buf, const size_t bufsz,
 	     * (not strictly necessary, but best to catch excessively long
 	     *  entries at cdb create time rather than in query at runtime) */
 
-	    uint32_to_ascii8uphex((uint32_t)ae->alias_local,buf+IDX_AE_LOCAL);
+	    uint32_to_ascii8uphex((uint32_t)ae->alias_local,buf+NSS_AE_LOCAL);
 	    /* store string offsets into buffer */
-	    offset -= IDX_AE_HDRSZ;
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_AE_MEM);
-	    uint16_to_ascii4uphex((uint32_t)ae_mem_str_offt,buf+IDX_AE_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)ae_mem_num,     buf+IDX_AE_MEM_NUM);
+	    offset -= NSS_AE_HDRSZ;
+	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_AE_MEM);
+	    uint16_to_ascii4uphex((uint32_t)ae_mem_str_offt,buf+NSS_AE_MEM_STR);
+	    uint16_to_ascii4uphex((uint32_t)ae_mem_num,     buf+NSS_AE_MEM_NUM);
 	    /* copy strings into buffer */
-	    buf += IDX_AE_HDRSZ;
+	    buf += NSS_AE_HDRSZ;
 	    memcpy(buf+ae_name_offset, ae->alias_name, ae_name_len);
 	    /* separate entries with ' ' for readability */
 	    buf[ae_mem_str_offt-1]  =' '; /*(between ae_name and ae_mem str)*/
 	    buf[offset] = '\0';           /* end string section */
-	    return IDX_AE_HDRSZ + offset;
+	    return NSS_AE_HDRSZ + offset;
 	}
     }
 
@@ -77,8 +77,8 @@ cdb_ae2str(char * restrict buf, const size_t bufsz,
 }
 
 
-/* buf size passed should be >= ??? + IDX_EA_HDRSZ (not checked)
- * and probably larger.  1K + IDX_EA_HDRSZ is probably reasonable */
+/* buf size passed should be >= ??? + NSS_EA_HDRSZ (not checked)
+ * and probably larger.  1K + NSS_EA_HDRSZ is probably reasonable */
 size_t
 cdb_ea2str(char * restrict buf, const size_t bufsz,
 	   const struct ether_addr * const restrict ea,
@@ -91,7 +91,7 @@ cdb_ea2str(char * restrict buf, const size_t bufsz,
 {
     const size_t ea_name_len = strlen(hostname);
     uint32_t u[2];
-    if (__builtin_expect(IDX_EA_HDRSZ + ea_name_len < bufsz, 1)) {
+    if (__builtin_expect(NSS_EA_HDRSZ + ea_name_len < bufsz, 1)) {
 
 	/* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr)*/
 	/* (copy for alignment) */
@@ -101,8 +101,8 @@ cdb_ea2str(char * restrict buf, const size_t bufsz,
 	uint16_to_ascii4uphex(u[1], buf+8);
 
 	/* copy strings into buffer */
-	memcpy(buf+IDX_EA_HDRSZ,hostname,ea_name_len+1); /*+1 to term last str*/
-	return IDX_EA_HDRSZ + ea_name_len;
+	memcpy(buf+NSS_EA_HDRSZ,hostname,ea_name_len+1); /*+1 to term last str*/
+	return NSS_EA_HDRSZ + ea_name_len;
     }
 
     errno = ERANGE;

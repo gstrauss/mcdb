@@ -580,7 +580,7 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
 
     /* match type (e.g. AF_INET, AF_INET6), if not zero (AF_UNSPEC) */
     if (type != 0) {
-        while (type != uint32_from_ascii8uphex(dptr+IDX_H_ADDRTYPE)) {
+        while (type != uint32_from_ascii8uphex(dptr+NSS_H_ADDRTYPE)) {
             if (mcdb_findtagnext(m, kinfo->key, kinfo->klen, kinfo->tagc))
                 dptr = (char *)mcdb_dataptr(m);
             else {
@@ -591,18 +591,18 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
     }
 
     /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_he_mem_str=uint16_from_ascii4uphex(dptr+IDX_HE_MEM_STR);
-    const uintptr_t idx_he_lst_str=uint16_from_ascii4uphex(dptr+IDX_HE_LST_STR);
-    const uintptr_t idx_he_mem    =uint16_from_ascii4uphex(dptr+IDX_HE_MEM);
-    const size_t he_mem_num       =uint16_from_ascii4uphex(dptr+IDX_HE_MEM_NUM);
-    const size_t he_lst_num       =uint16_from_ascii4uphex(dptr+IDX_HE_LST_NUM);
+    const uintptr_t idx_he_mem_str=uint16_from_ascii4uphex(dptr+NSS_HE_MEM_STR);
+    const uintptr_t idx_he_lst_str=uint16_from_ascii4uphex(dptr+NSS_HE_LST_STR);
+    const uintptr_t idx_he_mem    =uint16_from_ascii4uphex(dptr+NSS_HE_MEM);
+    const size_t he_mem_num       =uint16_from_ascii4uphex(dptr+NSS_HE_MEM_NUM);
+    const size_t he_lst_num       =uint16_from_ascii4uphex(dptr+NSS_HE_LST_NUM);
     char ** const he_mem =
       (char **)(((uintptr_t)(buf+idx_he_mem+0x7u)) & ~0x7u); /* 8-byte align */
     char ** const he_lst = he_mem + he_mem_num + 1;          /* 8-byte align */
     he->h_aliases  = he_mem;
     he->h_addr_list= he_lst;
-    he->h_addrtype = (int)         uint32_from_ascii8uphex(dptr+IDX_H_ADDRTYPE);
-    he->h_length   = (int)         uint32_from_ascii8uphex(dptr+IDX_H_LENGTH);
+    he->h_addrtype = (int)         uint32_from_ascii8uphex(dptr+NSS_H_ADDRTYPE);
+    he->h_length   = (int)         uint32_from_ascii8uphex(dptr+NSS_H_LENGTH);
     /* populate he string pointers */
     he->h_name    = buf;
     /* fill buf, (char **) he_mem (allow 8-byte ptrs), and terminate strings.
@@ -611,7 +611,7 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, he_mem_num correct) */
     if (((char *)he_mem)-buf+((he_mem_num+1+he_lst_num+1)<<3) <= vinfo->buflen){
-        memcpy(buf, dptr+IDX_HE_HDRSZ, mcdb_datalen(m)-IDX_HE_HDRSZ);
+        memcpy(buf, dptr+NSS_HE_HDRSZ, mcdb_datalen(m)-NSS_HE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_he_mem_str-1] = '\0';        /* terminate h_name */
         buf[idx_he_lst_str-1] = '\0';        /* terminate final he_mem string */
@@ -650,14 +650,14 @@ _nss_mcdb_decode_netent(struct mcdb * const restrict m,
     struct netent * const ne = (struct netent *)vinfo->vstruct;
     char *buf = vinfo->buf;
     /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_ne_mem_str=uint16_from_ascii4uphex(dptr+IDX_NE_MEM_STR);
-    const uintptr_t idx_ne_mem    =uint16_from_ascii4uphex(dptr+IDX_NE_MEM);
-    const size_t ne_mem_num       =uint16_from_ascii4uphex(dptr+IDX_NE_MEM_NUM);
+    const uintptr_t idx_ne_mem_str=uint16_from_ascii4uphex(dptr+NSS_NE_MEM_STR);
+    const uintptr_t idx_ne_mem    =uint16_from_ascii4uphex(dptr+NSS_NE_MEM);
+    const size_t ne_mem_num       =uint16_from_ascii4uphex(dptr+NSS_NE_MEM_NUM);
     char ** const restrict ne_mem =
       (char **)(((uintptr_t)(buf+idx_ne_mem+0x7u)) & ~0x7u); /* 8-byte align */
     ne->n_aliases = ne_mem;
-    ne->n_addrtype= (int)          uint32_from_ascii8uphex(dptr+IDX_N_ADDRTYPE);
-    ne->n_net     =                uint32_from_ascii8uphex(dptr+IDX_N_NET);
+    ne->n_addrtype= (int)          uint32_from_ascii8uphex(dptr+NSS_N_ADDRTYPE);
+    ne->n_net     =                uint32_from_ascii8uphex(dptr+NSS_N_NET);
     /* populate ne string pointers */
     ne->n_name    = buf;
     /* fill buf, (char **) ne_mem (allow 8-byte ptrs), and terminate strings.
@@ -666,7 +666,7 @@ _nss_mcdb_decode_netent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, ne_mem_num correct) */
     if (((char *)ne_mem)-buf+((ne_mem_num+1)<<3) <= vinfo->buflen) {
-        memcpy(buf, dptr+IDX_NE_HDRSZ, mcdb_datalen(m)-IDX_NE_HDRSZ);
+        memcpy(buf, dptr+NSS_NE_HDRSZ, mcdb_datalen(m)-NSS_NE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_ne_mem_str-1] = '\0';        /* terminate n_name */
         buf[idx_ne_mem-1]     = '\0';        /* terminate final ne_mem string */
@@ -696,13 +696,13 @@ _nss_mcdb_decode_protoent(struct mcdb * const restrict m,
     struct protoent * const pe = (struct protoent *)vinfo->vstruct;
     char *buf = vinfo->buf;
     /* parse fixed format pecord header to get offsets into strings */
-    const uintptr_t idx_pe_mem_str=uint16_from_ascii4uphex(dptr+IDX_PE_MEM_STR);
-    const uintptr_t idx_pe_mem    =uint16_from_ascii4uphex(dptr+IDX_PE_MEM);
-    const size_t pe_mem_num       =uint16_from_ascii4uphex(dptr+IDX_PE_MEM_NUM);
+    const uintptr_t idx_pe_mem_str=uint16_from_ascii4uphex(dptr+NSS_PE_MEM_STR);
+    const uintptr_t idx_pe_mem    =uint16_from_ascii4uphex(dptr+NSS_PE_MEM);
+    const size_t pe_mem_num       =uint16_from_ascii4uphex(dptr+NSS_PE_MEM_NUM);
     char ** const restrict pe_mem =
       (char **)(((uintptr_t)(buf+idx_pe_mem+0x7u)) & ~0x7u); /* 8-byte align */
     pe->p_aliases = pe_mem;
-    pe->p_proto   =                uint32_from_ascii8uphex(dptr+IDX_P_PROTO);
+    pe->p_proto   =                uint32_from_ascii8uphex(dptr+NSS_P_PROTO);
     /* populate pe string pointers */
     pe->p_name    = buf;
     /* fill buf, (char **) pe_mem (allow 8-byte ptrs), and terminate strings.
@@ -711,7 +711,7 @@ _nss_mcdb_decode_protoent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, pe_mem_num correct) */
     if (((char *)pe_mem)-buf+((pe_mem_num+1)<<3) <= vinfo->buflen) {
-        memcpy(buf, dptr+IDX_PE_HDRSZ, mcdb_datalen(m)-IDX_PE_HDRSZ);
+        memcpy(buf, dptr+NSS_PE_HDRSZ, mcdb_datalen(m)-NSS_PE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_pe_mem_str-1] = '\0';        /* terminate p_name */
         buf[idx_pe_mem-1]     = '\0';        /* terminate final pe_mem string */
@@ -741,13 +741,13 @@ _nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
     struct rpcent * const re = (struct rpcent *)vinfo->vstruct;
     char *buf = vinfo->buf;
     /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_re_mem_str=uint16_from_ascii4uphex(dptr+IDX_RE_MEM_STR);
-    const uintptr_t idx_re_mem    =uint16_from_ascii4uphex(dptr+IDX_RE_MEM);
-    const size_t re_mem_num       =uint16_from_ascii4uphex(dptr+IDX_RE_MEM_NUM);
+    const uintptr_t idx_re_mem_str=uint16_from_ascii4uphex(dptr+NSS_RE_MEM_STR);
+    const uintptr_t idx_re_mem    =uint16_from_ascii4uphex(dptr+NSS_RE_MEM);
+    const size_t re_mem_num       =uint16_from_ascii4uphex(dptr+NSS_RE_MEM_NUM);
     char ** const restrict re_mem =
       (char **)(((uintptr_t)(buf+idx_re_mem+0x7u)) & ~0x7u); /* 8-byte align */
     re->r_aliases = re_mem;
-    re->r_number  =                uint32_from_ascii8uphex(dptr+IDX_R_NUMBER);
+    re->r_number  =                uint32_from_ascii8uphex(dptr+NSS_R_NUMBER);
     /* populate re string pointers */
     re->r_name    = buf;
     /* fill buf, (char **) re_mem (allow 8-byte ptrs), and terminate strings.
@@ -756,7 +756,7 @@ _nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, re_mem_num correct) */
     if (((char *)re_mem)-buf+((re_mem_num+1)<<3) <= vinfo->buflen) {
-        memcpy(buf, dptr+IDX_RE_HDRSZ, mcdb_datalen(m)-IDX_RE_HDRSZ);
+        memcpy(buf, dptr+NSS_RE_HDRSZ, mcdb_datalen(m)-NSS_RE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_re_mem_str-1] = '\0';        /* terminate r_name */
         buf[idx_re_mem-1]     = '\0';        /* terminate final re_mem string */
@@ -801,14 +801,14 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
     }
 
     /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_s_name    =uint16_from_ascii4uphex(dptr+IDX_S_NAME);
-    const uintptr_t idx_se_mem_str=uint16_from_ascii4uphex(dptr+IDX_SE_MEM_STR);
-    const uintptr_t idx_se_mem    =uint16_from_ascii4uphex(dptr+IDX_SE_MEM);
-    const size_t se_mem_num       =uint16_from_ascii4uphex(dptr+IDX_SE_MEM_NUM);
+    const uintptr_t idx_s_name    =uint16_from_ascii4uphex(dptr+NSS_S_NAME);
+    const uintptr_t idx_se_mem_str=uint16_from_ascii4uphex(dptr+NSS_SE_MEM_STR);
+    const uintptr_t idx_se_mem    =uint16_from_ascii4uphex(dptr+NSS_SE_MEM);
+    const size_t se_mem_num       =uint16_from_ascii4uphex(dptr+NSS_SE_MEM_NUM);
     char ** const restrict se_mem =
       (char **)(((uintptr_t)(buf+idx_se_mem+0x7u)) & ~0x7u); /* 8-byte align */
     se->s_aliases = se_mem;
-    se->s_port    =                uint32_from_ascii8uphex(dptr+IDX_S_PORT);
+    se->s_port    =                uint32_from_ascii8uphex(dptr+NSS_S_PORT);
     /* populate se string pointers */
     se->s_proto   = buf;
     se->s_name    = buf+idx_s_name;
@@ -818,7 +818,7 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, se_mem_num correct) */
     if (((char *)se_mem)-buf+((se_mem_num+1)<<3) <= vinfo->buflen) {
-        memcpy(buf, dptr+IDX_SE_HDRSZ, mcdb_datalen(m)-IDX_SE_HDRSZ);
+        memcpy(buf, dptr+NSS_SE_HDRSZ, mcdb_datalen(m)-NSS_SE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_s_name-1]     = '\0';        /* terminate s_proto */
         buf[idx_se_mem_str-1] = '\0';        /* terminate s_name */

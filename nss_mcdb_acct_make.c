@@ -23,7 +23,7 @@
  * input is database struct so that code is written to consumes it produces.
  */
 
-/* buf size passed should be _SC_GETPW_R_SIZE_MAX + IDX_PW_HDRSZ (not checked)*/
+/* buf size passed should be _SC_GETPW_R_SIZE_MAX + NSS_PW_HDRSZ (not checked)*/
 size_t
 cdb_pw2str(char * restrict buf, const size_t bufsz,
 	   const struct passwd * const restrict pw)
@@ -44,20 +44,20 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
     const uintptr_t pw_shell_offset  = pw_dir_offset    + pw_dir_len    + 1;
     const uintptr_t pw_shell_end     = pw_shell_offset  + pw_shell_len;
     /*(pw_shell_end < bufsz to leave +1 in buffer for final '\n' or '\0')*/
-    if (   __builtin_expect(IDX_PW_HDRSZ + pw_shell_end < bufsz, 1)
+    if (   __builtin_expect(NSS_PW_HDRSZ + pw_shell_end < bufsz, 1)
 	&& __builtin_expect(pw_passwd_offset <= USHRT_MAX, 1)
 	&& __builtin_expect(pw_gecos_offset  <= USHRT_MAX, 1)
 	&& __builtin_expect(pw_dir_offset    <= USHRT_MAX, 1)
 	&& __builtin_expect(pw_shell_offset  <= USHRT_MAX, 1)) { 
 	/* store string offsets into buffer */
-	uint16_to_ascii4uphex((uint32_t)pw_passwd_offset, buf+IDX_PW_PASSWD);
-	uint16_to_ascii4uphex((uint32_t)pw_gecos_offset,  buf+IDX_PW_GECOS);
-	uint16_to_ascii4uphex((uint32_t)pw_dir_offset,    buf+IDX_PW_DIR);
-	uint16_to_ascii4uphex((uint32_t)pw_shell_offset,  buf+IDX_PW_SHELL);
-	uint32_to_ascii8uphex((uint32_t)pw->pw_uid,       buf+IDX_PW_UID);
-	uint32_to_ascii8uphex((uint32_t)pw->pw_gid,       buf+IDX_PW_GID);
+	uint16_to_ascii4uphex((uint32_t)pw_passwd_offset, buf+NSS_PW_PASSWD);
+	uint16_to_ascii4uphex((uint32_t)pw_gecos_offset,  buf+NSS_PW_GECOS);
+	uint16_to_ascii4uphex((uint32_t)pw_dir_offset,    buf+NSS_PW_DIR);
+	uint16_to_ascii4uphex((uint32_t)pw_shell_offset,  buf+NSS_PW_SHELL);
+	uint32_to_ascii8uphex((uint32_t)pw->pw_uid,       buf+NSS_PW_UID);
+	uint32_to_ascii8uphex((uint32_t)pw->pw_gid,       buf+NSS_PW_GID);
 	/* copy strings into buffer */
-	buf += IDX_PW_HDRSZ;
+	buf += NSS_PW_HDRSZ;
 	memcpy(buf+pw_name_offset,   pw->pw_name,   pw_name_len);
 	memcpy(buf+pw_passwd_offset, pw->pw_passwd, pw_passwd_len);
 	memcpy(buf+pw_gecos_offset,  pw->pw_gecos,  pw_gecos_len);
@@ -69,7 +69,7 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
 	buf[pw_dir_offset-1]   = ':';  /*(between pw_gecos and pw_dir)*/
 	buf[pw_shell_offset-1] = ':';  /*(between pw_dir and pw_shell)*/
 	buf[pw_shell_end] = '\0';      /* end string section */
-	return IDX_PW_HDRSZ + pw_shell_end;
+	return NSS_PW_HDRSZ + pw_shell_end;
     }
     else {
 	errno = ERANGE;
@@ -78,7 +78,7 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
 }
 
 
-/* buf size passed should be _SC_GETGR_R_SIZE_MAX + IDX_GR_HDRSZ (not checked)*/
+/* buf size passed should be _SC_GETGR_R_SIZE_MAX + NSS_GR_HDRSZ (not checked)*/
 size_t
 cdb_gr2str(char * restrict buf, const size_t bufsz,
 	   const struct group * const restrict gr)
@@ -96,7 +96,7 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
     const char * restrict str;
     size_t len;
     size_t gr_mem_num = 0;
-    size_t offset = IDX_GR_HDRSZ + gr_mem_str_offt;
+    size_t offset = NSS_GR_HDRSZ + gr_mem_str_offt;
     if (   __builtin_expect(gr_name_len   <= USHRT_MAX, 1)
 	&& __builtin_expect(gr_passwd_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset        < bufsz,      1)) {
@@ -120,21 +120,21 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 	     *  entries at cdb create time rather than in query at runtime) */
 
 	    /* store string offsets into buffer */
-	    offset -= IDX_GR_HDRSZ;
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+IDX_GR_MEM);
-	    uint16_to_ascii4uphex((uint32_t)gr_passwd_offset,buf+IDX_GR_PASSWD);
-	    uint16_to_ascii4uphex((uint32_t)gr_mem_str_offt,buf+IDX_GR_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)gr_mem_num,     buf+IDX_GR_MEM_NUM);
-	    uint32_to_ascii8uphex((uint32_t)gr->gr_gid,     buf+IDX_GR_GID);
+	    offset -= NSS_GR_HDRSZ;
+	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_GR_MEM);
+	    uint16_to_ascii4uphex((uint32_t)gr_passwd_offset,buf+NSS_GR_PASSWD);
+	    uint16_to_ascii4uphex((uint32_t)gr_mem_str_offt,buf+NSS_GR_MEM_STR);
+	    uint16_to_ascii4uphex((uint32_t)gr_mem_num,     buf+NSS_GR_MEM_NUM);
+	    uint32_to_ascii8uphex((uint32_t)gr->gr_gid,     buf+NSS_GR_GID);
 	    /* copy strings into buffer */
-	    buf += IDX_GR_HDRSZ;
+	    buf += NSS_GR_HDRSZ;
 	    memcpy(buf+gr_name_offset,   gr->gr_name,   gr_name_len);
 	    memcpy(buf+gr_passwd_offset, gr->gr_passwd, gr_passwd_len);
 	    /* separate entries with ':' for readability */
 	    buf[gr_passwd_offset-1] =':'; /*(between gr_name and gr_passwd)*/
 	    buf[gr_mem_str_offt-1]  =':'; /*(between gr_passwd and gr_mem str)*/
 	    buf[offset] = '\0';           /* end string section */
-	    return IDX_GR_HDRSZ + offset;
+	    return NSS_GR_HDRSZ + offset;
 	}
     }
 
@@ -160,22 +160,22 @@ cdb_spwd2str(char * restrict buf, const size_t bufsz,
     if (   __builtin_expect(sp_pwdp_end    <  bufsz,     1)
 	&& __builtin_expect(sp_pwdp_offset <= USHRT_MAX, 1)) {
 	/* store string offsets into buffer */
-	uint16_to_ascii4uphex((uint32_t)sp_pwdp_offset, buf+IDX_SP_PWDP);
-	uint32_to_ascii8uphex((uint32_t)sp->sp_lstchg,  buf+IDX_SP_LSTCHG);
-	uint32_to_ascii8uphex((uint32_t)sp->sp_min,     buf+IDX_SP_MIN);
-	uint32_to_ascii8uphex((uint32_t)sp->sp_max,     buf+IDX_SP_MAX);
-	uint32_to_ascii8uphex((uint32_t)sp->sp_warn,    buf+IDX_SP_WARN);
-	uint32_to_ascii8uphex((uint32_t)sp->sp_inact,   buf+IDX_SP_INACT);
-	uint32_to_ascii8uphex((uint32_t)sp->sp_expire,  buf+IDX_SP_EXPIRE);
-	uint32_to_ascii8uphex((uint32_t)sp->sp_flag,    buf+IDX_SP_FLAG);
+	uint16_to_ascii4uphex((uint32_t)sp_pwdp_offset, buf+NSS_SP_PWDP);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_lstchg,  buf+NSS_SP_LSTCHG);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_min,     buf+NSS_SP_MIN);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_max,     buf+NSS_SP_MAX);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_warn,    buf+NSS_SP_WARN);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_inact,   buf+NSS_SP_INACT);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_expire,  buf+NSS_SP_EXPIRE);
+	uint32_to_ascii8uphex((uint32_t)sp->sp_flag,    buf+NSS_SP_FLAG);
 	/* copy strings into buffer */
-	buf += IDX_SP_HDRSZ;
+	buf += NSS_SP_HDRSZ;
 	memcpy(buf+sp_namp_offset, sp->sp_namp, sp_namp_len);
 	memcpy(buf+sp_pwdp_offset, sp->sp_pwdp, sp_pwdp_len);
 	/* separate entries with ':' for readability */
 	buf[sp_pwdp_offset-1]  = ':';  /*(between sp_namp and sp_pwdp)*/
 	buf[sp_pwdp_end] = '\0';       /* end string section */
-	return IDX_SP_HDRSZ + sp_pwdp_end;
+	return NSS_SP_HDRSZ + sp_pwdp_end;
     }
     else {
 	errno = ERANGE;

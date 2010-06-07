@@ -187,14 +187,14 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
     struct aliasent * const ae = (struct aliasent *)vinfo->vstruct;
     char *buf = vinfo->buf;
     /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_ae_mem_str=uint16_from_ascii4uphex(dptr+IDX_AE_MEM_STR);
-    const uintptr_t idx_ae_mem    =uint16_from_ascii4uphex(dptr+IDX_AE_MEM);
-    const size_t ae_mem_num       =uint16_from_ascii4uphex(dptr+IDX_AE_MEM_NUM);
+    const uintptr_t idx_ae_mem_str=uint16_from_ascii4uphex(dptr+NSS_AE_MEM_STR);
+    const uintptr_t idx_ae_mem    =uint16_from_ascii4uphex(dptr+NSS_AE_MEM);
+    const size_t ae_mem_num       =uint16_from_ascii4uphex(dptr+NSS_AE_MEM_NUM);
     char ** const restrict ae_mem =
       (char **)(((uintptr_t)(buf+idx_ae_mem+0x7u)) & ~0x7u); /* 8-byte align */
     ae->alias_members_len = ae_mem_num;
     ae->alias_members     = ae_mem;
-    ae->alias_local               =uint32_from_ascii8uphex(dptr+IDX_AE_LOCAL);
+    ae->alias_local               =uint32_from_ascii8uphex(dptr+NSS_AE_LOCAL);
     /* populate ae string pointers */
     ae->alias_name        = buf;
     /* fill buf, (char **) ae_mem (allow 8-byte ptrs), and terminate strings.
@@ -203,7 +203,7 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
      * more space and might take just as long to parse as scan for ','
      * (assume data consistent, ae_mem_num correct) */
     if (((char *)ae_mem)-buf+(ae_mem_num<<3) <= vinfo->buflen) {
-        memcpy(buf, dptr+IDX_AE_HDRSZ, mcdb_datalen(m)-IDX_AE_HDRSZ);
+        memcpy(buf, dptr+NSS_AE_HDRSZ, mcdb_datalen(m)-NSS_AE_HDRSZ);
         /* terminate strings; replace ':' separator in data with '\0'. */
         buf[idx_ae_mem_str-1] = '\0';        /* terminate ae_name */
         buf[idx_ae_mem-1]     = '\0';        /* terminate final ae_mem string */
@@ -229,7 +229,7 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
                             const struct _nss_vinfo * const restrict vinfo)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    const size_t dlen = ((size_t)mcdb_datalen(m)) - IDX_EA_HDRSZ;
+    const size_t dlen = ((size_t)mcdb_datalen(m)) - NSS_EA_HDRSZ;
     struct ether_addr * const ether_addr = (struct ether_addr *)vinfo->vstruct;
     char * const buf = vinfo->buf;
 
@@ -245,7 +245,7 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
 
     if (buf != NULL) {
         if (dlen < vinfo->buflen) {
-            memcpy(buf, dptr+IDX_EA_HDRSZ, dlen);
+            memcpy(buf, dptr+NSS_EA_HDRSZ, dlen);
             buf[dlen] = '\0';              /* terminate hostname */
         }
         else {
