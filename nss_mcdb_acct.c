@@ -282,17 +282,18 @@ _nss_mcdb_decode_spwd(struct mcdb * const restrict m,
     struct spwd * const sp = (struct spwd *)vinfo->vstruct;
     char * const buf = vinfo->buf;
     /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_sp_pwdp = uint16_from_ascii4uphex(dptr+IDX_SP_PWDP);
-    sp->sp_lstchg    = (long int) uint32_from_ascii8uphex(dptr+IDX_SP_LSTCHG);
-    sp->sp_min       = (long int) uint32_from_ascii8uphex(dptr+IDX_SP_MIN);
-    sp->sp_max       = (long int) uint32_from_ascii8uphex(dptr+IDX_SP_MAX);
-    sp->sp_warn      = (long int) uint32_from_ascii8uphex(dptr+IDX_SP_WARN);
-    sp->sp_inact     = (long int) uint32_from_ascii8uphex(dptr+IDX_SP_INACT);
-    sp->sp_expire    = (long int) uint32_from_ascii8uphex(dptr+IDX_SP_EXPIRE);
-    sp->sp_flag      =            uint32_from_ascii8uphex(dptr+IDX_SP_FLAG);
+    /* (cast to (int32_t) before casting to (long) to preserve -1) */
+    const uintptr_t idx_sp_pwdp =  uint16_from_ascii4uphex(dptr+IDX_SP_PWDP);
+    sp->sp_lstchg = (long)(int32_t)uint32_from_ascii8uphex(dptr+IDX_SP_LSTCHG);
+    sp->sp_min    = (long)(int32_t)uint32_from_ascii8uphex(dptr+IDX_SP_MIN);
+    sp->sp_max    = (long)(int32_t)uint32_from_ascii8uphex(dptr+IDX_SP_MAX);
+    sp->sp_warn   = (long)(int32_t)uint32_from_ascii8uphex(dptr+IDX_SP_WARN);
+    sp->sp_inact  = (long)(int32_t)uint32_from_ascii8uphex(dptr+IDX_SP_INACT);
+    sp->sp_expire = (long)(int32_t)uint32_from_ascii8uphex(dptr+IDX_SP_EXPIRE);
+    sp->sp_flag   =                uint32_from_ascii8uphex(dptr+IDX_SP_FLAG);
     /* populate sp string pointers */
-    sp->sp_namp      = buf;
-    sp->sp_pwdp      = buf+idx_sp_pwdp;
+    sp->sp_namp   = buf;
+    sp->sp_pwdp   = buf+idx_sp_pwdp;
     if (dlen < vinfo->buflen) {
         memcpy(buf, dptr+IDX_SP_HDRSZ, dlen);
         /* terminate strings; replace ':' separator in data with '\0' */
