@@ -504,8 +504,8 @@ gethost_fill_h_errnop(const nss_status_t status, int * const restrict h_errnop)
 
 static nss_status_t
 gethost_query(const uint32_t type,
-              const struct _nss_kinfo * restrict kinfo,
-              const struct _nss_vinfo * restrict vinfo,
+              const struct _nss_kinfo * const restrict kinfo,
+              const struct _nss_vinfo * const restrict vinfo,
               int * const restrict h_errnop)
 {
     nss_status_t status;
@@ -529,8 +529,8 @@ gethost_query(const uint32_t type,
 
 static nss_status_t
 gethost_filladdr(const void * const restrict addr, const int type,
-                 const struct _nss_kinfo * restrict kinfo,
-                 const struct _nss_vinfo * restrict vinfo,
+                 const struct _nss_kinfo * const restrict kinfo,
+                 const struct _nss_vinfo * const restrict vinfo,
                  int * const restrict h_errnop)
 {
     struct hostent * const restrict hostbuf = (struct hostent *)vinfo->vstruct;

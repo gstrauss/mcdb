@@ -161,19 +161,14 @@ _nss_mcdb_getntohost_r(struct ether_addr * const restrict ether,
                        char * const restrict buf, const size_t buflen,
                        int * const restrict errnop)
 {   /*  man ether_ntohost()  */
-    char hexstr[12]; /* (6) 8-bit octets = 48-bits */
-    const struct _nss_kinfo kinfo = { .key     = hexstr,
-                                      .klen     = sizeof(hexstr),
-                                      .tagc    = (unsigned char)'x' };
+    const struct _nss_kinfo kinfo = { .key     = (char *)ether,
+                                      .klen    = sizeof(struct ether_addr),
+                                      .tagc    = (unsigned char)'b' };/*binary*/
     const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .buflen  = buflen,
                                       .errnop  = errnop };
-    /* (assumes hexstr[] on stack is aligned to at least 4-byte boundary) */
-    memcpy(hexstr, &(ether->ether_addr_octet[0]), sizeof(hexstr));
-    uint32_to_ascii8uphex(ntohl(*((uint32_t *)&hexstr[0])), hexstr);
-    uint16_to_ascii4uphex((uint32_t)ntohs(*((uint16_t *)&hexstr[8])), hexstr+8);
     return _nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &kinfo, &vinfo);
 }
 
