@@ -292,9 +292,9 @@ cdb_se2str(char * restrict buf, const size_t bufsz,
 {
     const size_t    se_name_len     = strlen(se->s_name);
     const size_t    se_proto_len    = strlen(se->s_proto);
-    const uintptr_t se_name_offset  = 0;
-    const uintptr_t se_proto_offset = se_name_offset  + se_name_len  + 1;
-    const uintptr_t se_mem_str_offt = se_proto_offset + se_proto_len + 1;
+    const uintptr_t se_proto_offset = 0; /*(proto before name for query usage)*/
+    const uintptr_t se_name_offset  = se_proto_offset + se_proto_len + 1;
+    const uintptr_t se_mem_str_offt = se_name_offset  + se_name_len  + 1;
     char ** const restrict se_mem = se->s_aliases;
     const char * restrict str;
     size_t len;

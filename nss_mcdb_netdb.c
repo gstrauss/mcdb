@@ -786,11 +786,14 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
     struct servent * const se = (struct servent *)vinfo->vstruct;
     char *buf = vinfo->buf; /* contains proto string to match (if not "") */
 
-    /* match proto string, if not empty string */
+    /* match proto string (stored right after header), if not empty string */
+    /* (future: could possibly be further optimized for "tcp" and "udp"
+     * (future: might add unique tag char db ents for tcp/udp by name/number) */
     if (*buf != '\0') {
         const size_t protolen = strlen(buf);
-        while (*dptr != *buf
-               || memcmp(dptr, buf, protolen) != 0 || dptr[protolen] != ' ') {
+        while (dptr[NSS_SE_HDRSZ] != *buf  /* e.g. "tcp" vs "udp" */
+               || memcmp(dptr+NSS_SE_HDRSZ, buf, protolen) != 0
+               || dptr[NSS_SE_HDRSZ+protolen] != ' ') {
             if (mcdb_findtagnext(m, kinfo->key, kinfo->klen, kinfo->tagc))
                 dptr = (char *)mcdb_dataptr(m);
             else {
