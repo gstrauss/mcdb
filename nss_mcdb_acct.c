@@ -237,7 +237,7 @@ _nss_mcdb_decode_group(struct mcdb * const restrict m,
     const uintptr_t idx_gr_mem_str=uint16_from_ascii4uphex(dptr+NSS_GR_MEM_STR);
     const uintptr_t idx_gr_mem    =uint16_from_ascii4uphex(dptr+NSS_GR_MEM);
     const size_t gr_mem_num       =uint16_from_ascii4uphex(dptr+NSS_GR_MEM_NUM);
-    char ** const restrict gr_mem =
+    char ** const restrict gr_mem =   /* align to 8-byte boundary for 64-bit */
       (char **)(((uintptr_t)(buf+idx_gr_mem+0x7u)) & ~0x7u); /* 8-byte align */
     gr->gr_mem   = gr_mem;
     gr->gr_gid   = (gid_t)         uint32_from_ascii8uphex(dptr+NSS_GR_GID);

@@ -596,9 +596,9 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
     const uintptr_t idx_he_mem    =uint16_from_ascii4uphex(dptr+NSS_HE_MEM);
     const size_t he_mem_num       =uint16_from_ascii4uphex(dptr+NSS_HE_MEM_NUM);
     const size_t he_lst_num       =uint16_from_ascii4uphex(dptr+NSS_HE_LST_NUM);
-    char ** const he_mem =
+    char ** const restrict he_mem =   /* align to 8-byte boundary for 64-bit */
       (char **)(((uintptr_t)(buf+idx_he_mem+0x7u)) & ~0x7u); /* 8-byte align */
-    char ** const he_lst = he_mem + he_mem_num + 1;          /* 8-byte align */
+    char ** const restrict he_lst = he_mem + he_mem_num + 1; /* 8-byte align */
     he->h_aliases  = he_mem;
     he->h_addr_list= he_lst;
     he->h_addrtype = (int)         uint32_from_ascii8uphex(dptr+NSS_H_ADDRTYPE);
@@ -650,7 +650,7 @@ _nss_mcdb_decode_netent(struct mcdb * const restrict m,
     const uintptr_t idx_ne_mem_str=uint16_from_ascii4uphex(dptr+NSS_NE_MEM_STR);
     const uintptr_t idx_ne_mem    =uint16_from_ascii4uphex(dptr+NSS_NE_MEM);
     const size_t ne_mem_num       =uint16_from_ascii4uphex(dptr+NSS_NE_MEM_NUM);
-    char ** const restrict ne_mem =
+    char ** const restrict ne_mem =   /* align to 8-byte boundary for 64-bit */
       (char **)(((uintptr_t)(buf+idx_ne_mem+0x7u)) & ~0x7u); /* 8-byte align */
     ne->n_aliases = ne_mem;
     ne->n_addrtype= (int)          uint32_from_ascii8uphex(dptr+NSS_N_ADDRTYPE);
@@ -696,7 +696,7 @@ _nss_mcdb_decode_protoent(struct mcdb * const restrict m,
     const uintptr_t idx_pe_mem_str=uint16_from_ascii4uphex(dptr+NSS_PE_MEM_STR);
     const uintptr_t idx_pe_mem    =uint16_from_ascii4uphex(dptr+NSS_PE_MEM);
     const size_t pe_mem_num       =uint16_from_ascii4uphex(dptr+NSS_PE_MEM_NUM);
-    char ** const restrict pe_mem =
+    char ** const restrict pe_mem =   /* align to 8-byte boundary for 64-bit */
       (char **)(((uintptr_t)(buf+idx_pe_mem+0x7u)) & ~0x7u); /* 8-byte align */
     pe->p_aliases = pe_mem;
     pe->p_proto   =                uint32_from_ascii8uphex(dptr+NSS_P_PROTO);
@@ -741,7 +741,7 @@ _nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
     const uintptr_t idx_re_mem_str=uint16_from_ascii4uphex(dptr+NSS_RE_MEM_STR);
     const uintptr_t idx_re_mem    =uint16_from_ascii4uphex(dptr+NSS_RE_MEM);
     const size_t re_mem_num       =uint16_from_ascii4uphex(dptr+NSS_RE_MEM_NUM);
-    char ** const restrict re_mem =
+    char ** const restrict re_mem =   /* align to 8-byte boundary for 64-bit */
       (char **)(((uintptr_t)(buf+idx_re_mem+0x7u)) & ~0x7u); /* 8-byte align */
     re->r_aliases = re_mem;
     re->r_number  =                uint32_from_ascii8uphex(dptr+NSS_R_NUMBER);
@@ -805,7 +805,7 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
     const uintptr_t idx_se_mem_str=uint16_from_ascii4uphex(dptr+NSS_SE_MEM_STR);
     const uintptr_t idx_se_mem    =uint16_from_ascii4uphex(dptr+NSS_SE_MEM);
     const size_t se_mem_num       =uint16_from_ascii4uphex(dptr+NSS_SE_MEM_NUM);
-    char ** const restrict se_mem =
+    char ** const restrict se_mem =   /* align to 8-byte boundary for 64-bit */
       (char **)(((uintptr_t)(buf+idx_se_mem+0x7u)) & ~0x7u); /* 8-byte align */
     se->s_aliases = se_mem;
     se->s_port    =                uint32_from_ascii8uphex(dptr+NSS_S_PORT);

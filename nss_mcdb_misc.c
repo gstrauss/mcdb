@@ -185,7 +185,7 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
     const uintptr_t idx_ae_mem_str=uint16_from_ascii4uphex(dptr+NSS_AE_MEM_STR);
     const uintptr_t idx_ae_mem    =uint16_from_ascii4uphex(dptr+NSS_AE_MEM);
     const size_t ae_mem_num       =uint16_from_ascii4uphex(dptr+NSS_AE_MEM_NUM);
-    char ** const restrict ae_mem =
+    char ** const restrict ae_mem =   /* align to 8-byte boundary for 64-bit */
       (char **)(((uintptr_t)(buf+idx_ae_mem+0x7u)) & ~0x7u); /* 8-byte align */
     ae->alias_members_len = ae_mem_num;
     ae->alias_members     = ae_mem;
