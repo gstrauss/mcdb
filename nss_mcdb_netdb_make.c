@@ -17,12 +17,6 @@
 #include <string.h>
 #include <netdb.h>
 
-/* buf size passed should be >= _SC_HOST_NAME_MAX + NSS_HE_HDRSZ (not checked)
- * and probably larger.  1K + NSS_HE_HDRSZ is probably reasonable */
-size_t
-cdb_he2str(char * restrict buf, const size_t bufsz,
-	   const struct hostent * const restrict he)
-  __attribute_nonnull__;
 size_t
 cdb_he2str(char * restrict buf, const size_t bufsz,
 	   const struct hostent * const restrict he)
@@ -40,12 +34,17 @@ cdb_he2str(char * restrict buf, const size_t bufsz,
     size_t offset = NSS_HE_HDRSZ + he_mem_str_offt;
     if (   __builtin_expect(he_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = he_mem[he_mem_num]) != NULL
-	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset, str, ' ', len) == NULL,1)){
+	while ((str = he_mem[he_mem_num]) != NULL) {
+	    len = strlen(str);
+	    if (__builtin_expect(len < bufsz-offset, 1)
+	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
 		buf[(offset+=len)] = ' ';
 		++offset;
 		++he_mem_num;
+	    }
+	    else if (len >= bufsz-offset) {
+		errno = ERANGE;
+		return 0;
 	    }
 	    else {/* bad hostent; space-separated data may not contain spaces */
 		errno = EINVAL;
@@ -53,15 +52,15 @@ cdb_he2str(char * restrict buf, const size_t bufsz,
 	    }
 	}
 	he_lst_str_offt = offset - NSS_HE_HDRSZ;
-	while ((str = he_lst[he_lst_num]) != NULL
-	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset, str, ' ', len) == NULL,1)){
-		buf[(offset+=len)] = ' ';
-		++offset;
+	len = (size_t)he->h_length;
+	while ((str = he_lst[he_lst_num]) != NULL) {
+	    if (__builtin_expect(len < bufsz-offset, 1)) {
+		memcpy(buf+offset, str, len); /* binary addresses */
+		offset += len;
 		++he_lst_num;
 	    }
-	    else {/* bad hostent; space-separated data may not contain spaces */
-		errno = EINVAL;
+	    else {
+		errno = ERANGE;
 		return 0;
 	    }
 	}
@@ -99,12 +98,6 @@ cdb_he2str(char * restrict buf, const size_t bufsz,
 }
 
 
-/* buf size passed should be >= MAXNETNAMELEN + NSS_NE_HDRSZ (not checked)
- * and probably larger.  1K + NSS_NE_HDRSZ is probably reasonable */
-size_t
-cdb_ne2str(char * restrict buf, const size_t bufsz,
-	   const struct netent * const restrict ne)
-  __attribute_nonnull__;
 size_t
 cdb_ne2str(char * restrict buf, const size_t bufsz,
 	   const struct netent * const restrict ne)
@@ -119,12 +112,17 @@ cdb_ne2str(char * restrict buf, const size_t bufsz,
     size_t offset = NSS_NE_HDRSZ + ne_mem_str_offt;
     if (   __builtin_expect(ne_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = ne_mem[ne_mem_num]) != NULL
-	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset, str, ' ', len) == NULL,1)){
+	while ((str = ne_mem[ne_mem_num]) != NULL) {
+	    len = strlen(str);
+	    if (__builtin_expect(len < bufsz-offset, 1)
+	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
 		buf[(offset+=len)] = ' ';
 		++offset;
 		++ne_mem_num;
+	    }
+	    else if (len >= bufsz-offset) {
+		errno = ERANGE;
+		return 0;
 	    }
 	    else {/* bad netent; space-separated data may not contain spaces */
 		errno = EINVAL;
@@ -160,12 +158,6 @@ cdb_ne2str(char * restrict buf, const size_t bufsz,
 }
 
 
-/* buf size passed should be >= ??? + NSS_PE_HDRSZ (not checked)
- * and probably larger.  1K + NSS_PE_HDRSZ is probably reasonable */
-size_t
-cdb_pe2str(char * restrict buf, const size_t bufsz,
-	   const struct protoent * const restrict pe)
-  __attribute_nonnull__;
 size_t
 cdb_pe2str(char * restrict buf, const size_t bufsz,
 	   const struct protoent * const restrict pe)
@@ -180,12 +172,17 @@ cdb_pe2str(char * restrict buf, const size_t bufsz,
     size_t offset = NSS_PE_HDRSZ + pe_mem_str_offt;
     if (   __builtin_expect(pe_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = pe_mem[pe_mem_num]) != NULL
-	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset, str, ' ', len) == NULL,1)){
+	while ((str = pe_mem[pe_mem_num]) != NULL) {
+	    len = strlen(str);
+	    if (__builtin_expect(len < bufsz-offset, 1)
+	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
 		buf[(offset+=len)] = ' ';
 		++offset;
 		++pe_mem_num;
+	    }
+	    else if (len >= bufsz-offset) {
+		errno = ERANGE;
+		return 0;
 	    }
 	    else {/* bad protoent; space-separated data may not contain spaces*/
 		errno = EINVAL;
@@ -220,12 +217,6 @@ cdb_pe2str(char * restrict buf, const size_t bufsz,
 }
 
 
-/* buf size passed should be >= ??? + NSS_RE_HDRSZ (not checked)
- * and probably larger.  1K + NSS_RE_HDRSZ is probably reasonable */
-size_t
-cdb_re2str(char * restrict buf, const size_t bufsz,
-	   const struct rpcent * const restrict re)
-  __attribute_nonnull__;
 size_t
 cdb_re2str(char * restrict buf, const size_t bufsz,
 	   const struct rpcent * const restrict re)
@@ -240,12 +231,17 @@ cdb_re2str(char * restrict buf, const size_t bufsz,
     size_t offset = NSS_RE_HDRSZ + re_mem_str_offt;
     if (   __builtin_expect(re_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = re_mem[re_mem_num]) != NULL
-	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset, str, ' ', len) == NULL,1)){
+	while ((str = re_mem[re_mem_num]) != NULL) {
+	    len = strlen(str);
+	    if (__builtin_expect(len < bufsz-offset, 1)
+	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
 		buf[(offset+=len)] = ' ';
 		++offset;
 		++re_mem_num;
+	    }
+	    else if (len >= bufsz-offset) {
+		errno = ERANGE;
+		return 0;
 	    }
 	    else {/* bad rpcent; space-separated data may not contain spaces */
 		errno = EINVAL;
@@ -280,12 +276,6 @@ cdb_re2str(char * restrict buf, const size_t bufsz,
 }
 
 
-/* buf size passed should be >= ??? + NSS_SE_HDRSZ (not checked)
- * and probably larger.  1K + NSS_SE_HDRSZ is probably reasonable */
-size_t
-cdb_se2str(char * restrict buf, const size_t bufsz,
-	   const struct servent * const restrict se)
-  __attribute_nonnull__;
 size_t
 cdb_se2str(char * restrict buf, const size_t bufsz,
 	   const struct servent * const restrict se)
@@ -302,12 +292,17 @@ cdb_se2str(char * restrict buf, const size_t bufsz,
     size_t offset = NSS_SE_HDRSZ + se_mem_str_offt;
     if (   __builtin_expect(se_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = se_mem[se_mem_num]) != NULL
-	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset, str, ' ', len) == NULL,1)){
+	while ((str = se_mem[se_mem_num]) != NULL) {
+	    len = strlen(str);
+	    if (__builtin_expect(len < bufsz-offset, 1)
+	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
 		buf[(offset+=len)] = ' ';
 		++offset;
 		++se_mem_num;
+	    }
+	    else if (len >= bufsz-offset) {
+		errno = ERANGE;
+		return 0;
 	    }
 	    else {/* bad servent; space-separated data may not contain spaces */
 		errno = EINVAL;

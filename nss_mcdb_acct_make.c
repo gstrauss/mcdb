@@ -20,14 +20,9 @@
 /*
  * validate data sufficiently for successful serialize/deserialize into mcdb.
  *
- * input is database struct so that code is written to consumes it produces.
+ * input is database struct so that code is written to consumes what it produces
  */
 
-/* buf size passed should be _SC_GETPW_R_SIZE_MAX + NSS_PW_HDRSZ (not checked)*/
-size_t
-cdb_pw2str(char * restrict buf, const size_t bufsz,
-	   const struct passwd * const restrict pw)
-  __attribute_nonnull__;
 size_t
 cdb_pw2str(char * restrict buf, const size_t bufsz,
 	   const struct passwd * const restrict pw)
@@ -78,11 +73,6 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
 }
 
 
-/* buf size passed should be _SC_GETGR_R_SIZE_MAX + NSS_GR_HDRSZ (not checked)*/
-size_t
-cdb_gr2str(char * restrict buf, const size_t bufsz,
-	   const struct group * const restrict gr)
-  __attribute_nonnull__;
 size_t
 cdb_gr2str(char * restrict buf, const size_t bufsz,
 	   const struct group * const restrict gr)
@@ -100,12 +90,16 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
     if (   __builtin_expect(gr_name_len   <= USHRT_MAX, 1)
 	&& __builtin_expect(gr_passwd_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset        < bufsz,      1)) {
-	while ((str = gr_mem[gr_mem_num]) != NULL
-	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset, str, ' ', len) == NULL,1)){
+	while ((str = gr_mem[gr_mem_num]) != NULL) {
+	    if (__builtin_expect((len = strlen(str)) < bufsz-offset, 1)
+		&& __builtin_expect(memccpy(buf+offset,str,',',len) == NULL,1)){
 		buf[(offset+=len)] = ',';
 		++offset;
 		++gr_mem_num;
+	    }
+	    else if (len >= bufsz-offset) {
+		errno = ERANGE;
+		return 0;
 	    }
 	    else { /* bad group; comma-separated data may not contain commas */
 		errno = EINVAL;

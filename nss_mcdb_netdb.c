@@ -626,10 +626,7 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
         he_mem[he_mem_num] = NULL;         /* terminate (char **) he_mem array*/
         he_lst[0] = buf = vinfo->buf+idx_he_lst_str; /*begin of he_lst strings*/
         for (size_t i=1; i<he_lst_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*++buf != ' ')
-                ;
-            *buf = '\0';
-            he_lst[i] = ++buf;
+            he_lst[i] = (buf += he->h_length);
         }
         he_lst[he_lst_num] = NULL;         /* terminate (char **) he_lst array*/
         return NSS_STATUS_SUCCESS;

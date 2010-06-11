@@ -18,12 +18,6 @@
 #include <aliases.h>
 #include <netinet/ether.h>
 
-/* buf size passed should be >= ??? + NSS_AE_HDRSZ (not checked)
- * and probably larger.  1K + NSS_AE_HDRSZ is probably reasonable */
-size_t
-cdb_ae2str(char * restrict buf, const size_t bufsz,
-	   const struct aliasent * const restrict ae)
-  __attribute_nonnull__;
 size_t
 cdb_ae2str(char * restrict buf, const size_t bufsz,
 	   const struct aliasent * const restrict ae)
@@ -37,12 +31,17 @@ cdb_ae2str(char * restrict buf, const size_t bufsz,
     size_t offset = NSS_AE_HDRSZ + ae_mem_str_offt;
     if (   __builtin_expect(ae_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while (ae_mem_num--
-	       && __builtin_expect((len = strlen(*ae_mem)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset,*ae_mem,',',len)==NULL,1)) {
+	while (ae_mem_num--) {
+	    len = strlen(*ae_mem);
+	    if (__builtin_expect(len < bufsz-offset, 1)
+		&& __builtin_expect(memccpy(buf+offset,*ae_mem,',',len)==0, 1)){
 		buf[(offset+=len)] = ',';
 		++offset;
 		++ae_mem;
+	    }
+	    else if (len >= bufsz-offset) {
+		errno = ERANGE;
+		return 0;
 	    }
 	    else {/* bad aliasent; comma-separated data may not contain commas*/
 		errno = EINVAL;
@@ -77,13 +76,6 @@ cdb_ae2str(char * restrict buf, const size_t bufsz,
 }
 
 
-/* buf size passed should be >= ??? + NSS_EA_HDRSZ (not checked)
- * and probably larger.  1K + NSS_EA_HDRSZ is probably reasonable */
-size_t
-cdb_ea2str(char * restrict buf, const size_t bufsz,
-	   const struct ether_addr * const restrict ea,
-	   const char * const restrict hostname)
-  __attribute_nonnull__;
 size_t
 cdb_ea2str(char * restrict buf, const size_t bufsz,
 	   const struct ether_addr * const restrict ea,
