@@ -90,22 +90,18 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
     if (   __builtin_expect(gr_name_len   <= USHRT_MAX, 1)
 	&& __builtin_expect(gr_passwd_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset        < bufsz,      1)) {
-	while ((str = gr_mem[gr_mem_num]) != NULL) {
-	    if (__builtin_expect((len = strlen(str)) < bufsz-offset, 1)
-		&& __builtin_expect(memccpy(buf+offset,str,',',len) == NULL,1)){
+	while ((str = gr_mem[gr_mem_num]) != NULL
+	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
+	    if (__builtin_expect(memccpy(buf+offset,str,',',len) == NULL,1)) {
 		buf[(offset+=len)] = ',';
 		++offset;
 		++gr_mem_num;
-	    }
-	    else if (len >= bufsz-offset) {
-		errno = ERANGE;
-		return 0;
 	    }
 	    else { /* bad group; comma-separated data may not contain commas */
 		errno = EINVAL;
 		return 0;
 	    }
-	}
+	} /* check for gr_mem[gr_mem_num] == NULL for sufficient buf space */
 	if (   __builtin_expect(gr_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(gr_mem[gr_mem_num] == NULL,  1)
 	    && __builtin_expect((gr_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {

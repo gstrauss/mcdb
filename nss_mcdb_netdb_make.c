@@ -17,6 +17,40 @@
 #include <string.h>
 #include <netdb.h>
 
+/* (similar code block in other nss_mcdb_*_make.c, except token is ',') */
+static size_t
+stringify_strptr_list(char * const restrict buf, const size_t bufsz,
+                      char ** const restrict list,
+                      size_t * const restrict offsetp)
+{
+    size_t offset = *offsetp;
+    size_t len;
+    size_t num = 0;
+    const char * restrict str;
+
+    while ((str = list[num]) != NULL
+	   && __builtin_expect( (len = strlen(str)) < bufsz-offset, 1)) {
+	if (__builtin_expect( memccpy(buf+offset,str,' ',len) == NULL, 1)) {
+	    buf[(offset+=len)] = ' ';
+	    ++offset;
+	    ++num;
+	}
+	else { /* token-separated data may not contain that token */
+	    errno = EINVAL;
+	    return (size_t)-1;
+	}
+    }
+
+    if (str == NULL) {
+	*offsetp = offset;
+	return num;
+    }
+    else {
+	errno = ERANGE;
+	return (size_t)-1;
+    }
+}
+
 size_t
 cdb_he2str(char * restrict buf, const size_t bufsz,
 	   const struct hostent * const restrict he)
@@ -25,48 +59,25 @@ cdb_he2str(char * restrict buf, const size_t bufsz,
     const uintptr_t he_name_offset  = 0;
     const uintptr_t he_mem_str_offt = he_name_offset + he_name_len + 1;
     uintptr_t he_lst_str_offt;
-    char ** const restrict he_mem = he->h_aliases;
-    char ** const restrict he_lst = he->h_addr_list;
-    const char * restrict str;
-    size_t len;
-    size_t he_mem_num  = 0;
+    char ** const restrict he_lst   = he->h_addr_list;
+    const size_t len                = (size_t)he->h_length;
+    size_t he_mem_num;
     size_t he_lst_num = 0;
     size_t offset = NSS_HE_HDRSZ + he_mem_str_offt;
     if (   __builtin_expect(he_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = he_mem[he_mem_num]) != NULL) {
-	    len = strlen(str);
-	    if (__builtin_expect(len < bufsz-offset, 1)
-	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
-		buf[(offset+=len)] = ' ';
-		++offset;
-		++he_mem_num;
-	    }
-	    else if (len >= bufsz-offset) {
-		errno = ERANGE;
-		return 0;
-	    }
-	    else {/* bad hostent; space-separated data may not contain spaces */
-		errno = EINVAL;
-		return 0;
-	    }
-	}
+	he_mem_num = stringify_strptr_list(buf, bufsz, he->h_aliases, &offset);
+	if (__builtin_expect( he_mem_num == (size_t)-1, 0))
+	    return 0;
 	he_lst_str_offt = offset - NSS_HE_HDRSZ;
-	len = (size_t)he->h_length;
-	while ((str = he_lst[he_lst_num]) != NULL) {
-	    if (__builtin_expect(len < bufsz-offset, 1)) {
-		memcpy(buf+offset, str, len); /* binary addresses */
-		offset += len;
-		++he_lst_num;
-	    }
-	    else {
-		errno = ERANGE;
-		return 0;
-	    }
-	}
+	while (he_lst[he_lst_num] != NULL
+	       && __builtin_expect(len < bufsz-offset, 1)) {
+	    memcpy(buf+offset, he_lst[he_lst_num], len); /*binary address*/
+	    offset += len;
+	    ++he_lst_num;
+	} /* check for he_lst[he_lst_num] == NULL for sufficient buf space */
 	if (   __builtin_expect(he_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(he_lst_num <= USHRT_MAX, 1)
-	    && __builtin_expect(he_mem[he_mem_num] == NULL,  1)
 	    && __builtin_expect(he_lst[he_lst_num] == NULL,  1)
 	    && __builtin_expect(((he_mem_num+he_lst_num)<<3)+8u+8u+7u
                                 <= bufsz-offset, 1)) {
@@ -105,32 +116,14 @@ cdb_ne2str(char * restrict buf, const size_t bufsz,
     const size_t    ne_name_len     = strlen(ne->n_name);
     const uintptr_t ne_name_offset  = 0;
     const uintptr_t ne_mem_str_offt = ne_name_offset + ne_name_len + 1;
-    char ** const restrict ne_mem = ne->n_aliases;
-    const char * restrict str;
-    size_t len;
-    size_t ne_mem_num  = 0;
+    size_t ne_mem_num;
     size_t offset = NSS_NE_HDRSZ + ne_mem_str_offt;
     if (   __builtin_expect(ne_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = ne_mem[ne_mem_num]) != NULL) {
-	    len = strlen(str);
-	    if (__builtin_expect(len < bufsz-offset, 1)
-	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
-		buf[(offset+=len)] = ' ';
-		++offset;
-		++ne_mem_num;
-	    }
-	    else if (len >= bufsz-offset) {
-		errno = ERANGE;
-		return 0;
-	    }
-	    else {/* bad netent; space-separated data may not contain spaces */
-		errno = EINVAL;
-		return 0;
-	    }
-	}
+	ne_mem_num = stringify_strptr_list(buf, bufsz, ne->n_aliases, &offset);
+	if (__builtin_expect( ne_mem_num == (size_t)-1, 0))
+	    return 0;
 	if (   __builtin_expect(ne_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect(ne_mem[ne_mem_num] == NULL,  1)
 	    && __builtin_expect((ne_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** ne_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
@@ -165,32 +158,14 @@ cdb_pe2str(char * restrict buf, const size_t bufsz,
     const size_t    pe_name_len     = strlen(pe->p_name);
     const uintptr_t pe_name_offset  = 0;
     const uintptr_t pe_mem_str_offt = pe_name_offset + pe_name_len + 1;
-    char ** const restrict pe_mem = pe->p_aliases;
-    const char * restrict str;
-    size_t len;
-    size_t pe_mem_num  = 0;
+    size_t pe_mem_num;
     size_t offset = NSS_PE_HDRSZ + pe_mem_str_offt;
     if (   __builtin_expect(pe_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = pe_mem[pe_mem_num]) != NULL) {
-	    len = strlen(str);
-	    if (__builtin_expect(len < bufsz-offset, 1)
-	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
-		buf[(offset+=len)] = ' ';
-		++offset;
-		++pe_mem_num;
-	    }
-	    else if (len >= bufsz-offset) {
-		errno = ERANGE;
-		return 0;
-	    }
-	    else {/* bad protoent; space-separated data may not contain spaces*/
-		errno = EINVAL;
-		return 0;
-	    }
-	}
+	pe_mem_num = stringify_strptr_list(buf, bufsz, pe->p_aliases, &offset);
+	if (__builtin_expect( pe_mem_num == (size_t)-1, 0))
+	    return 0;
 	if (   __builtin_expect(pe_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect(pe_mem[pe_mem_num] == NULL,  1)
 	    && __builtin_expect((pe_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** pe_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
@@ -224,32 +199,14 @@ cdb_re2str(char * restrict buf, const size_t bufsz,
     const size_t    re_name_len     = strlen(re->r_name);
     const uintptr_t re_name_offset  = 0;
     const uintptr_t re_mem_str_offt = re_name_offset + re_name_len + 1;
-    char ** const restrict re_mem = re->r_aliases;
-    const char * restrict str;
-    size_t len;
-    size_t re_mem_num  = 0;
+    size_t re_mem_num;
     size_t offset = NSS_RE_HDRSZ + re_mem_str_offt;
     if (   __builtin_expect(re_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = re_mem[re_mem_num]) != NULL) {
-	    len = strlen(str);
-	    if (__builtin_expect(len < bufsz-offset, 1)
-	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
-		buf[(offset+=len)] = ' ';
-		++offset;
-		++re_mem_num;
-	    }
-	    else if (len >= bufsz-offset) {
-		errno = ERANGE;
-		return 0;
-	    }
-	    else {/* bad rpcent; space-separated data may not contain spaces */
-		errno = EINVAL;
-		return 0;
-	    }
-	}
+	re_mem_num = stringify_strptr_list(buf, bufsz, re->r_aliases, &offset);
+	if (__builtin_expect( re_mem_num == (size_t)-1, 0))
+	    return 0;
 	if (   __builtin_expect(re_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect(re_mem[re_mem_num] == NULL,  1)
 	    && __builtin_expect((re_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** re_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
@@ -285,32 +242,14 @@ cdb_se2str(char * restrict buf, const size_t bufsz,
     const uintptr_t se_proto_offset = 0; /*(proto before name for query usage)*/
     const uintptr_t se_name_offset  = se_proto_offset + se_proto_len + 1;
     const uintptr_t se_mem_str_offt = se_name_offset  + se_name_len  + 1;
-    char ** const restrict se_mem = se->s_aliases;
-    const char * restrict str;
-    size_t len;
     size_t se_mem_num  = 0;
     size_t offset = NSS_SE_HDRSZ + se_mem_str_offt;
     if (   __builtin_expect(se_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(offset      < bufsz,      1)) {
-	while ((str = se_mem[se_mem_num]) != NULL) {
-	    len = strlen(str);
-	    if (__builtin_expect(len < bufsz-offset, 1)
-	        && __builtin_expect(memccpy(buf+offset,str,' ',len) == NULL,1)){
-		buf[(offset+=len)] = ' ';
-		++offset;
-		++se_mem_num;
-	    }
-	    else if (len >= bufsz-offset) {
-		errno = ERANGE;
-		return 0;
-	    }
-	    else {/* bad servent; space-separated data may not contain spaces */
-		errno = EINVAL;
-		return 0;
-	    }
-	}
+	se_mem_num = stringify_strptr_list(buf, bufsz, se->s_aliases, &offset);
+	if (__builtin_expect( se_mem_num == (size_t)-1, 0))
+	    return 0;
 	if (   __builtin_expect(se_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect(se_mem[se_mem_num] == NULL,  1)
 	    && __builtin_expect((se_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
 	    /* verify space in string for 8-aligned char ** se_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
