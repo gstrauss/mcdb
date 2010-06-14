@@ -249,7 +249,7 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
         m->hpos = (m->dpos = (m->kpos = m->hpos + 8) + klen) + m->dlen;
         if (p[8] == (unsigned char)'=')
             /* valid data in mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
-            return vinfo->decode(m, NULL, vinfo);
+            return vinfo->decode(m, vinfo);
     }
     *vinfo->errnop = errno = ENOENT;
     return NSS_STATUS_NOTFOUND;
@@ -257,7 +257,6 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
 
 nss_status_t
 _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
-                      const struct _nss_kinfo * const restrict kinfo,
                       const struct _nss_vinfo * const restrict vinfo)
 {
     struct mcdb m;
@@ -275,9 +274,9 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
         return NSS_STATUS_UNAVAIL;
     }
 
-    if (  mcdb_findtagstart(&m, kinfo->key, kinfo->klen, kinfo->tagc)
-        && mcdb_findtagnext(&m, kinfo->key, kinfo->klen, kinfo->tagc)  )
-        status = vinfo->decode(&m, kinfo, vinfo);
+    if (  mcdb_findtagstart(&m, vinfo->key, vinfo->klen, vinfo->tagc)
+        && mcdb_findtagnext(&m, vinfo->key, vinfo->klen, vinfo->tagc)  )
+        status = vinfo->decode(&m, vinfo);
     else {
         status = NSS_STATUS_NOTFOUND;
         *vinfo->errnop = errno = ENOENT;
@@ -297,12 +296,10 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 
 nss_status_t
 _nss_mcdb_decode_buf(struct mcdb * const restrict m,
-                     const struct _nss_kinfo * const restrict kinfo
-                       __attribute_unused__,
                      const struct _nss_vinfo * const restrict vinfo)
 {   /* generic; simply copy data into target buffer and NIL terminate string */
     const size_t dlen = mcdb_datalen(m);
-    if (vinfo->buflen > dlen) {
+    if (dlen < vinfo->bufsz) {
         memcpy(vinfo->buf, mcdb_dataptr(m), dlen);
         vinfo->buf[dlen] = '\0';
         return NSS_STATUS_SUCCESS;

@@ -266,8 +266,8 @@ cdb_se2str(char * restrict buf, const size_t bufsz,
 	    memcpy(buf+se_name_offset,  se->s_name,  se_name_len);
 	    memcpy(buf+se_proto_offset, se->s_proto, se_proto_len);
 	    /* separate entries with ' ' for readability */
-	    buf[se_proto_offset-1]  =' '; /*(between se_name and se_proto)*/
-	    buf[se_mem_str_offt-1]  =' '; /*(between se_proto and se_mem str)*/
+	    buf[se_name_offset-1]   =' '; /*(between se_proto and se_name)*/
+	    buf[se_mem_str_offt-1]  =' '; /*(between se_name and se_mem str)*/
 	    buf[offset] = '\0';           /* end string section */
 	    return NSS_SE_HDRSZ + offset;
 	}

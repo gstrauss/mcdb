@@ -33,5 +33,7 @@ clean:
 	$(RM) *.o libmcdb.a libnss_mcdb.so.2 mcdbctl testzero
 
 .PHONY: nss
-nss: nss_mcdb.o nss_mcdb_acct.o nss_mcdb_misc.o nss_mcdb_netdb.o \
-     nss_mcdb_acct_make.o nss_mcdb_misc_make.o nss_mcdb_netdb_make.o
+nss: nss_mcdb.o        nss_mcdb_make.o \
+     nss_mcdb_acct.o   nss_mcdb_acct_make.o \
+     nss_mcdb_misc.o   nss_mcdb_misc_make.o \
+     nss_mcdb_netdb.o  nss_mcdb_netdb_make.o
