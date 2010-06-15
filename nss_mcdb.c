@@ -295,8 +295,8 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 }
 
 nss_status_t
-_nss_mcdb_buf_decode(struct mcdb * const restrict m,
-                     const struct nss_mcdb_vinfo * const restrict v)
+nss_mcdb_buf_decode(struct mcdb * const restrict m,
+                    const struct nss_mcdb_vinfo * const restrict v)
 {   /* generic; simply copy data into target buffer and NIL terminate string */
     const size_t dlen = mcdb_datalen(m);
     if (dlen < v->bufsz) {

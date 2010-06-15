@@ -17,6 +17,7 @@
 #include <string.h>
 #include <netdb.h>
 
+/* GPS: TODO: rename with filename prefix */
 /* (similar code block in other nss_mcdb_*_make.c, except token is ',') */
 static size_t
 stringify_strptr_list(char * const restrict buf, const size_t bufsz,
@@ -52,8 +53,8 @@ stringify_strptr_list(char * const restrict buf, const size_t bufsz,
 }
 
 size_t
-cdb_he2str(char * restrict buf, const size_t bufsz,
-	   const struct hostent * const restrict he)
+nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
+				    const struct hostent * const restrict he)
 {
     const size_t    he_name_len     = strlen(he->h_name);
     const uintptr_t he_name_offset  = 0;
@@ -110,8 +111,8 @@ cdb_he2str(char * restrict buf, const size_t bufsz,
 
 
 size_t
-cdb_ne2str(char * restrict buf, const size_t bufsz,
-	   const struct netent * const restrict ne)
+nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
+				   const struct netent * const restrict ne)
 {
     const size_t    ne_name_len     = strlen(ne->n_name);
     const uintptr_t ne_name_offset  = 0;
@@ -152,8 +153,8 @@ cdb_ne2str(char * restrict buf, const size_t bufsz,
 
 
 size_t
-cdb_pe2str(char * restrict buf, const size_t bufsz,
-	   const struct protoent * const restrict pe)
+nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
+				     const struct protoent * const restrict pe)
 {
     const size_t    pe_name_len     = strlen(pe->p_name);
     const uintptr_t pe_name_offset  = 0;
@@ -193,8 +194,8 @@ cdb_pe2str(char * restrict buf, const size_t bufsz,
 
 
 size_t
-cdb_re2str(char * restrict buf, const size_t bufsz,
-	   const struct rpcent * const restrict re)
+nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
+				   const struct rpcent * const restrict re)
 {
     const size_t    re_name_len     = strlen(re->r_name);
     const uintptr_t re_name_offset  = 0;
@@ -234,8 +235,8 @@ cdb_re2str(char * restrict buf, const size_t bufsz,
 
 
 size_t
-cdb_se2str(char * restrict buf, const size_t bufsz,
-	   const struct servent * const restrict se)
+nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
+				    const struct servent * const restrict se)
 {
     const size_t    se_name_len     = strlen(se->s_name);
     const size_t    se_proto_len    = strlen(se->s_proto);

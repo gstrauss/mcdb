@@ -19,8 +19,8 @@
 #include <netinet/ether.h>
 
 size_t
-cdb_ae2str(char * restrict buf, const size_t bufsz,
-	   const struct aliasent * const restrict ae)
+nss_mcdb_misc_make_aliasent_datastr(char * restrict buf, const size_t bufsz,
+				    const struct aliasent * const restrict ae)
 {
     const size_t    ae_name_len     = strlen(ae->alias_name);
     const uintptr_t ae_name_offset  = 0;
@@ -77,10 +77,11 @@ cdb_ae2str(char * restrict buf, const size_t bufsz,
 
 
 size_t
-cdb_ea2str(char * restrict buf, const size_t bufsz,
-	   const struct ether_addr * const restrict ea,
-	   const char * const restrict hostname)
-{
+nss_mcdb_misc_make_ether_addr_datastr(char * restrict buf, const size_t bufsz,
+				      void * const restrict entp,
+				      const char * const restrict hostname)
+{   /* (take void *entp arg to avoid need to set _BSD_SOURCE in header) */
+    const struct ether_addr * const restrict ea = entp;
     const size_t ea_name_len = strlen(hostname);
     uint32_t u[2];
     if (__builtin_expect(NSS_EA_HDRSZ + ea_name_len < bufsz, 1)) {

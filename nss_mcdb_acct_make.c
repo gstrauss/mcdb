@@ -24,8 +24,8 @@
  */
 
 size_t
-cdb_pw2str(char * restrict buf, const size_t bufsz,
-	   const struct passwd * const restrict pw)
+nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
+			 	  const struct passwd * const restrict pw)
 {
     const size_t pw_name_len   = strlen(pw->pw_name);
     const size_t pw_passwd_len = strlen(pw->pw_passwd);
@@ -74,8 +74,8 @@ cdb_pw2str(char * restrict buf, const size_t bufsz,
 
 
 size_t
-cdb_gr2str(char * restrict buf, const size_t bufsz,
-	   const struct group * const restrict gr)
+nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
+				 const struct group * const restrict gr)
 {
     const size_t    gr_name_len      = strlen(gr->gr_name);
     const size_t    gr_passwd_len    = strlen(gr->gr_passwd);
@@ -134,12 +134,8 @@ cdb_gr2str(char * restrict buf, const size_t bufsz,
 
 
 size_t
-cdb_spwd2str(char * restrict buf, const size_t bufsz,
-	     const struct spwd * const restrict sp)
-  __attribute_nonnull__;
-size_t
-cdb_spwd2str(char * restrict buf, const size_t bufsz,
-	     const struct spwd * const restrict sp)
+nss_mcdb_acct_make_spwd_datastr(char * restrict buf, const size_t bufsz,
+				const struct spwd * const restrict sp)
 {
     const size_t sp_namp_len = strlen(sp->sp_namp);
     const size_t sp_pwdp_len = strlen(sp->sp_pwdp);
