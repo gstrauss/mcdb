@@ -201,7 +201,7 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
 }
 
 nss_status_t  __attribute_noinline__  /*(skip inline into _nss_mcdb_getent)*/
-_nss_mcdb_setent(const enum nss_dbtype dbtype)
+nss_mcdb_setent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     const enum mcdb_register_flags mcdb_flags = MCDB_REGISTER_USE;
@@ -214,7 +214,7 @@ _nss_mcdb_setent(const enum nss_dbtype dbtype)
 }
 
 nss_status_t
-_nss_mcdb_endent(const enum nss_dbtype dbtype)
+nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     struct mcdb_mmap *map = m->map;
@@ -228,16 +228,16 @@ _nss_mcdb_endent(const enum nss_dbtype dbtype)
 
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
 nss_status_t
-_nss_mcdb_getent(const enum nss_dbtype dbtype,
-                 const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_getent(const enum nss_dbtype dbtype,
+                 const struct nss_mcdb_vinfo * const restrict v)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     unsigned char *map;
     uint32_t eod;
     uint32_t klen;
     if (__builtin_expect(m->map == NULL, false)
-        && _nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS) {
-        *vinfo->errnop = errno;
+        && nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS) {
+        *v->errnop = errno;
         return NSS_STATUS_UNAVAIL;
     }
     map = m->map->ptr;
@@ -249,15 +249,15 @@ _nss_mcdb_getent(const enum nss_dbtype dbtype,
         m->hpos = (m->dpos = (m->kpos = m->hpos + 8) + klen) + m->dlen;
         if (p[8] == (unsigned char)'=')
             /* valid data in mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
-            return vinfo->decode(m, vinfo);
+            return v->decode(m, v);
     }
-    *vinfo->errnop = errno = ENOENT;
+    *v->errnop = errno = ENOENT;
     return NSS_STATUS_NOTFOUND;
 }
 
 nss_status_t
-_nss_mcdb_get_generic(const enum nss_dbtype dbtype,
-                      const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_get_generic(const enum nss_dbtype dbtype,
+                     const struct nss_mcdb_vinfo * const restrict v)
 {
     struct mcdb m;
     nss_status_t status;
@@ -270,16 +270,16 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 
     m.map = _nss_mcdb_db_getshared(dbtype, mcdb_flags_lock);
     if (__builtin_expect(m.map == NULL, false)) {
-        *vinfo->errnop = errno;
+        *v->errnop = errno;
         return NSS_STATUS_UNAVAIL;
     }
 
-    if (  mcdb_findtagstart(&m, vinfo->key, vinfo->klen, vinfo->tagc)
-        && mcdb_findtagnext(&m, vinfo->key, vinfo->klen, vinfo->tagc)  )
-        status = vinfo->decode(&m, vinfo);
+    if (  mcdb_findtagstart(&m, v->key, v->klen, v->tagc)
+        && mcdb_findtagnext(&m, v->key, v->klen, v->tagc)  )
+        status = v->decode(&m, v);
     else {
         status = NSS_STATUS_NOTFOUND;
-        *vinfo->errnop = errno = ENOENT;
+        *v->errnop = errno = ENOENT;
     }
 
     /* set*ent(),get*ent(),end*end() session not open/reused in current thread*/
@@ -295,15 +295,15 @@ _nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 }
 
 nss_status_t
-_nss_mcdb_decode_buf(struct mcdb * const restrict m,
-                     const struct _nss_vinfo * const restrict vinfo)
+_nss_mcdb_buf_decode(struct mcdb * const restrict m,
+                     const struct nss_mcdb_vinfo * const restrict v)
 {   /* generic; simply copy data into target buffer and NIL terminate string */
     const size_t dlen = mcdb_datalen(m);
-    if (dlen < vinfo->bufsz) {
-        memcpy(vinfo->buf, mcdb_dataptr(m), dlen);
-        vinfo->buf[dlen] = '\0';
+    if (dlen < v->bufsz) {
+        memcpy(v->buf, mcdb_dataptr(m), dlen);
+        v->buf[dlen] = '\0';
         return NSS_STATUS_SUCCESS;
     }
-    *vinfo->errnop = errno = ERANGE;
+    *v->errnop = errno = ERANGE;
     return NSS_STATUS_TRYAGAIN;
 }

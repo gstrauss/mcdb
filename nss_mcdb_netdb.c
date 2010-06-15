@@ -43,60 +43,62 @@
  */
 
 static nss_status_t
-_nss_mcdb_decode_hostent(struct mcdb * restrict,
-                         const struct _nss_vinfo * restrict)
+nss_mcdb_netdb_hostent_decode(struct mcdb * restrict,
+                              const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 static nss_status_t
-_nss_mcdb_decode_netent(struct mcdb * restrict,
-                        const struct _nss_vinfo * restrict)
+nss_mcdb_netdb_netent_decode(struct mcdb * restrict,
+                             const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 static nss_status_t
-_nss_mcdb_decode_protoent(struct mcdb * restrict,
-                          const struct _nss_vinfo * restrict)
+nss_mcdb_netdb_protoent_decode(struct mcdb * restrict,
+                               const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 static nss_status_t
-_nss_mcdb_decode_rpcent(struct mcdb * restrict,
-                        const struct _nss_vinfo * restrict)
+nss_mcdb_netdb_rpcent_decode(struct mcdb * restrict,
+                             const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 static nss_status_t
-_nss_mcdb_decode_servent(struct mcdb * restrict,
-                         const struct _nss_vinfo * restrict)
+nss_mcdb_netdb_servent_decode(struct mcdb * restrict,
+                              const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
 static nss_status_t  __attribute_noinline__
-gethost_fill_h_errnop(const nss_status_t status, int * const restrict h_errnop)
+nss_mcdb_netdb_gethost_fill_h_errnop(const nss_status_t status,
+                                     int * const restrict h_errnop)
   __attribute_cold__  __attribute_nonnull__;
 
 static nss_status_t
-gethost_query(const uint32_t type,
-              const struct _nss_vinfo * restrict vinfo,
-              int * const restrict h_errnop)
+nss_mcdb_netdb_gethost_query(const uint32_t type,
+                             const struct nss_mcdb_vinfo * restrict v,
+                             int * const restrict h_errnop)
   __attribute_nonnull__;
 
 static nss_status_t
-gethost_filladdr(const void * const restrict addr, const int type,
-                 const struct _nss_vinfo * restrict vinfo,
-                 int * const restrict h_errnop)
+nss_mcdb_netdb_gethost_filladdr(const void * const restrict addr,
+                                const int type,
+                                const struct nss_mcdb_vinfo * restrict v,
+                                int * const restrict h_errnop)
   __attribute_nonnull__;
 
 
-void _nss_mcdb_sethostent(void)  { _nss_mcdb_setent(NSS_DBTYPE_HOSTS);     }
-void _nss_mcdb_endhostent(void)  { _nss_mcdb_endent(NSS_DBTYPE_HOSTS);     }
-void _nss_mcdb_setnetgrent(void) { _nss_mcdb_setent(NSS_DBTYPE_NETGROUP);  }
-void _nss_mcdb_endnetgrent(void) { _nss_mcdb_endent(NSS_DBTYPE_NETGROUP);  }
-void _nss_mcdb_setnetent(void)   { _nss_mcdb_setent(NSS_DBTYPE_NETWORKS);  }
-void _nss_mcdb_endnetent(void)   { _nss_mcdb_endent(NSS_DBTYPE_NETWORKS);  }
-void _nss_mcdb_setprotoent(void) { _nss_mcdb_setent(NSS_DBTYPE_PROTOCOLS); }
-void _nss_mcdb_endprotoent(void) { _nss_mcdb_endent(NSS_DBTYPE_PROTOCOLS); }
-void _nss_mcdb_setrpcent(void)   { _nss_mcdb_setent(NSS_DBTYPE_RPC);       }
-void _nss_mcdb_endrpcent(void)   { _nss_mcdb_endent(NSS_DBTYPE_RPC);       }
-void _nss_mcdb_setservent(void)  { _nss_mcdb_setent(NSS_DBTYPE_SERVICES);  }
-void _nss_mcdb_endservent(void)  { _nss_mcdb_endent(NSS_DBTYPE_SERVICES);  }
+void _nss_mcdb_sethostent(void)  { nss_mcdb_setent(NSS_DBTYPE_HOSTS);     }
+void _nss_mcdb_endhostent(void)  { nss_mcdb_endent(NSS_DBTYPE_HOSTS);     }
+void _nss_mcdb_setnetgrent(void) { nss_mcdb_setent(NSS_DBTYPE_NETGROUP);  }
+void _nss_mcdb_endnetgrent(void) { nss_mcdb_endent(NSS_DBTYPE_NETGROUP);  }
+void _nss_mcdb_setnetent(void)   { nss_mcdb_setent(NSS_DBTYPE_NETWORKS);  }
+void _nss_mcdb_endnetent(void)   { nss_mcdb_endent(NSS_DBTYPE_NETWORKS);  }
+void _nss_mcdb_setprotoent(void) { nss_mcdb_setent(NSS_DBTYPE_PROTOCOLS); }
+void _nss_mcdb_endprotoent(void) { nss_mcdb_endent(NSS_DBTYPE_PROTOCOLS); }
+void _nss_mcdb_setrpcent(void)   { nss_mcdb_setent(NSS_DBTYPE_RPC);       }
+void _nss_mcdb_endrpcent(void)   { nss_mcdb_endent(NSS_DBTYPE_RPC);       }
+void _nss_mcdb_setservent(void)  { nss_mcdb_setent(NSS_DBTYPE_SERVICES);  }
+void _nss_mcdb_endservent(void)  { nss_mcdb_endent(NSS_DBTYPE_SERVICES);  }
 
 
 /* POSIX.1-2001 marks gethostbyaddr() and gethostbyname() obsolescent.
@@ -110,7 +112,7 @@ _nss_mcdb_gethostent_r(struct hostent * const restrict hostbuf,
                        int * const restrict errnop,
                        int * const restrict h_errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_hostent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_hostent_decode,
                                       .vstruct = hostbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -118,7 +120,7 @@ _nss_mcdb_gethostent_r(struct hostent * const restrict hostbuf,
     nss_status_t status;
     if (bufsz > 3) {
         buf[0] = buf[1] = buf[2] = buf[3] = '\0'; /* addr type AF_UNSPEC == 0 */
-        status = _nss_mcdb_getent(NSS_DBTYPE_HOSTS, &vinfo);
+        status = nss_mcdb_getent(NSS_DBTYPE_HOSTS, &v);
     }
     else {
         *errnop = errno = ERANGE;
@@ -126,7 +128,7 @@ _nss_mcdb_gethostent_r(struct hostent * const restrict hostbuf,
     }
     return (status == NSS_STATUS_SUCCESS)
       ? NSS_STATUS_SUCCESS
-      : gethost_fill_h_errnop(status, h_errnop);
+      : nss_mcdb_netdb_gethost_fill_h_errnop(status, h_errnop);
 }
 
 nss_status_t
@@ -136,7 +138,7 @@ _nss_mcdb_gethostbyname2_r(const char * const restrict name, const int type,
                            int * const restrict errnop,
                            int * const restrict h_errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_hostent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_hostent_decode,
                                       .vstruct = hostbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -147,11 +149,11 @@ _nss_mcdb_gethostbyname2_r(const char * const restrict name, const int type,
     uint64_t addr[2] = {0,0};/* support addr sizes up to 128-bits (e.g. IPv6) */
     const int is_addr = inet_pton(type, name, &addr);
     if (is_addr == 0) /* name is not valid address for specified addr family */
-        return gethost_query((uint32_t)type, &vinfo, h_errnop);
+        return nss_mcdb_netdb_gethost_query((uint32_t)type, &v, h_errnop);
     else if (is_addr > 0) /* name is valid address for specified addr family */
-        return gethost_filladdr(&addr, type, &vinfo, h_errnop);
+        return nss_mcdb_netdb_gethost_filladdr(&addr, type, &v, h_errnop);
     else /* invalid address family EAFNOSUPPORT => NSS_STATUS_RETURN */
-        return gethost_fill_h_errnop(NSS_STATUS_RETURN, h_errnop);
+        return nss_mcdb_netdb_gethost_fill_h_errnop(NSS_STATUS_RETURN,h_errnop);
 }
 
 nss_status_t
@@ -174,7 +176,7 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
                           int * const restrict h_errnop)
 {
     char hexstr[32];  /* support 128-bit IPv6 addresses */
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_hostent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_hostent_decode,
                                       .vstruct = hostbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -199,7 +201,7 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
                return NSS_STATUS_UNAVAIL; /* other types not implemented */
     }
 
-    return gethost_query((uint32_t)type, &vinfo, h_errnop);
+    return nss_mcdb_netdb_gethost_query((uint32_t)type, &v, h_errnop);
 }
 
 
@@ -216,13 +218,12 @@ _nss_mcdb_getnetgrent_r(char ** const restrict host,
      * (This routine might be a departure from typical get*ent() routines.)
      * (depends how we structure keys/values in mcdb)
      * (might store current netgroup in thread-local storage) */
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_buf_decode,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    const nss_status_t status =
-      _nss_mcdb_getent(NSS_DBTYPE_NETGROUP, &vinfo);
+    const nss_status_t status = nss_mcdb_getent(NSS_DBTYPE_NETGROUP, &v);
     if (status == NSS_STATUS_SUCCESS) {
         /* success ensures valid data (so that memchr will not return NULL) */
         *host   = buf;
@@ -239,16 +240,15 @@ _nss_mcdb_getnetent_r(struct netent * const restrict netbuf,
                       int * const restrict errnop,
                       int * const restrict h_errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_netent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_netent_decode,
                                       .vstruct = netbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    const nss_status_t status =
-      _nss_mcdb_getent(NSS_DBTYPE_NETWORKS, &vinfo);
+    const nss_status_t status = nss_mcdb_getent(NSS_DBTYPE_NETWORKS, &v);
     return (status == NSS_STATUS_SUCCESS)
       ? NSS_STATUS_SUCCESS
-      : gethost_fill_h_errnop(status, h_errnop);
+      : nss_mcdb_netdb_gethost_fill_h_errnop(status, h_errnop);
 }
 
 nss_status_t
@@ -258,7 +258,7 @@ _nss_mcdb_getnetbyname_r(const char * const restrict name,
                          int * const restrict errnop,
                          int * const restrict h_errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_netent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_netent_decode,
                                       .vstruct = netbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -267,10 +267,10 @@ _nss_mcdb_getnetbyname_r(const char * const restrict name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
     const nss_status_t status =
-      _nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &vinfo);
+      nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &v);
     return (status == NSS_STATUS_SUCCESS)
       ? NSS_STATUS_SUCCESS
-      : gethost_fill_h_errnop(status, h_errnop);
+      : nss_mcdb_netdb_gethost_fill_h_errnop(status, h_errnop);
 }
 
 nss_status_t
@@ -281,7 +281,7 @@ _nss_mcdb_getnetbyaddr_r(const uint32_t net, const int type,
                          int * const restrict h_errnop)
 {
     char hexstr[16];
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_netent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_netent_decode,
                                       .vstruct = netbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -292,10 +292,10 @@ _nss_mcdb_getnetbyaddr_r(const uint32_t net, const int type,
     nss_status_t status;
     uint32_to_ascii8uphex(net, hexstr);
     uint32_to_ascii8uphex((uint32_t)type, hexstr+8);
-    status = _nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &vinfo);
+    status = nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &v);
     return (status == NSS_STATUS_SUCCESS)
       ? NSS_STATUS_SUCCESS
-      : gethost_fill_h_errnop(status, h_errnop);
+      : nss_mcdb_netdb_gethost_fill_h_errnop(status, h_errnop);
 }
 
 
@@ -304,12 +304,12 @@ _nss_mcdb_getprotoent_r(struct protoent * const restrict protobuf,
                         char * const restrict buf, const size_t bufsz,
                         int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_protoent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_protoent_decode,
                                       .vstruct = protobuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    return _nss_mcdb_getent(NSS_DBTYPE_PROTOCOLS, &vinfo);
+    return nss_mcdb_getent(NSS_DBTYPE_PROTOCOLS, &v);
 }
 
 nss_status_t
@@ -318,7 +318,7 @@ _nss_mcdb_getprotobyname_r(const char * const restrict name,
                            char * const restrict buf, const size_t bufsz,
                            int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_protoent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_protoent_decode,
                                       .vstruct = protobuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -326,7 +326,7 @@ _nss_mcdb_getprotobyname_r(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
-    return _nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &v);
 }
 
 nss_status_t
@@ -336,7 +336,7 @@ _nss_mcdb_getprotobynumber_r(const int proto,
                              int * const restrict errnop)
 {
     char hexstr[8];
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_protoent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_protoent_decode,
                                       .vstruct = protobuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -345,7 +345,7 @@ _nss_mcdb_getprotobynumber_r(const int proto,
                                       .klen    = sizeof(hexstr),
                                       .tagc    = (unsigned char)'x' };
     uint32_to_ascii8uphex((uint32_t)proto, hexstr);
-    return _nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &v);
 }
 
 
@@ -354,12 +354,12 @@ _nss_mcdb_getrpcent_r(struct rpcent * const restrict rpcbuf,
                       char * const restrict buf, const size_t bufsz,
                       int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_rpcent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_rpcent_decode,
                                       .vstruct = rpcbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    return _nss_mcdb_getent(NSS_DBTYPE_RPC, &vinfo);
+    return nss_mcdb_getent(NSS_DBTYPE_RPC, &v);
 }
 
 nss_status_t
@@ -368,7 +368,7 @@ _nss_mcdb_getrpcbyname_r(const char * const restrict name,
                          char * const restrict buf, const size_t bufsz,
                          int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_rpcent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_rpcent_decode,
                                       .vstruct = rpcbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -376,7 +376,7 @@ _nss_mcdb_getrpcbyname_r(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
-    return _nss_mcdb_get_generic(NSS_DBTYPE_RPC, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_RPC, &v);
 }
 
 nss_status_t
@@ -386,7 +386,7 @@ _nss_mcdb_getrpcbynumber_r(const int number,
                            int * const restrict errnop)
 {
     char hexstr[8];
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_rpcent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_rpcent_decode,
                                       .vstruct = rpcbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -395,7 +395,7 @@ _nss_mcdb_getrpcbynumber_r(const int number,
                                       .klen    = sizeof(hexstr),
                                       .tagc    = (unsigned char)'x' };
     uint32_to_ascii8uphex((uint32_t)number, hexstr);
-    return _nss_mcdb_get_generic(NSS_DBTYPE_RPC, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_RPC, &v);
 }
 
 
@@ -404,14 +404,14 @@ _nss_mcdb_getservent_r(struct servent * const restrict servbuf,
                        char * const restrict buf, const size_t bufsz,
                        int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_servent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_servent_decode,
                                       .vstruct = servbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
     if (bufsz > 0) {
         *buf = '\0';
-        return _nss_mcdb_getent(NSS_DBTYPE_SERVICES, &vinfo);
+        return nss_mcdb_getent(NSS_DBTYPE_SERVICES, &v);
     }
     else {
         *errnop = errno = ERANGE;
@@ -426,7 +426,7 @@ _nss_mcdb_getservbyname_r(const char * const restrict name,
                           char * const restrict buf, const size_t bufsz,
                           int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_servent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_servent_decode,
                                       .vstruct = servbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -436,11 +436,11 @@ _nss_mcdb_getservbyname_r(const char * const restrict name,
                                       .tagc    = (unsigned char)'=' };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
     if (bufsz > plen) {
-        if (plen)  /*copy proto for later match in _nss_mcdb_decode_servent()*/
+        /*copy proto for later match in nss_mcdb_netdb_servent_decode()*/
+        *buf = '\0';
+        if (plen)
             memcpy(buf, proto, plen+1);
-        else
-            *buf = '\0';
-        return _nss_mcdb_get_generic(NSS_DBTYPE_SERVICES, &vinfo);
+        return nss_mcdb_get_generic(NSS_DBTYPE_SERVICES, &v);
     }
     else {
         *errnop = errno = ERANGE;
@@ -455,7 +455,7 @@ _nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
                           int * const restrict errnop)
 {
     char hexstr[8];
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_servent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_servent_decode,
                                       .vstruct = servbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -465,12 +465,12 @@ _nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
                                       .tagc    = (unsigned char)'x' };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
     if (bufsz > plen) {
-        if (plen)  /*copy proto for later match in _nss_mcdb_decode_servent()*/
+        /*copy proto for later match in nss_mcdb_netdb_servent_decode()*/
+        *buf = '\0';
+        if (plen)
             memcpy(buf, proto, plen+1);
-        else
-            *buf = '\0';
         uint32_to_ascii8uphex((uint32_t)port, hexstr);
-        return _nss_mcdb_get_generic(NSS_DBTYPE_SERVICES, &vinfo);
+        return nss_mcdb_get_generic(NSS_DBTYPE_SERVICES, &v);
     }
     else {
         *errnop = errno = ERANGE;
@@ -480,7 +480,8 @@ _nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
 
 
 static nss_status_t  __attribute_noinline__
-gethost_fill_h_errnop(const nss_status_t status, int * const restrict h_errnop)
+nss_mcdb_netdb_gethost_fill_h_errnop(const nss_status_t status,
+                                     int * const restrict h_errnop)
 {
     switch (status) {
       case NSS_STATUS_TRYAGAIN: *h_errnop = TRY_AGAIN; break;
@@ -493,37 +494,38 @@ gethost_fill_h_errnop(const nss_status_t status, int * const restrict h_errnop)
 }
 
 static nss_status_t
-gethost_query(const uint32_t type,
-              const struct _nss_vinfo * const restrict vinfo,
-              int * const restrict h_errnop)
+nss_mcdb_netdb_gethost_query(const uint32_t type,
+                             const struct nss_mcdb_vinfo * const restrict v,
+                             int * const restrict h_errnop)
 {
     nss_status_t status;
-    if (vinfo->bufsz >= 4) {
-        /*copy type for later match in _nss_mcdb_decode_hostent()*/
-        char * const restrict buf = vinfo->buf;
+    if (v->bufsz >= 4) {
+        /*copy type for later match in nss_mcdb_netdb_hostent_decode()*/
+        char * const restrict buf = v->buf;
         buf[0] = (type              ) >> 24;
         buf[1] = (type & 0x00FF0000u) >> 16;
         buf[2] = (type & 0x0000FF00u) >>  8;
         buf[3] = (type & 0x000000FFu);
-        status = _nss_mcdb_get_generic(NSS_DBTYPE_HOSTS, vinfo);
+        status = nss_mcdb_get_generic(NSS_DBTYPE_HOSTS, v);
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         status = NSS_STATUS_TRYAGAIN;
     }
     return (status == NSS_STATUS_SUCCESS)
       ? NSS_STATUS_SUCCESS
-      : gethost_fill_h_errnop(status, h_errnop);
+      : nss_mcdb_netdb_gethost_fill_h_errnop(status, h_errnop);
 }
 
 static nss_status_t
-gethost_filladdr(const void * const restrict addr, const int type,
-                 const struct _nss_vinfo * const restrict vinfo,
-                 int * const restrict h_errnop)
+nss_mcdb_netdb_gethost_filladdr(const void * const restrict addr,
+                                const int type,
+                                const struct nss_mcdb_vinfo * const restrict v,
+                                int * const restrict h_errnop)
 {
-    struct hostent * const restrict hostbuf = (struct hostent *)vinfo->vstruct;
-    const size_t bufsz = vinfo->bufsz;
-    char * const restrict buf = vinfo->buf;
+    struct hostent * const restrict hostbuf = (struct hostent *)v->vstruct;
+    const size_t bufsz = v->bufsz;
+    char * const restrict buf = v->buf;
     char * const aligned = (char *)((uintptr_t)(buf+7) & ~0x7);
     /* supports only AF_INET and AF_INET6
      * (if expanding, might create static array of addr sizes indexed by AF_*)*/
@@ -531,16 +533,18 @@ gethost_filladdr(const void * const restrict addr, const int type,
     switch (type) {
       case AF_INET:  h_length = sizeof(struct in_addr);  break;
       case AF_INET6: h_length = sizeof(struct in6_addr); break;
-      default: *vinfo->errnop = errno = ENOENT;
-               return gethost_fill_h_errnop(NSS_STATUS_UNAVAIL, h_errnop);
+      default: *v->errnop = errno = ENOENT;
+               return nss_mcdb_netdb_gethost_fill_h_errnop(NSS_STATUS_UNAVAIL,
+                                                           h_errnop);
     }          /* other addr types not implemented */
     /* (pointers in struct hostent must be aligned; align to 8 bytes) */
     /* (align+(char **h_aliases)+(char **h_addr_list)+h_length+addrstr+'\0') */
-    if ((aligned - buf) + 8 + 8 + h_length + vinfo->klen + 1 >= bufsz) {
-        *vinfo->errnop = errno = ERANGE;
-        return gethost_fill_h_errnop(NSS_STATUS_TRYAGAIN, h_errnop);
+    if ((aligned - buf) + 8 + 8 + h_length + v->klen + 1 >= bufsz) {
+        *v->errnop = errno = ERANGE;
+        return nss_mcdb_netdb_gethost_fill_h_errnop(NSS_STATUS_TRYAGAIN,
+                                                    h_errnop);
     }
-    hostbuf->h_name      = memcpy(aligned+16+h_length,vinfo->key,vinfo->klen+1);
+    hostbuf->h_name      = memcpy(aligned+16+h_length, v->key, v->klen+1);
     hostbuf->h_aliases   = (char **)aligned;
     hostbuf->h_addrtype  = type;
     hostbuf->h_length    = h_length;
@@ -557,21 +561,21 @@ gethost_filladdr(const void * const restrict addr, const int type,
 
 
 static nss_status_t
-_nss_mcdb_decode_hostent(struct mcdb * const restrict m,
-                         const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
+                              const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * restrict dptr = (char *)mcdb_dataptr(m);
-    struct hostent * const he = (struct hostent *)vinfo->vstruct;
-    char *buf = vinfo->buf;
+    struct hostent * const he = (struct hostent *)v->vstruct;
+    char *buf = v->buf;
     const uint32_t type = (buf[0]<<24) | (buf[1]<<16) | (buf[2]<<8) | buf[3];
 
     /* match type (e.g. AF_INET, AF_INET6), if not zero (AF_UNSPEC) */
     if (type != 0) {
         while (type != uint32_from_ascii8uphex(dptr+NSS_H_ADDRTYPE)) {
-            if (mcdb_findtagnext(m, vinfo->key, vinfo->klen, vinfo->tagc))
+            if (mcdb_findtagnext(m, v->key, v->klen, v->tagc))
                 dptr = (char *)mcdb_dataptr(m);
             else {
-                *vinfo->errnop = errno = ENOENT;
+                *v->errnop = errno = ENOENT;
                 return NSS_STATUS_NOTFOUND;
             }
         }
@@ -597,7 +601,7 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, he_mem_num correct) */
-    if (((char *)he_mem)-buf+((he_mem_num+1+he_lst_num+1)<<3) <= vinfo->bufsz) {
+    if (((char *)he_mem)-buf+((he_mem_num+1+he_lst_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_HE_HDRSZ, mcdb_datalen(m)-NSS_HE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_he_mem_str-1] = '\0';        /* terminate h_name */
@@ -611,7 +615,7 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
             he_mem[i] = ++buf;
         }
         he_mem[he_mem_num] = NULL;         /* terminate (char **) he_mem array*/
-        he_lst[0] = buf = vinfo->buf+idx_he_lst_str; /*begin of he_lst strings*/
+        he_lst[0] = buf = v->buf+idx_he_lst_str; /*begin of he_lst strings*/
         for (size_t i=1; i<he_lst_num; ++i) {/*(i=1; assigned first str above)*/
             he_lst[i] = (buf += he->h_length);
         }
@@ -619,19 +623,19 @@ _nss_mcdb_decode_hostent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 
 static nss_status_t
-_nss_mcdb_decode_netent(struct mcdb * const restrict m,
-                        const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_netdb_netent_decode(struct mcdb * const restrict m,
+                             const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    struct netent * const ne = (struct netent *)vinfo->vstruct;
-    char *buf = vinfo->buf;
+    struct netent * const ne = (struct netent *)v->vstruct;
+    char *buf = v->buf;
     /* parse fixed format record header to get offsets into strings */
     const uintptr_t idx_ne_mem_str=uint16_from_ascii4uphex(dptr+NSS_NE_MEM_STR);
     const uintptr_t idx_ne_mem    =uint16_from_ascii4uphex(dptr+NSS_NE_MEM);
@@ -648,7 +652,7 @@ _nss_mcdb_decode_netent(struct mcdb * const restrict m,
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, ne_mem_num correct) */
-    if (((char *)ne_mem)-buf+((ne_mem_num+1)<<3) <= vinfo->bufsz) {
+    if (((char *)ne_mem)-buf+((ne_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_NE_HDRSZ, mcdb_datalen(m)-NSS_NE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_ne_mem_str-1] = '\0';        /* terminate n_name */
@@ -664,19 +668,19 @@ _nss_mcdb_decode_netent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 
 static nss_status_t
-_nss_mcdb_decode_protoent(struct mcdb * const restrict m,
-                          const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_netdb_protoent_decode(struct mcdb * const restrict m,
+                               const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    struct protoent * const pe = (struct protoent *)vinfo->vstruct;
-    char *buf = vinfo->buf;
+    struct protoent * const pe = (struct protoent *)v->vstruct;
+    char *buf = v->buf;
     /* parse fixed format pecord header to get offsets into strings */
     const uintptr_t idx_pe_mem_str=uint16_from_ascii4uphex(dptr+NSS_PE_MEM_STR);
     const uintptr_t idx_pe_mem    =uint16_from_ascii4uphex(dptr+NSS_PE_MEM);
@@ -692,7 +696,7 @@ _nss_mcdb_decode_protoent(struct mcdb * const restrict m,
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, pe_mem_num correct) */
-    if (((char *)pe_mem)-buf+((pe_mem_num+1)<<3) <= vinfo->bufsz) {
+    if (((char *)pe_mem)-buf+((pe_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_PE_HDRSZ, mcdb_datalen(m)-NSS_PE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_pe_mem_str-1] = '\0';        /* terminate p_name */
@@ -708,19 +712,19 @@ _nss_mcdb_decode_protoent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 
 static nss_status_t
-_nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
-                        const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_netdb_rpcent_decode(struct mcdb * const restrict m,
+                             const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    struct rpcent * const re = (struct rpcent *)vinfo->vstruct;
-    char *buf = vinfo->buf;
+    struct rpcent * const re = (struct rpcent *)v->vstruct;
+    char *buf = v->buf;
     /* parse fixed format record header to get offsets into strings */
     const uintptr_t idx_re_mem_str=uint16_from_ascii4uphex(dptr+NSS_RE_MEM_STR);
     const uintptr_t idx_re_mem    =uint16_from_ascii4uphex(dptr+NSS_RE_MEM);
@@ -736,7 +740,7 @@ _nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, re_mem_num correct) */
-    if (((char *)re_mem)-buf+((re_mem_num+1)<<3) <= vinfo->bufsz) {
+    if (((char *)re_mem)-buf+((re_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_RE_HDRSZ, mcdb_datalen(m)-NSS_RE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_re_mem_str-1] = '\0';        /* terminate r_name */
@@ -752,19 +756,19 @@ _nss_mcdb_decode_rpcent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 
 static nss_status_t
-_nss_mcdb_decode_servent(struct mcdb * const restrict m,
-                         const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
+                              const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * restrict dptr = (char *)mcdb_dataptr(m);
-    struct servent * const se = (struct servent *)vinfo->vstruct;
-    char *buf = vinfo->buf; /* contains proto string to match (if not "") */
+    struct servent * const se = (struct servent *)v->vstruct;
+    char *buf = v->buf; /* contains proto string to match (if not "") */
 
     /* match proto string (stored right after header), if not empty string */
     /* (future: could possibly be further optimized for "tcp" and "udp"
@@ -774,10 +778,10 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
         while (dptr[NSS_SE_HDRSZ] != *buf  /* e.g. "tcp" vs "udp" */
                || memcmp(dptr+NSS_SE_HDRSZ, buf, protolen) != 0
                || dptr[NSS_SE_HDRSZ+protolen] != ' ') {
-            if (mcdb_findtagnext(m, vinfo->key, vinfo->klen, vinfo->tagc))
+            if (mcdb_findtagnext(m, v->key, v->klen, v->tagc))
                 dptr = (char *)mcdb_dataptr(m);
             else {
-                *vinfo->errnop = errno = ENOENT;
+                *v->errnop = errno = ENOENT;
                 return NSS_STATUS_NOTFOUND;
             }
         }
@@ -800,7 +804,7 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for ' '
      * (assume data consistent, se_mem_num correct) */
-    if (((char *)se_mem)-buf+((se_mem_num+1)<<3) <= vinfo->bufsz) {
+    if (((char *)se_mem)-buf+((se_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_SE_HDRSZ, mcdb_datalen(m)-NSS_SE_HDRSZ);
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_s_name-1]     = '\0';        /* terminate s_proto */
@@ -817,7 +821,7 @@ _nss_mcdb_decode_servent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }

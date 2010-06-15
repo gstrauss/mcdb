@@ -41,10 +41,10 @@ enum nss_dbtype {
  * calls in the same session.  When done, end*ent() should be called to release
  * the session. */
 
-struct _nss_vinfo {
+struct nss_mcdb_vinfo {
   /* fail with errno = ERANGE if insufficient buf space supplied */
   nss_status_t (* const decode)(struct mcdb * restrict,
-                                const struct _nss_vinfo * restrict);
+                                const struct nss_mcdb_vinfo * restrict);
   void * const restrict vstruct;
   char * const restrict buf;
   const size_t bufsz;
@@ -56,28 +56,28 @@ struct _nss_vinfo {
 
 
 nss_status_t
-_nss_mcdb_setent(const enum nss_dbtype)
+nss_mcdb_setent(const enum nss_dbtype)
   __attribute_nonnull__;
 
 nss_status_t
-_nss_mcdb_endent(const enum nss_dbtype)
+nss_mcdb_endent(const enum nss_dbtype)
   __attribute_nonnull__;
 
 nss_status_t
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
-_nss_mcdb_getent(const enum nss_dbtype,
-                 const struct _nss_vinfo * const restrict)
+nss_mcdb_getent(const enum nss_dbtype,
+                 const struct nss_mcdb_vinfo * const restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
 nss_status_t
-_nss_mcdb_get_generic(const enum nss_dbtype,
-                      const struct _nss_vinfo * const restrict)
+nss_mcdb_get_generic(const enum nss_dbtype,
+                     const struct nss_mcdb_vinfo * const restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 nss_status_t
-_nss_mcdb_decode_buf(struct mcdb * const restrict,
-                     const struct _nss_vinfo * const restrict)
+nss_mcdb_buf_decode(struct mcdb * const restrict,
+                    const struct nss_mcdb_vinfo * const restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 

@@ -21,27 +21,27 @@
  */
 
 static nss_status_t
-_nss_mcdb_decode_passwd(struct mcdb * restrict,
-                        const struct _nss_vinfo * restrict)
+nss_mcdb_acct_passwd_decode(struct mcdb * restrict,
+                            const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 static nss_status_t
-_nss_mcdb_decode_group(struct mcdb * restrict,
-                       const struct _nss_vinfo * restrict)
+nss_mcdb_acct_group_decode(struct mcdb * restrict,
+                           const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 static nss_status_t
-_nss_mcdb_decode_spwd(struct mcdb * restrict,
-                      const struct _nss_vinfo * restrict)
+nss_mcdb_acct_spwd_decode(struct mcdb * restrict,
+                          const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
-void _nss_mcdb_setpwent(void) { _nss_mcdb_setent(NSS_DBTYPE_PASSWD); }
-void _nss_mcdb_endpwent(void) { _nss_mcdb_endent(NSS_DBTYPE_PASSWD); }
-void _nss_mcdb_setgrent(void) { _nss_mcdb_setent(NSS_DBTYPE_GROUP);  }
-void _nss_mcdb_endgrent(void) { _nss_mcdb_endent(NSS_DBTYPE_GROUP);  }
-void _nss_mcdb_setspent(void) { _nss_mcdb_setent(NSS_DBTYPE_SHADOW); }
-void _nss_mcdb_endspent(void) { _nss_mcdb_endent(NSS_DBTYPE_SHADOW); }
+void _nss_mcdb_setpwent(void) { nss_mcdb_setent(NSS_DBTYPE_PASSWD); }
+void _nss_mcdb_endpwent(void) { nss_mcdb_endent(NSS_DBTYPE_PASSWD); }
+void _nss_mcdb_setgrent(void) { nss_mcdb_setent(NSS_DBTYPE_GROUP);  }
+void _nss_mcdb_endgrent(void) { nss_mcdb_endent(NSS_DBTYPE_GROUP);  }
+void _nss_mcdb_setspent(void) { nss_mcdb_setent(NSS_DBTYPE_SHADOW); }
+void _nss_mcdb_endspent(void) { nss_mcdb_endent(NSS_DBTYPE_SHADOW); }
 
 
 nss_status_t
@@ -49,12 +49,12 @@ _nss_mcdb_getpwent_r(struct passwd * const restrict pwbuf,
                      char * const restrict buf, const size_t bufsz,
                      int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_passwd,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_passwd_decode,
                                       .vstruct = pwbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    return _nss_mcdb_getent(NSS_DBTYPE_PASSWD, &vinfo);
+    return nss_mcdb_getent(NSS_DBTYPE_PASSWD, &v);
 }
 
 nss_status_t
@@ -63,7 +63,7 @@ _nss_mcdb_getpwnam_r(const char * const restrict name,
                      char * const restrict buf, const size_t bufsz,
                      int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_passwd,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_passwd_decode,
                                       .vstruct = pwbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -71,7 +71,7 @@ _nss_mcdb_getpwnam_r(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
-    return _nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &v);
 }
 
 nss_status_t
@@ -81,7 +81,7 @@ _nss_mcdb_getpwuid_r(const uid_t uid,
                      int * const restrict errnop)
 {
     char hexstr[8];
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_passwd,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_passwd_decode,
                                       .vstruct = pwbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -90,7 +90,7 @@ _nss_mcdb_getpwuid_r(const uid_t uid,
                                       .klen    = sizeof(hexstr),
                                       .tagc    = (unsigned char)'x' };
     uint32_to_ascii8uphex((uint32_t)uid, hexstr);
-    return _nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &v);
 }
 
 
@@ -99,12 +99,12 @@ _nss_mcdb_getgrent_r(struct group * const restrict grbuf,
                      char * const restrict buf, const size_t bufsz,
                      int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_group,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_group_decode,
                                       .vstruct = grbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    return _nss_mcdb_getent(NSS_DBTYPE_GROUP, &vinfo);
+    return nss_mcdb_getent(NSS_DBTYPE_GROUP, &v);
 }
 
 nss_status_t
@@ -113,7 +113,7 @@ _nss_mcdb_getgrnam_r(const char * const restrict name,
                      char * const restrict buf, const size_t bufsz,
                      int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_group,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_group_decode,
                                       .vstruct = grbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -121,7 +121,7 @@ _nss_mcdb_getgrnam_r(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
-    return _nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &v);
 }
 
 nss_status_t
@@ -131,7 +131,7 @@ _nss_mcdb_getgrgid_r(const gid_t gid,
                      int * const restrict errnop)
 {
     char hexstr[8];
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_group,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_group_decode,
                                       .vstruct = grbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -140,7 +140,7 @@ _nss_mcdb_getgrgid_r(const gid_t gid,
                                       .klen    = sizeof(hexstr),
                                       .tagc    = (unsigned char)'x' };
     uint32_to_ascii8uphex((uint32_t)gid, hexstr);
-    return _nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &v);
 }
 
 
@@ -149,12 +149,12 @@ _nss_mcdb_getspent_r(struct spwd * const restrict spbuf,
                      char * const restrict buf, const size_t bufsz,
                      int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_spwd,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_spwd_decode,
                                       .vstruct = spbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    return _nss_mcdb_getent(NSS_DBTYPE_SHADOW, &vinfo);
+    return nss_mcdb_getent(NSS_DBTYPE_SHADOW, &v);
 }
 
 nss_status_t
@@ -163,7 +163,7 @@ _nss_mcdb_getspnam_r(const char * const restrict name,
                      char * const restrict buf, const size_t bufsz,
                      int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_spwd,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_spwd_decode,
                                       .vstruct = spbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -171,7 +171,7 @@ _nss_mcdb_getspnam_r(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
-    return _nss_mcdb_get_generic(NSS_DBTYPE_SHADOW, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_SHADOW, &v);
 }
 
 
@@ -183,13 +183,13 @@ _nss_mcdb_getspnam_r(const char * const restrict name,
 
 
 static nss_status_t
-_nss_mcdb_decode_passwd(struct mcdb * const restrict m,
-                        const struct _nss_vinfo * restrict vinfo)
+nss_mcdb_acct_passwd_decode(struct mcdb * const restrict m,
+                            const struct nss_mcdb_vinfo * restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     const size_t dlen = ((size_t)mcdb_datalen(m)) - NSS_PW_HDRSZ;
-    struct passwd * const pw = (struct passwd *)vinfo->vstruct;
-    char * const buf = vinfo->buf;
+    struct passwd * const pw = (struct passwd *)v->vstruct;
+    char * const buf = v->buf;
     /* parse fixed format record header to get offsets into strings */
     const uintptr_t idx_pw_passwd = uint16_from_ascii4uphex(dptr+NSS_PW_PASSWD);
     const uintptr_t idx_pw_gecos  = uint16_from_ascii4uphex(dptr+NSS_PW_GECOS);
@@ -203,7 +203,7 @@ _nss_mcdb_decode_passwd(struct mcdb * const restrict m,
     pw->pw_gecos = buf+idx_pw_gecos;
     pw->pw_dir   = buf+idx_pw_dir;
     pw->pw_shell = buf+idx_pw_shell;
-    if (dlen < vinfo->bufsz) {
+    if (dlen < v->bufsz) {
         memcpy(buf, dptr+NSS_PW_HDRSZ, dlen);
         /* terminate strings; replace ':' separator in data with '\0' */
         buf[idx_pw_passwd-1] = '\0';     /* terminate pw_name   */
@@ -214,19 +214,19 @@ _nss_mcdb_decode_passwd(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 
 static nss_status_t
-_nss_mcdb_decode_group(struct mcdb * const restrict m,
-                       const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_acct_group_decode(struct mcdb * const restrict m,
+                           const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    struct group * const gr = (struct group *)vinfo->vstruct;
-    char *buf = vinfo->buf;
+    struct group * const gr = (struct group *)v->vstruct;
+    char *buf = v->buf;
     /* parse fixed format record header to get offsets into strings */
     const uintptr_t idx_gr_passwd =uint16_from_ascii4uphex(dptr+NSS_GR_PASSWD);
     const uintptr_t idx_gr_mem_str=uint16_from_ascii4uphex(dptr+NSS_GR_MEM_STR);
@@ -244,7 +244,7 @@ _nss_mcdb_decode_group(struct mcdb * const restrict m,
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for ','
      * (assume data consistent, gr_mem_num correct) */
-    if (((char *)gr_mem)-buf+((gr_mem_num+1)<<3) <= vinfo->bufsz) {
+    if (((char *)gr_mem)-buf+((gr_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_GR_HDRSZ, mcdb_datalen(m)-NSS_GR_HDRSZ);
         /* terminate strings; replace ':' separator in data with '\0'. */
         buf[idx_gr_passwd-1]  = '\0';        /* terminate gr_name   */
@@ -261,20 +261,20 @@ _nss_mcdb_decode_group(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 
 static nss_status_t
-_nss_mcdb_decode_spwd(struct mcdb * const restrict m,
-                      const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_acct_spwd_decode(struct mcdb * const restrict m,
+                          const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     const size_t dlen = ((size_t)mcdb_datalen(m)) - NSS_SP_HDRSZ;
-    struct spwd * const sp = (struct spwd *)vinfo->vstruct;
-    char * const buf = vinfo->buf;
+    struct spwd * const sp = (struct spwd *)v->vstruct;
+    char * const buf = v->buf;
     /* parse fixed format record header to get offsets into strings */
     /* (cast to (int32_t) before casting to (long) to preserve -1) */
     const uintptr_t idx_sp_pwdp =  uint16_from_ascii4uphex(dptr+NSS_SP_PWDP);
@@ -288,7 +288,7 @@ _nss_mcdb_decode_spwd(struct mcdb * const restrict m,
     /* populate sp string pointers */
     sp->sp_namp   = buf;
     sp->sp_pwdp   = buf+idx_sp_pwdp;
-    if (dlen < vinfo->bufsz) {
+    if (dlen < v->bufsz) {
         memcpy(buf, dptr+NSS_SP_HDRSZ, dlen);
         /* terminate strings; replace ':' separator in data with '\0' */
         buf[idx_sp_pwdp-1] = '\0';     /* terminate sp_namp */
@@ -296,7 +296,7 @@ _nss_mcdb_decode_spwd(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }

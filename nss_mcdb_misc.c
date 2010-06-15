@@ -32,20 +32,20 @@ int xdecrypt(char *secret, char *passwd);
  */
 
 static nss_status_t
-_nss_mcdb_decode_aliasent(struct mcdb * restrict,
-                          const struct _nss_vinfo * restrict)
+nss_mcdb_misc_aliasent_decode(struct mcdb * restrict,
+                              const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 static nss_status_t
-_nss_mcdb_decode_ether_addr(struct mcdb * restrict,
-                            const struct _nss_vinfo * restrict)
+nss_mcdb_misc_ether_addr_decode(struct mcdb * restrict,
+                                const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
-void _nss_mcdb_setaliasent(void) { _nss_mcdb_setent(NSS_DBTYPE_ALIASES); }
-void _nss_mcdb_endaliasent(void) { _nss_mcdb_endent(NSS_DBTYPE_ALIASES); }
-void _nss_mcdb_setetherent(void) { _nss_mcdb_setent(NSS_DBTYPE_ETHERS);  }
-void _nss_mcdb_endetherent(void) { _nss_mcdb_endent(NSS_DBTYPE_ETHERS);  }
+void _nss_mcdb_setaliasent(void) { nss_mcdb_setent(NSS_DBTYPE_ALIASES); }
+void _nss_mcdb_endaliasent(void) { nss_mcdb_endent(NSS_DBTYPE_ALIASES); }
+void _nss_mcdb_setetherent(void) { nss_mcdb_setent(NSS_DBTYPE_ETHERS);  }
+void _nss_mcdb_endetherent(void) { nss_mcdb_endent(NSS_DBTYPE_ETHERS);  }
 
 
 nss_status_t
@@ -53,12 +53,12 @@ _nss_mcdb_getaliasent_r(struct aliasent * const restrict aliasbuf,
                         char * const restrict buf, const size_t bufsz,
                         int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_aliasent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_misc_aliasent_decode,
                                       .vstruct = aliasbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    return _nss_mcdb_getent(NSS_DBTYPE_ALIASES, &vinfo);
+    return nss_mcdb_getent(NSS_DBTYPE_ALIASES, &v);
 }
 
 nss_status_t
@@ -67,7 +67,7 @@ _nss_mcdb_getaliasbyname_r(const char * const restrict name,
                            char * const restrict buf, const size_t bufsz,
                            int * const restrict errnop)
 {
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_aliasent,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_misc_aliasent_decode,
                                       .vstruct = aliasbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -75,7 +75,7 @@ _nss_mcdb_getaliasbyname_r(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
-    return _nss_mcdb_get_generic(NSS_DBTYPE_ALIASES, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_ALIASES, &v);
 }
 
 
@@ -84,7 +84,7 @@ _nss_mcdb_getpublickey(const char * const restrict name,
                        char * const restrict buf, const size_t bufsz,
                        int * const restrict errnop)
 {   /*  man getpublickey() *//* Solaris */
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_buf_decode,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -92,7 +92,7 @@ _nss_mcdb_getpublickey(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
-    return _nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &v);
 }
 
 
@@ -102,7 +102,7 @@ _nss_mcdb_getsecretkey(const char * const restrict name,
                        char * const restrict buf, const size_t bufsz,
                        int * const restrict errnop)
 {   /*  man getsecretkey() *//* Solaris */
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_buf_decode,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -110,8 +110,7 @@ _nss_mcdb_getsecretkey(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'*' };
-    const nss_status_t status =
-      _nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &vinfo);
+    const nss_status_t status = nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &v);
     if (status == NSS_STATUS_SUCCESS) {
       /* TODO: decrypt buf using decryptkey */
       #ifdef __sun
@@ -128,12 +127,12 @@ _nss_mcdb_getetherent_r(struct ether_addr * const restrict etherbuf,
                         char * const restrict buf, const size_t bufsz,
                         int * const restrict errnop)
 {   /*  man ether_line()  */
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_ether_addr,
+    const struct nss_mcdb_vinfo v = { .decode  =nss_mcdb_misc_ether_addr_decode,
                                       .vstruct = etherbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop };
-    return _nss_mcdb_getent(NSS_DBTYPE_ETHERS, &vinfo);
+    return nss_mcdb_getent(NSS_DBTYPE_ETHERS, &v);
 }
 
 nss_status_t
@@ -141,7 +140,7 @@ _nss_mcdb_gethostton_r(const char * const restrict name,
                        struct ether_addr * const restrict etherbuf,
                        int * const restrict errnop)
 {   /*  man ether_hostton()  */
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_ether_addr,
+    const struct nss_mcdb_vinfo v = { .decode  =nss_mcdb_misc_ether_addr_decode,
                                       .vstruct = etherbuf,
                                       .buf     = NULL,
                                       .bufsz   = 0,
@@ -149,7 +148,7 @@ _nss_mcdb_gethostton_r(const char * const restrict name,
                                       .key     = name,
                                       .klen    = strlen(name),
                                       .tagc    = (unsigned char)'=' };
-    return _nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &v);
 }
 
 nss_status_t
@@ -157,7 +156,7 @@ _nss_mcdb_getntohost_r(struct ether_addr * const restrict ether,
                        char * const restrict buf, const size_t bufsz,
                        int * const restrict errnop)
 {   /*  man ether_ntohost()  */
-    const struct _nss_vinfo vinfo = { .decode  = _nss_mcdb_decode_buf,
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_buf_decode,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
@@ -165,17 +164,17 @@ _nss_mcdb_getntohost_r(struct ether_addr * const restrict ether,
                                       .key     = (char *)ether,
                                       .klen    = sizeof(struct ether_addr),
                                       .tagc    = (unsigned char)'b' };/*binary*/
-    return _nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &vinfo);
+    return nss_mcdb_get_generic(NSS_DBTYPE_ETHERS, &v);
 }
 
 
 static nss_status_t
-_nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
-                          const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_misc_aliasent_decode(struct mcdb * const restrict m,
+                              const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    struct aliasent * const ae = (struct aliasent *)vinfo->vstruct;
-    char *buf = vinfo->buf;
+    struct aliasent * const ae = (struct aliasent *)v->vstruct;
+    char *buf = v->buf;
     /* parse fixed format record header to get offsets into strings */
     const uintptr_t idx_ae_mem_str=uint16_from_ascii4uphex(dptr+NSS_AE_MEM_STR);
     const uintptr_t idx_ae_mem    =uint16_from_ascii4uphex(dptr+NSS_AE_MEM);
@@ -192,7 +191,7 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for ','
      * (assume data consistent, ae_mem_num correct) */
-    if (((char *)ae_mem)-buf+(ae_mem_num<<3) <= vinfo->bufsz) {
+    if (((char *)ae_mem)-buf+(ae_mem_num<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_AE_HDRSZ, mcdb_datalen(m)-NSS_AE_HDRSZ);
         /* terminate strings; replace ':' separator in data with '\0'. */
         buf[idx_ae_mem_str-1] = '\0';        /* terminate ae_name */
@@ -207,20 +206,20 @@ _nss_mcdb_decode_aliasent(struct mcdb * const restrict m,
         return NSS_STATUS_SUCCESS;
     }
     else {
-        *vinfo->errnop = errno = ERANGE;
+        *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 }
 
 
 static nss_status_t
-_nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
-                            const struct _nss_vinfo * const restrict vinfo)
+nss_mcdb_misc_ether_addr_decode(struct mcdb * const restrict m,
+                                const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     const size_t dlen = ((size_t)mcdb_datalen(m)) - NSS_EA_HDRSZ;
-    struct ether_addr * const ether_addr = (struct ether_addr *)vinfo->vstruct;
-    char * const buf = vinfo->buf;
+    struct ether_addr * const ether_addr = (struct ether_addr *)v->vstruct;
+    char * const buf = v->buf;
 
     if (ether_addr != NULL) {
         /* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr)*/
@@ -233,12 +232,12 @@ _nss_mcdb_decode_ether_addr(struct mcdb * const restrict m,
     }
 
     if (buf != NULL) {
-        if (dlen < vinfo->bufsz) {
+        if (dlen < v->bufsz) {
             memcpy(buf, dptr+NSS_EA_HDRSZ, dlen);
             buf[dlen] = '\0';              /* terminate hostname */
         }
         else {
-            *vinfo->errnop = errno = ERANGE;
+            *v->errnop = errno = ERANGE;
             return NSS_STATUS_TRYAGAIN;
         }
     }
