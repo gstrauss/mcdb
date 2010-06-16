@@ -145,7 +145,7 @@ _nss_mcdb_gethostbyname2_r(const char * const restrict name, const int type,
                                       .errnop  = errnop,
                                       .key     = name,
                                       .klen    = strlen(name),
-                                      .tagc    = (unsigned char)'=' };
+                                      .tagc    = (unsigned char)'~' };
     uint64_t addr[2] = {0,0};/* support addr sizes up to 128-bits (e.g. IPv6) */
     const int is_addr = inet_pton(type, name, &addr);
     if (is_addr == 0) /* name is not valid address for specified addr family */
@@ -175,32 +175,14 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
                           int * const restrict errnop,
                           int * const restrict h_errnop)
 {
-    char hexstr[32];  /* support 128-bit IPv6 addresses */
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_hostent_decode,
                                       .vstruct = hostbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .key     = hexstr,
-                                      .klen    = len<<1,
-                                      .tagc    = (unsigned char)'x' };
-    uint32_t u[4];  /* align data to uint32_t for uphex conversion routines */
-    switch (len) {
-      case 4:  /* e.g. AF_INET4 */
-               memcpy(&u, addr, 4);
-               uint32_to_ascii8uphex(u[0], hexstr);
-               break;
-      case 16: /* e.g. AF_INET6 */
-               memcpy(&u, addr, 16);
-               uint32_to_ascii8uphex(u[0], hexstr);
-               uint32_to_ascii8uphex(u[1], hexstr+8);
-               uint32_to_ascii8uphex(u[2], hexstr+16);
-               uint32_to_ascii8uphex(u[3], hexstr+24);
-               break;
-      default: *errnop = errno = ENOENT;
-               return NSS_STATUS_UNAVAIL; /* other types not implemented */
-    }
-
+                                      .key     = addr,
+                                      .klen    = len,
+                                      .tagc    = (unsigned char)'b' };
     return nss_mcdb_netdb_gethost_query((uint32_t)type, &v, h_errnop);
 }
 
@@ -265,7 +247,7 @@ _nss_mcdb_getnetbyname_r(const char * const restrict name,
                                       .errnop  = errnop,
                                       .key     = name,
                                       .klen    = strlen(name),
-                                      .tagc    = (unsigned char)'=' };
+                                      .tagc    = (unsigned char)'~' };
     const nss_status_t status =
       nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &v);
     return (status == NSS_STATUS_SUCCESS)
@@ -325,7 +307,7 @@ _nss_mcdb_getprotobyname_r(const char * const restrict name,
                                       .errnop  = errnop,
                                       .key     = name,
                                       .klen    = strlen(name),
-                                      .tagc    = (unsigned char)'=' };
+                                      .tagc    = (unsigned char)'~' };
     return nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &v);
 }
 
@@ -375,7 +357,7 @@ _nss_mcdb_getrpcbyname_r(const char * const restrict name,
                                       .errnop  = errnop,
                                       .key     = name,
                                       .klen    = strlen(name),
-                                      .tagc    = (unsigned char)'=' };
+                                      .tagc    = (unsigned char)'~' };
     return nss_mcdb_get_generic(NSS_DBTYPE_RPC, &v);
 }
 
@@ -433,7 +415,7 @@ _nss_mcdb_getservbyname_r(const char * const restrict name,
                                       .errnop  = errnop,
                                       .key     = name,
                                       .klen    = strlen(name),
-                                      .tagc    = (unsigned char)'=' };
+                                      .tagc    = (unsigned char)'~' };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
     if (bufsz > plen) {
         /*copy proto for later match in nss_mcdb_netdb_servent_decode()*/

@@ -307,6 +307,10 @@ nss_mcdb_netdb_make_hostent_encode(
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
+    w->tagc = '~';
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
     for (i = 0; he->h_aliases[i] != NULL; ++i) {
         w->tagc = '~';
         w->klen = strlen(he->h_aliases[i]);
@@ -342,6 +346,10 @@ nss_mcdb_netdb_make_netent_encode(
     w->tagc = '=';
     w->klen = strlen(ne->n_name);
     w->key  = ne->n_name;
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
+    w->tagc = '~';
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
@@ -384,6 +392,10 @@ nss_mcdb_netdb_make_protoent_encode(
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
+    w->tagc = '~';
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
     for (i = 0; pe->p_aliases[i] != NULL; ++i) {
         w->tagc = '~';
         w->klen = strlen(pe->p_aliases[i]);
@@ -419,6 +431,10 @@ nss_mcdb_netdb_make_rpcent_encode(
     w->tagc = '=';
     w->klen = strlen(re->r_name);
     w->key  = re->r_name;
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
+    w->tagc = '~';
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
@@ -458,6 +474,10 @@ nss_mcdb_netdb_make_servent_encode(
     w->tagc = '=';
     w->klen = strlen(se->s_name);
     w->key  = se->s_name;
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
+    w->tagc = '~';
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
