@@ -18,7 +18,7 @@
 #include <string.h>
 #include <stdlib.h>     /* strtol() */
 #include <netdb.h>
-#include <arpa/inet.h>  /* inet_pton() ntohl() */
+#include <arpa/inet.h>  /* inet_pton() ntohl() ntohs() htons() */
 
 /* (similar code block in other nss_mcdb_*_make.c, except token is ',') */
 static size_t
@@ -267,6 +267,7 @@ nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 	    uint32_to_ascii8uphex((uint32_t)se->s_port,     buf+NSS_S_PORT);
 	    /* store string offsets into buffer */
 	    offset -= NSS_SE_HDRSZ;
+	    uint16_to_ascii4uphex((uint32_t)se_name_offset, buf+NSS_S_NAME);
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_SE_MEM);
 	    uint16_to_ascii4uphex((uint32_t)se_mem_str_offt,buf+NSS_SE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)se_mem_num,     buf+NSS_SE_MEM_NUM);
@@ -447,6 +448,7 @@ nss_mcdb_netdb_make_servent_encode(
 {
     const struct servent * const restrict se = entp;
     uintptr_t i;
+    uint32_t u;
     char hexstr[8];
 
     w->dlen = nss_mcdb_netdb_make_servent_datastr(w->data, w->datasz, se);
@@ -470,7 +472,8 @@ nss_mcdb_netdb_make_servent_encode(
     w->tagc = 'x';
     w->klen = sizeof(hexstr);
     w->key  = hexstr;
-    uint32_to_ascii8uphex((uint32_t)se->s_port, hexstr);
+    u = (uint32_t)ntohs((uint16_t)se->s_port);
+    uint32_to_ascii8uphex(u, hexstr);
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
@@ -874,7 +877,7 @@ nss_mcdb_netdb_make_services_parse(
         n = strtol(b, &e, 10);
         if (*e != '/' || n < 0 || n == LONG_MAX || n >= INT_MAX)
             return false;               /* error: invalid number */
-        se.s_port = (int)n;
+        se.s_port = (int)htons((uint16_t)n); /* port short network byte order */
         if (e+1 == p)
             return false;               /* error: empty proto string */
         se.s_proto = e+1;

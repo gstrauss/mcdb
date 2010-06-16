@@ -39,7 +39,8 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 # (update library atomically (important to avoid crashing running programs))
 # (could use /usr/bin/install if available)
 /lib/libnss_mcdb.so.2: libnss_mcdb.so.2
-	/bin/cp -f $< $@.$$$$ && /bin/mv -f $@.$$$$ $@
+	/bin/cp -f $< $@.$$$$ \
+	&& /bin/mv -f $@.$$$$ $@
 
 /usr/lib/libnss_mcdb.so.2: /lib/libnss_mcdb.so.2
 	[ -L $@ ] || /bin/ln -s $< $@
