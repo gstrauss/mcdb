@@ -36,7 +36,19 @@ testzero: testzero.o libmcdb.a
 nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 	$(CC) -o $@ $(CFLAGS) $^
 
+# (update library atomically (important to avoid crashing running programs))
+# (could use /usr/bin/install if available)
+/lib/libnss_mcdb.so.2: libnss_mcdb.so.2
+	/bin/cp -f $< $@.$$$$ && /bin/mv -f $@.$$$$ $@
+
+/usr/lib/libnss_mcdb.so.2: /lib/libnss_mcdb.so.2
+	[ -L $@ ] || /bin/ln -s $< $@
+
+.PHONY: install
+install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2
+
 .PHONY: clean
 clean:
 	$(RM) *.o libmcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
 	$(RM) mcdbctl nss_mcdbctl testzero
+
