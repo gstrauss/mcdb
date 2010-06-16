@@ -12,6 +12,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>  /* strtol() strtoul() */
 
 #include <pwd.h>
 #include <grp.h>
@@ -167,4 +168,333 @@ nss_mcdb_acct_make_spwd_datastr(char * restrict buf, const size_t bufsz,
 	errno = ERANGE;
 	return 0;
     }
+}
+
+
+
+bool
+nss_mcdb_acct_make_passwd_encode(
+  struct nss_mcdb_make_winfo * const restrict w,
+  const void * const restrict entp)
+{
+    const struct passwd * const restrict pw = entp;
+    char hexstr[8];
+
+    w->dlen = nss_mcdb_acct_make_passwd_datastr(w->data, w->datasz, pw);
+    if (__builtin_expect( w->dlen == 0, 0))
+        return false;
+
+    w->tagc = '=';
+    w->klen = strlen(pw->pw_name);
+    w->key  = pw->pw_name;
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
+    w->tagc = 'x';
+    w->klen = sizeof(hexstr);
+    w->key  = hexstr;
+    uint32_to_ascii8uphex((uint32_t)pw->pw_uid, hexstr);
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
+    return true;
+}
+
+
+bool
+nss_mcdb_acct_make_group_encode(
+  struct nss_mcdb_make_winfo * const restrict w,
+  const void * const restrict entp)
+{
+    const struct group * const restrict gr = entp;
+    char hexstr[8];
+
+    w->dlen = nss_mcdb_acct_make_group_datastr(w->data, w->datasz, gr);
+    if (__builtin_expect( w->dlen == 0, 0))
+        return false;
+
+    w->tagc = '=';
+    w->klen = strlen(gr->gr_name);
+    w->key  = gr->gr_name;
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
+    w->tagc = 'x';
+    w->klen = sizeof(hexstr);
+    w->key  = hexstr;
+    uint32_to_ascii8uphex((uint32_t)gr->gr_gid, hexstr);
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
+    return true;
+}
+
+
+bool
+nss_mcdb_acct_make_spwd_encode(
+  struct nss_mcdb_make_winfo * const restrict w,
+  const void * const restrict entp)
+{
+    const struct spwd * const restrict sp = entp;
+    w->dlen = nss_mcdb_acct_make_spwd_datastr(w->data, w->datasz, sp);
+    if (__builtin_expect( w->dlen == 0, 0))
+        return false;
+
+    w->tagc = '=';
+    w->klen = strlen(sp->sp_namp);
+    w->key  = sp->sp_namp;
+    if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+        return false;
+
+    return true;
+}
+
+
+
+bool
+nss_mcdb_acct_make_passwd_parse(
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+{
+    char *b, *e;
+    long n;
+    struct passwd pw;
+
+    for (; *p; ++p) {
+
+        /* pw_name */
+        pw.pw_name = b = p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* pw_passwd */
+        pw.pw_passwd = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* pw_uid */
+        b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+        n = strtol(b, &e, 10);
+        if (*e != '\0' || n < 0 || n == LONG_MAX || n >= INT_MAX)
+            return false;               /* error: invalid uid */
+        if ((uid_t)-1 > 0 && !(n <= (uid_t)-1))
+            return false;               /* error: invalid uid */
+        pw.pw_uid = (uid_t)n;
+
+        /* pw_gid */
+        b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+        n = strtol(b, &e, 10);
+        if (*e != '\0' || n < 0 || n == LONG_MAX || n >= INT_MAX)
+            return false;               /* error: invalid gid */
+        if ((gid_t)-1 > 0 && !(n <= (gid_t)-1))
+            return false;               /* error: invalid gid */
+        pw.pw_gid = (gid_t)n;
+
+        /* pw_gecos */
+        pw.pw_gecos = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != ':')                  /* gecos can be blank */
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* pw_dir */
+        pw.pw_dir = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != ':')                  /* dir can be blank; default: "/" */
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* pw_shell */
+        pw.pw_shell = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != '\n')                 /* shell can be blank */
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* find newline (to prep for beginning of next line) (checked above) */
+
+        /* process struct passwd */
+        if (!w->encode(w, &pw))
+            return false;
+    }
+
+    return true;
+}
+
+
+bool
+nss_mcdb_acct_make_group_parse(
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+{
+    char *b, *e;
+    int c;
+    long n;
+    struct group gr;
+    const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
+    char *gr_mem[(0 < sc_ngroups_max && sc_ngroups_max < 256)
+                 ? sc_ngroups_max
+                 : 256];
+    /*(255 gr names + canonical name amounts to 1 KB of 4-byte pointers)*/
+
+    gr.gr_mem = gr_mem;
+
+    for (; *p; ++p) {
+
+        /* gr_name */
+        gr.gr_name = b = p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* gr_passwd */
+        gr.gr_passwd = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* gr_gid */
+        b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+        n = strtol(b, &e, 10);
+        if (*e != '\0' || n < 0 || n == LONG_MAX || n >= INT_MAX)
+            return false;               /* error: invalid gid */
+        if ((gid_t)-1 > 0 && !(n <= (gid_t)-1))
+            return false;               /* error: invalid gid */
+        gr.gr_gid = (gid_t)n;
+
+        /* gr_mem */
+        n = 0;
+        do {
+            if (*(b = ++p) == '\n')
+                break;                  /* done; no more aliases*/
+            TOKEN_COMMADELIM_END(p);
+            if ((c = *p) == '\0')       /* error: invalid line */
+                return false;
+            *p = '\0';
+            if (n < (sizeof(gr_mem)/sizeof(char *) - 1))
+                gr.gr_mem[n++] = b;
+            else
+                return false; /* too many members to fit in fixed-sized array */
+        } while (c != '\n');
+        gr.gr_mem[n] = NULL;
+
+        /* find newline (to prep for beginning of next line) */
+        if (c != '\n')   /* error: no newline; truncated? */
+            return false;
+
+        /* process struct group */
+        if (!w->encode(w, &gr))
+            return false;
+    }
+
+    return true;
+}
+
+
+static char *
+nss_mcdb_acct_make_parse_long_int_colon(char * const restrict b,
+                                        long int * const restrict n)
+{
+    char *p = b;
+    char *e;
+    TOKEN_COLONDELIM_END(p);
+    if (*p != ':')
+        return NULL;                    /* error: invalid line */
+    *n = 0;                             /* 0 if field is empty */
+    if (b != p) {
+        *p = '\0';
+        errno = 0;
+        *n = strtol(b, &e, 10);
+        if (*e != '\0' || ((*n==LONG_MIN || *n==LONG_MAX) && errno == ERANGE))
+            return NULL;                /* error: invalid number */
+    }
+    return p;
+}
+
+
+bool
+nss_mcdb_acct_make_shadow_parse(
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+{
+    char *b, *e;
+    struct spwd sp;
+
+    for (; *p; ++p) {
+
+        /* sp_namp */
+        sp.sp_namp = b = p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* sp_pwdp */
+        sp.sp_pwdp = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*b == ':' || *p != ':')
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* sp_lstchg */
+        p = nss_mcdb_acct_make_parse_long_int_colon(++p, &sp.sp_lstchg);
+        if (p == NULL)
+            return false;               /* error: invalid line */
+        /* sp_min */
+        p = nss_mcdb_acct_make_parse_long_int_colon(++p, &sp.sp_min);
+        if (p == NULL)
+            return false;               /* error: invalid line */
+        /* sp_max */
+        p = nss_mcdb_acct_make_parse_long_int_colon(++p, &sp.sp_max);
+        if (p == NULL)
+            return false;               /* error: invalid line */
+        /* sp_warn */
+        p = nss_mcdb_acct_make_parse_long_int_colon(++p, &sp.sp_warn);
+        if (p == NULL)
+            return false;               /* error: invalid line */
+        /* sp_inact */
+        p = nss_mcdb_acct_make_parse_long_int_colon(++p, &sp.sp_inact);
+        if (p == NULL)
+            return false;               /* error: invalid line */
+        /* sp_expire */
+        p = nss_mcdb_acct_make_parse_long_int_colon(++p, &sp.sp_expire);
+        if (p == NULL)
+            return false;               /* error: invalid line */
+
+        /* sp_flag */
+        b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != '\n')
+            return false;               /* error: invalid line */
+        sp.sp_flag = 0;
+        if (b != p) {
+            *p = '\0';
+            sp.sp_flag = strtoul(b, &e, 10);
+            if (*e != '\0' || (sp.sp_flag == ULONG_MAX && errno == ERANGE))
+                return false;           /* error: invalid number */
+        }
+
+        /* find newline (to prep for beginning of next line) (checked above) */
+
+        /* process struct spwd */
+        if (!w->encode(w, &sp))
+            return false;
+    }
+
+    return true;
 }

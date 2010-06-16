@@ -1,7 +1,7 @@
 #ifndef INCLUDED_NSS_MCDB_MAKE_H
 #define INCLUDED_NSS_MCDB_MAKE_H
 
-#include "mcdb.h"
+#include "mcdb_make.h"
 #include "code_attributes.h"
 
 #include <stdbool.h>
@@ -16,7 +16,7 @@ struct nss_mcdb_make_wbuf {
 
 struct nss_mcdb_make_winfo {
   struct nss_mcdb_make_wbuf wbuf;
-  bool (*encode)(struct nss_mcdb_make_winfo * restrict, void * restrict);
+  bool (*encode)(struct nss_mcdb_make_winfo * restrict, const void * restrict);
   char * restrict data;
   size_t datasz;
   size_t dlen;
@@ -25,6 +25,18 @@ struct nss_mcdb_make_winfo {
   size_t klen;
   char tagc;
 };
+
+
+bool
+nss_mcdb_make_mcdbctl_write(struct nss_mcdb_make_winfo * restrict)
+  __attribute_nonnull__;
+
+bool
+nss_mcdb_make_dbfile_parse(struct nss_mcdb_make_winfo * restrict,
+                           const char * restrict,
+                           bool (*)(struct nss_mcdb_make_winfo * restrict,
+                                    char * restrict) )
+  __attribute_nonnull__;
 
 #define TOKEN_WSDELIM_BEGIN(p) \
  while (*(p)==' ' || *(p)=='\t') ++(p)
@@ -43,5 +55,6 @@ struct nss_mcdb_make_winfo {
 
 #define TOKEN_COMMAHASHDELIM_END(p) \
  while (*(p)!=',' && *(p)!='#' && *(p)!='\n' && *(p)!='\0') ++(p)
+
 
 #endif
