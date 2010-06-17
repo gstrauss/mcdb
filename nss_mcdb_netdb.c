@@ -588,7 +588,6 @@ nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
         /* terminate strings; replace ' ' separator in data with '\0'. */
         buf[idx_he_mem_str-1] = '\0';        /* terminate h_name */
         buf[idx_he_lst_str-1] = '\0';        /* terminate final he_mem string */
-        buf[idx_he_mem-1]     = '\0';        /* terminate final he_lst string */
         he_mem[0] = (buf += idx_he_mem_str); /* begin of he_mem strings */
         for (size_t i=1; i<he_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != ' ')
