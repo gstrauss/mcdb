@@ -89,8 +89,6 @@ nss_mcdb_netdb_gethost_filladdr(const void * const restrict addr,
 
 void _nss_mcdb_sethostent(void)  { nss_mcdb_setent(NSS_DBTYPE_HOSTS);     }
 void _nss_mcdb_endhostent(void)  { nss_mcdb_endent(NSS_DBTYPE_HOSTS);     }
-void _nss_mcdb_setnetgrent(void) { nss_mcdb_setent(NSS_DBTYPE_NETGROUP);  }
-void _nss_mcdb_endnetgrent(void) { nss_mcdb_endent(NSS_DBTYPE_NETGROUP);  }
 void _nss_mcdb_setnetent(void)   { nss_mcdb_setent(NSS_DBTYPE_NETWORKS);  }
 void _nss_mcdb_endnetent(void)   { nss_mcdb_endent(NSS_DBTYPE_NETWORKS);  }
 void _nss_mcdb_setprotoent(void) { nss_mcdb_setent(NSS_DBTYPE_PROTOCOLS); }
@@ -187,6 +185,11 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
 }
 
 
+#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
+
+void _nss_mcdb_setnetgrent(void) { nss_mcdb_setent(NSS_DBTYPE_NETGROUP);  }
+void _nss_mcdb_endnetgrent(void) { nss_mcdb_endent(NSS_DBTYPE_NETGROUP);  }
+
 nss_status_t
 _nss_mcdb_getnetgrent_r(char ** const restrict host,
                         char ** const restrict user,
@@ -214,6 +217,8 @@ _nss_mcdb_getnetgrent_r(char ** const restrict host,
     }
     return status;
 }
+
+#endif
 
 
 nss_status_t
