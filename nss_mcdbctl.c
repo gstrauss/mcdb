@@ -56,6 +56,7 @@ int main(void)
           NSS_SP_HDRSZ+(size_t)sc_getpw_r_size_max,
           nss_mcdb_acct_make_shadow_parse,
           nss_mcdb_acct_make_spwd_encode },
+      #if 0  /* implemented, but not enabling by default; little benefit */
         { "/etc/ethers",
           NSS_EA_HDRSZ+(size_t)sc_host_name_max,
           nss_mcdb_misc_make_ethers_parse,
@@ -64,6 +65,7 @@ int main(void)
           NSS_AE_HDRSZ+1024,
           nss_mcdb_misc_make_aliases_parse,
           nss_mcdb_misc_make_aliasent_encode },
+      #endif
         { "/etc/hosts",
           NSS_HE_HDRSZ+1024,
           nss_mcdb_netdb_make_hosts_parse,
