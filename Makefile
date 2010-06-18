@@ -15,7 +15,7 @@ _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
-PIC_OBJS:= mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_misc.o nss_mcdb_netdb.o
+PIC_OBJS:= mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
 $(PIC_OBJS): CFLAGS+= -fpic
 libnss_mcdb.so.2: $(PIC_OBJS)
 	$(CC) -shared -fpic -Wl,-soname,$(@F) -o $@ $^
@@ -23,8 +23,9 @@ libnss_mcdb.so.2: $(PIC_OBJS)
 libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o
 	$(AR) -r $@ $^
 
-libnss_mcdb_make.a: nss_mcdb_make.o      nss_mcdb_acct_make.o  \
-                    nss_mcdb_misc_make.o nss_mcdb_netdb_make.o
+libnss_mcdb_make.a: nss_mcdb_make.o \
+                    nss_mcdb_acct_make.o \
+                    nss_mcdb_netdb_make.o
 	$(AR) -r $@ $^
 
 mcdbctl: mcdbctl.o libmcdb.a
