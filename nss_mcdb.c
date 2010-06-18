@@ -43,9 +43,11 @@
  *   28.4.2 Internals of the NSS Module Functions
  */
 
-/* compile-time setting for security */
-#ifndef NSS_DBPATH
-#define NSS_DBPATH "/var/db/"
+/* compile-time setting for security
+ * /etc/mcdb/ recommended so that .mcdb are on same partition as flat files
+ * (implies that if flat files are visible, then so are .mcdb equivalents) */
+#ifndef NSS_MCDB_DBPATH
+#define NSS_MCDB_DBPATH "/etc/mcdb/"
 #endif
 
 /* path to db must match up to enum nss_dbtype index */
@@ -116,7 +118,8 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
 
   #if defined(__linux) || defined(__sun)
     if (__builtin_expect(dfd <= STDERR_FILENO, false)) {
-        if ((dfd=nointr_open(NSS_DBPATH,O_RDONLY|O_CLOEXEC,0)) > STDERR_FILENO){
+        dfd = nointr_open(NSS_MCDB_DBPATH,O_RDONLY|O_CLOEXEC,0);
+        if (dfd > STDERR_FILENO) {
             if (O_CLOEXEC == 0)
                 (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
             map->dfd = dfd;
@@ -133,7 +136,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
     memcpy(map->fname, _nss_dbnames[dbtype], strlen(_nss_dbnames[dbtype])+1);
   #else
     if (snprintf(map->fname, sizeof(map->fname), "%s%s",
-                 NSS_DBPATH, _nss_dbnames[dbtype]) >= sizeof(map->fname)) {
+                 NSS_MCDB_DBPATH, _nss_dbnames[dbtype]) >= sizeof(map->fname)) {
         pthread_mutex_unlock(&_nss_mcdb_global_mutex);
         errno = ENAMETOOLONG;
         return false;
