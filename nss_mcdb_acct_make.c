@@ -416,7 +416,7 @@ nss_mcdb_acct_make_parse_long_int_colon(char * const restrict b,
     TOKEN_COLONDELIM_END(p);
     if (*p != ':')
         return NULL;                    /* error: invalid line */
-    *n = 0;                             /* 0 if field is empty */
+    *n = -1;                            /* -1 if field is empty */
     if (b != p) {
         *p = '\0';
         errno = 0;
@@ -481,7 +481,7 @@ nss_mcdb_acct_make_shadow_parse(
         TOKEN_COLONDELIM_END(p);
         if (*p != '\n')
             return false;               /* error: invalid line */
-        sp.sp_flag = 0;
+        sp.sp_flag = -1;                /* -1 if field is empty */
         if (b != p) {
             *p = '\0';
             sp.sp_flag = strtoul(b, &e, 10);
