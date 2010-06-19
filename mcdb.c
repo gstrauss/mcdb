@@ -240,7 +240,7 @@ mcdb_mmap_refresh(struct mcdb_mmap * const restrict map)
   #if defined(__linux) || defined(__sun)
     if (fstatat(map->dfd, map->fname, &st, 0) != 0)
   #else
-    if (fstat(map->fname, &st, 0) != 0)
+    if (stat(map->fname, &st, 0) != 0)
   #endif
         return false;
 

@@ -42,6 +42,30 @@
  *     /etc/netgroup
  */
 
+/*
+ * Notes:
+ *
+ * Preserve behavior of framework reading one line at a time from flat file.
+ * For example, while DNS resolver might return hostent with multiple addresses
+ * in char **h_addr_list, queries to flat file /etc/hosts will always return a
+ * single address.  Also, if addresses are repeated, the list of aliases
+ * contains only those that were on the same line read from the flat file.
+ * Similar constraints apply to all netdb mcdb databases.  (Additional parsing
+ * of netdb database could encode more intelligent aggregation, but then would
+ * not be a transparent, drop-in for flat file databases.)
+ *
+ * For each *_name element, an entry with '=' tag char is created for *ent().
+ * Then, the data is duplicated with '~' tag char for *_name element and for
+ * each alias so that single query for a label finds the matching name or alias
+ * and returns same entry that would be returned reading flat file line by line
+ * (first match).
+ *
+ * gethostent supports IPv6 in /etc/hosts, unlike glibc, which documents that
+ * IPv6 entries are ignored, but glibc gethostent() provides a struct hostent *
+ * for IPv6 entries, but h_addrtype is AF_INET (not AF_INET6) and h_addr_list
+ * is invalid (at least on RedHat Fedora release 8).
+ */
+
 static nss_status_t
 nss_mcdb_netdb_hostent_decode(struct mcdb * restrict,
                               const struct nss_mcdb_vinfo * restrict)
