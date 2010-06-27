@@ -283,9 +283,19 @@ mcdb_makefmt_fdintofile (const int inputfd,
     int rv = 0;
     int fd;
 
+    struct stat st;
     const size_t len = strlen(fname);
-    char * const restrict fnametmp = fn_malloc(len + 8);
-    const mode_t mask = umask(0); umask(mask);
+    char * restrict fnametmp;
+
+    /* preserve permission modes if previous mcdb exists; else make read-only
+     * (since mcdb is *constant* -- not modified -- after creation) */
+    if (stat(fname) != 0) {
+        st.st_mode = S_IRUSR;
+        if (errno != ENOENT)
+            return MCDB_ERROR_WRITE;
+    }
+
+    fnametmp = fn_malloc(len + 8);
     if (fnametmp == NULL)
         return MCDB_ERROR_MALLOC;
     memcpy(fnametmp, fname, len);
@@ -293,7 +303,7 @@ mcdb_makefmt_fdintofile (const int inputfd,
 
     if ((fd = mkstemp(fnametmp)) != -1
         && (rv=mcdb_makefmt_fdintofd(inputfd,buf,bufsz,fd,fn_malloc,fn_free))==0
-        && fchmod(fd, (0666 & ~mask)) == 0
+        && fchmod(fd, st.st_mode) == 0
         && nointr_close(fd) == 0        /* NFS might report write errors here */
         && (fd = -2, rename(fnametmp,fname) == 0)) /* (fd=-2 so not re-closed)*/
         rv = EXIT_SUCCESS;
