@@ -214,17 +214,17 @@ nss_mcdb_acct_make_grouplist_add(const char * const restrict name,
     return true;
 }
 
-size_t
-nss_mcdb_acct_make_groupmem_datastr(char * restrict buf, const size_t bufsz,
-                                    const struct nss_mcdb_acct_make_groupmem *
-                                      const restrict groupmem)
+/* GPS: TODO: exposing this would also mean exposing struct for groupmem */
+static size_t
+nss_mcdb_acct_make_grouplist_datastr(char * restrict buf, const size_t bufsz,
+                                     const struct nss_mcdb_acct_make_groupmem *
+                                       const restrict groupmem)
 {
     return 0;  /* GPS: TODO */
 }
 
 bool
-nss_mcdb_acct_make_grouplist_write(
-  struct nss_mcdb_make_winfo * const restrict w)
+nss_mcdb_acct_make_group_flush(struct nss_mcdb_make_winfo * const restrict w)
 {
     const struct nss_mcdb_acct_make_groupmem * restrict groupmem;
     int i = 0;
@@ -238,7 +238,7 @@ nss_mcdb_acct_make_grouplist_write(
             w->klen = groupmem->namelen;
             w->key  = groupmem->name;
             w->dlen =
-              nss_mcdb_acct_make_groupmem_datastr(w->data, w->datasz, groupmem);
+              nss_mcdb_acct_make_grouplist_datastr(w->data,w->datasz,groupmem);
             if (__builtin_expect( w->dlen == 0, 0))
                 return nss_mcdb_acct_make_grouplist_free(false);
             if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))

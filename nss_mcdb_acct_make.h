@@ -57,6 +57,12 @@ nss_mcdb_acct_make_spwd_encode(
 
 
 bool
+nss_mcdb_acct_make_group_flush(
+  struct nss_mcdb_make_winfo * const restrict w)
+  __attribute_nonnull__;
+
+
+bool
 nss_mcdb_acct_make_passwd_parse(
   struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
   __attribute_nonnull__;

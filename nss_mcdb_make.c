@@ -39,10 +39,9 @@ nss_mcdb_make_mcdbctl_write(struct nss_mcdb_make_winfo * const restrict w)
 
     if (__builtin_expect( w->klen+w->dlen+26 > wbuf->bufsz-wbuf->offset, 0)) {
         if (__builtin_expect( nointr_write(wbuf->fd, wbuf->buf,
-                                                     wbuf->offset) != -1, 1))
-            wbuf->offset = 0;
-        else
+                                                     wbuf->offset) == -1, 0))
             return false;
+        wbuf->offset = 0;
     }
 
     wbuf->offset += snprintf(wbuf->buf + wbuf->offset, 25, "+%u,%u:%c",
@@ -83,4 +82,34 @@ nss_mcdb_make_dbfile_parse( struct nss_mcdb_make_winfo * const restrict w,
 
     munmap(map, st.st_size);
     return rc;
+}
+
+
+bool
+nss_mcdb_make_dbfile_flush( struct nss_mcdb_make_winfo * const restrict w )
+{
+    struct nss_mcdb_make_wbuf * const wbuf = &w->wbuf;
+
+    if (w->flush != NULL) {  /* callback */
+        if (__builtin_expect( w->flush(w), 0))
+            return false;
+    }
+
+    /* done writing data record into mcdb if struct mcdb_make * was provided */
+    if (wbuf->m)
+        return true;
+
+    /* append blank line to end 'mcdbctl make' data and flush write buffer */
+    if (__builtin_expect( wbuf->offset == wbuf->bufsz, 0)) { /* buffer full */
+        if (__builtin_expect( nointr_write(wbuf->fd, wbuf->buf,
+                                                     wbuf->offset) == -1, 0))
+            return false;
+        wbuf->offset = 0;
+    }
+    wbuf->buf[wbuf->offset++] = '\n';
+    if (__builtin_expect( nointr_write(wbuf->fd,wbuf->buf,wbuf->offset)==-1, 0))
+        return false;
+    wbuf->offset = 0;
+
+    return true;
 }

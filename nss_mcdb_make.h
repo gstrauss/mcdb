@@ -17,6 +17,7 @@ struct nss_mcdb_make_wbuf {
 struct nss_mcdb_make_winfo {
   struct nss_mcdb_make_wbuf wbuf;
   bool (*encode)(struct nss_mcdb_make_winfo * restrict, const void * restrict);
+  bool (*flush)(struct nss_mcdb_make_winfo * restrict);
   char * restrict data;
   size_t datasz;
   size_t dlen;
@@ -42,6 +43,10 @@ nss_mcdb_make_dbfile_parse(struct nss_mcdb_make_winfo * restrict,
                            const char * restrict,
                            bool (*)(struct nss_mcdb_make_winfo * restrict,
                                     char * restrict) )
+  __attribute_nonnull__;
+
+bool
+nss_mcdb_make_dbfile_flush(struct nss_mcdb_make_winfo * restrict)
   __attribute_nonnull__;
 
 #define TOKEN_WSDELIM_BEGIN(p) \

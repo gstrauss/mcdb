@@ -39,6 +39,7 @@ int main(void)
                     char * restrict);
       bool (*encode)(struct nss_mcdb_make_winfo * restrict,
                      const void * restrict);
+      bool (*flush)(struct nss_mcdb_make_winfo * restrict);
     };
 
     /* database parse routines and max buffer size required for entry from db
@@ -47,45 +48,55 @@ int main(void)
         { "/etc/passwd",
           NSS_PW_HDRSZ+(size_t)sc_getpw_r_size_max,
           nss_mcdb_acct_make_passwd_parse,
-          nss_mcdb_acct_make_passwd_encode },
+          nss_mcdb_acct_make_passwd_encode,
+          NULL },
         { "/etc/group",
           NSS_GR_HDRSZ+(size_t)sc_getgr_r_size_max,
           nss_mcdb_acct_make_group_parse,
-          nss_mcdb_acct_make_group_encode },
+          nss_mcdb_acct_make_group_encode,
+          nss_mcdb_acct_make_group_flush },
         { "/etc/shadow",
           NSS_SP_HDRSZ+(size_t)sc_getpw_r_size_max,
           nss_mcdb_acct_make_shadow_parse,
-          nss_mcdb_acct_make_spwd_encode },
+          nss_mcdb_acct_make_spwd_encode,
+          NULL },
       #if 0  /* implemented, but not enabling by default; little benefit */
         { "/etc/ethers",
           NSS_EA_HDRSZ+(size_t)sc_host_name_max,
           nss_mcdb_misc_make_ethers_parse,
-          nss_mcdb_misc_make_ether_addr_encode },
+          nss_mcdb_misc_make_ether_addr_encode,
+          NULL },
         { "/etc/aliases",
           NSS_AE_HDRSZ+1024,
           nss_mcdb_misc_make_aliases_parse,
-          nss_mcdb_misc_make_aliasent_encode },
+          nss_mcdb_misc_make_aliasent_encode,
+          NULL },
       #endif
         { "/etc/hosts",
           NSS_HE_HDRSZ+1024,
           nss_mcdb_netdb_make_hosts_parse,
-          nss_mcdb_netdb_make_hostent_encode },
+          nss_mcdb_netdb_make_hostent_encode,
+          NULL },
         { "/etc/networks",
           NSS_NE_HDRSZ+1024,
           nss_mcdb_netdb_make_networks_parse,
-          nss_mcdb_netdb_make_netent_encode },
+          nss_mcdb_netdb_make_netent_encode,
+          NULL },
         { "/etc/protocols",
           NSS_PE_HDRSZ+1024,
           nss_mcdb_netdb_make_protocols_parse,
-          nss_mcdb_netdb_make_protoent_encode },
+          nss_mcdb_netdb_make_protoent_encode,
+          NULL },
         { "/etc/rpc",
           NSS_RE_HDRSZ+1024,
           nss_mcdb_netdb_make_rpc_parse,
-          nss_mcdb_netdb_make_rpcent_encode },
+          nss_mcdb_netdb_make_rpcent_encode,
+          NULL },
         { "/etc/services",
           NSS_SE_HDRSZ+1024,
           nss_mcdb_netdb_make_services_parse,
-          nss_mcdb_netdb_make_servent_encode }
+          nss_mcdb_netdb_make_servent_encode,
+          NULL }
     };
 
     bool rc;
@@ -121,6 +132,7 @@ int main(void)
     for (int i = 0; i < sizeof(fdb)/sizeof(struct fdb_st); ++i) {
         w.datasz = fdb[i].datasz;
         w.encode = fdb[i].encode;
+        w.flush  = fdb[i].flush;
         assert(w.datasz <= DBUFSZ);
 
         /* generate mcdb make info */
@@ -129,18 +141,12 @@ int main(void)
             && (fdb[i].parse != nss_mcdb_acct_make_shadow_parse || 0==getuid()))
             break;
 
-        /* append blank line to end mcdb make data, flush write buffer */
-        if (wbuf->offset == wbuf->bufsz) {  /* buffer is full; not likely */
-            if (nointr_write(wbuf->fd, wbuf->buf, wbuf->offset) == -1)
-                break;
-            wbuf->offset = 0;
-        }
-        wbuf->buf[wbuf->offset++] = '\n';
-        if (nointr_write(wbuf->fd, wbuf->buf, wbuf->offset) == -1)
+        rc = nss_mcdb_make_dbfile_flush(&w);
+        if (!rc)
             break;
-        wbuf->offset = 0;
 
         /* visual separator of 3 blank lines for testing (no other purpose) */
+        /* (not catching nointr_write() return value in rc) */
         if (nointr_write(wbuf->fd, "\n\n\n", 3) == -1)
             break;
     }
