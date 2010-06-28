@@ -28,6 +28,13 @@ struct mcdb_make {
   void (*fn_free)(void *);             /* fn ptr to free() */
 };
 
+
+/*
+ * Note: mcdb *_make_* routines are not thread-safe
+ * (no need for thread-safety; mcdb is typically created from a single stream)
+ */
+
+
 extern int
 mcdb_make_start(struct mcdb_make * restrict, int,
                 void * (*)(size_t), void (*)(void *))

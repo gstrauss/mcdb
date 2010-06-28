@@ -289,7 +289,7 @@ mcdb_makefmt_fdintofile (const int inputfd,
 
     /* preserve permission modes if previous mcdb exists; else make read-only
      * (since mcdb is *constant* -- not modified -- after creation) */
-    if (stat(fname) != 0) {
+    if (stat(fname, &st) != 0) {
         st.st_mode = S_IRUSR;
         if (errno != ENOENT)
             return MCDB_ERROR_WRITE;

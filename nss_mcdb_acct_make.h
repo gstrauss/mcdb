@@ -27,6 +27,16 @@ nss_mcdb_acct_make_spwd_datastr(char * restrict buf, const size_t bufsz,
   __attribute_nonnull__;
 
 
+/*
+ * Note: mcdb *_make_* routines are not thread-safe
+ * (no need for thread-safety; mcdb is typically created from a single stream)
+ *
+ * nss_mcdb_acct_make_group_encode() is not reentrant due to private static vars
+ * (do not interleave calls encoding two or more 'group' databases at same time)
+ */
+
+
+
 bool
 nss_mcdb_acct_make_passwd_encode(
   struct nss_mcdb_make_winfo * const restrict w,

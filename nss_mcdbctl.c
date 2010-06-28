@@ -110,6 +110,13 @@ int main(void)
     /* (mcdb line must fit in WBUFSZ, including key, value, mcdb line tokens) */
     assert(DBUFSZ*2 <= WBUFSZ);
 
+    /* <<<TODO: when wbuf->fd is changed to point to individual files, be sure
+     *          to create data files for secure databases (e.g. shadow) with
+     *          restrictive permissions.  There should never be a race when the
+     *          file could be opened by less privileged users.
+     *          Use mkstemp and see mcdb_makefmt.c:mcdb_makefmt_fdintofile()
+     */
+
     /* parse databases */
     for (int i = 0; i < sizeof(fdb)/sizeof(struct fdb_st); ++i) {
         w.datasz = fdb[i].datasz;
@@ -218,6 +225,7 @@ db_set_get_end_ent(netdb, networks,  netent,   net,      1)
 db_set_get_end_ent(netdb, protocols, protoent, proto,    1)
 db_set_get_end_ent(netdb, rpc,       rpcent,   rpc,      1)
 db_set_get_end_ent(netdb, services,  servent,  serv,     1)
+
 #endif
 
 /* Note: /etc/ethers has no equivalent setetherent, getetherent, endetherent */

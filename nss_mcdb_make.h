@@ -27,6 +27,12 @@ struct nss_mcdb_make_winfo {
 };
 
 
+/*
+ * Note: mcdb *_make_* routines are not thread-safe
+ * (no need for thread-safety; mcdb is typically created from a single stream)
+ */
+
+
 bool
 nss_mcdb_make_mcdbctl_write(struct nss_mcdb_make_winfo * restrict)
   __attribute_nonnull__;

@@ -24,6 +24,237 @@
  * input is database struct so that code is written to consumes what it produces
  */
 
+
+/*
+ * initgroups() and getgrouplist() support
+ * (keep hash map of group memberships per member)
+ */
+
+struct nss_mcdb_acct_make_groupmem {
+  struct nss_mcdb_acct_make_groupmem * restrict next;
+  char * restrict name;
+  uint32_t namelen;
+  uint32_t hash;
+  uint32_t ngids;
+  uint32_t gidlist_sz;
+  gid_t gidlist[];  /* C99 VLA */
+};
+
+enum { nss_mcdb_acct_make_groupmem_hashmap_sz = 2048 }; /* must be power of 2 */
+
+static struct nss_mcdb_acct_make_groupmem ** restrict
+  nss_mcdb_acct_make_groupmem_hashmap = NULL;
+
+static struct nss_mcdb_acct_make_groupmem *
+  nss_mcdb_acct_make_groupmem_pool = NULL;
+
+static char *
+  nss_mcdb_acct_make_groupmem_strpool = NULL;
+
+
+static bool  __attribute_noinline__
+nss_mcdb_acct_make_groupmem_pool_alloc(const size_t sz,
+                                       size_t * const restrict pool_sz,
+                                       size_t * const restrict pool_idx,
+                                       void * const restrict pool)
+{
+    enum { GROUPMEM_POOL_SZ = 65536 + sizeof(uintptr_t) }; /*arbitrary pool_sz*/
+    uintptr_t * restrict mem;
+
+    const long sc_getgr_r_size_max = sysconf(_SC_GETGR_R_SIZE_MAX);
+    if (sz > sc_getgr_r_size_max)
+        return false;
+    /* assert(GROUPMEM_POOL_SZ >= sc_getgr_r_size_max); */
+
+    mem = (uintptr_t *) malloc(GROUPMEM_POOL_SZ);
+    if (mem == NULL)
+        return false;
+
+    /* (first pool uintptr_t used for simple linked-list of prev allocations)
+     * (for later free()) */
+
+    *mem = (uintptr_t)*(uintptr_t **)pool;
+    *(uintptr_t **)pool = mem;
+    *pool_idx = sizeof(uintptr_t);
+    *pool_sz  = GROUPMEM_POOL_SZ;
+
+    return true;
+}
+
+static struct nss_mcdb_acct_make_groupmem *
+nss_mcdb_acct_make_groupmem_alloc(const size_t sz)
+{
+    static size_t pool_sz  = 0;
+    static size_t pool_idx = 0;
+
+    /* caller should request aligned size; no need to realign here */
+  #if defined(_LP64) || defined(__LP64__)
+    /* assert(0 == (sz & 7)); */
+  #else
+    /* assert(0 == (sz & 3)); */
+  #endif
+
+    if ((sz <= pool_sz && pool_idx <= pool_sz - sz)
+        || nss_mcdb_acct_make_groupmem_pool_alloc(
+             sz, &pool_sz, &pool_idx,
+             &nss_mcdb_acct_make_groupmem_pool)) {
+
+        struct nss_mcdb_acct_make_groupmem * const restrict groupmem =
+          (struct nss_mcdb_acct_make_groupmem *)
+          (((char *)nss_mcdb_acct_make_groupmem_pool) + pool_idx);
+        pool_idx += sz;
+        return groupmem;
+    }
+
+    return NULL;
+}
+
+static char *
+nss_mcdb_acct_make_groupmem_stralloc(const size_t sz)
+{
+    static size_t strpool_sz  = 0;
+    static size_t strpool_idx = 0;
+
+    if ((sz <= strpool_sz && strpool_idx <= strpool_sz - sz)
+        || (nss_mcdb_acct_make_groupmem_pool_alloc(
+              sz, &strpool_sz, &strpool_idx,
+              &nss_mcdb_acct_make_groupmem_strpool))) {
+
+        char * const restrict str =
+          nss_mcdb_acct_make_groupmem_strpool + strpool_idx;
+        strpool_idx += sz;
+        return str;
+    }
+
+    return NULL;
+}
+
+static bool  __attribute_noinline__
+nss_mcdb_acct_make_grouplist_free(const bool rc)
+{
+    uintptr_t * restrict mem;
+    uintptr_t * restrict next;
+
+    free(nss_mcdb_acct_make_groupmem_hashmap);
+    nss_mcdb_acct_make_groupmem_hashmap = NULL;
+
+    next = (uintptr_t *)nss_mcdb_acct_make_groupmem_pool;
+    nss_mcdb_acct_make_groupmem_pool = NULL;
+    while ((mem = next)) { next = (uintptr_t *)*mem; free(mem); }
+
+    next = (uintptr_t *)nss_mcdb_acct_make_groupmem_strpool;
+    nss_mcdb_acct_make_groupmem_strpool = NULL;
+    while ((mem = next)) { next = (uintptr_t *)*mem; free(mem); }
+
+    return rc;
+}
+
+/* copy data and insert into simple hash map */
+static bool
+nss_mcdb_acct_make_grouplist_add(const char * const restrict name,
+                                 const gid_t gid)
+{
+    struct nss_mcdb_acct_make_groupmem *groupmem;
+    struct nss_mcdb_acct_make_groupmem ** restrict hashmap_bucket;
+    const size_t namelen = strlen(name);
+    const uint32_t hash = uint32_hash_djb(UINT32_HASH_DJB_INIT, name, namelen);
+
+    if (__builtin_expect( nss_mcdb_acct_make_groupmem_hashmap == NULL, 0)) {
+        nss_mcdb_acct_make_groupmem_hashmap =
+          (struct nss_mcdb_acct_make_groupmem **)
+          malloc(sizeof(struct nss_mcdb_acct_make_groupmem_hashmap *)
+                 * nss_mcdb_acct_make_groupmem_hashmap_sz);
+        if (__builtin_expect( nss_mcdb_acct_make_groupmem_hashmap == NULL, 0))
+            return nss_mcdb_acct_make_grouplist_free(false);
+    }
+
+    hashmap_bucket =
+      &nss_mcdb_acct_make_groupmem_hashmap[
+        hash & (nss_mcdb_acct_make_groupmem_hashmap_sz-1)];
+    for (groupmem = *hashmap_bucket; groupmem; groupmem = groupmem->next) {
+        if (groupmem->hash == hash
+            && groupmem->name[0] == name[0]
+            && memcmp(groupmem->name, name, namelen+1) == 0)
+            break;
+    }
+
+    if (groupmem == NULL) {
+        /* allocate gidlist in multiples of 4 
+         * (for array align of 4-bytes in 32-bit and 8-bytes in 64-bit) */
+        groupmem = nss_mcdb_acct_make_groupmem_alloc(
+          sizeof(struct nss_mcdb_acct_make_groupmem) + (sizeof(gid_t) * 4));
+        if (__builtin_expect( groupmem == NULL, 0))
+            return nss_mcdb_acct_make_grouplist_free(false);
+        groupmem->name = nss_mcdb_acct_make_groupmem_stralloc(namelen+1);
+        if (__builtin_expect( groupmem->name == NULL, 0))
+            return nss_mcdb_acct_make_grouplist_free(false);
+        memcpy(groupmem->name, name, namelen+1);
+        groupmem->namelen    = (uint32_t)namelen;
+        groupmem->hash       = hash;
+        groupmem->ngids      = 0;
+        groupmem->gidlist_sz = 4;   /* initial gidlist allocation above */
+        groupmem->next       = *hashmap_bucket;
+        *hashmap_bucket      = groupmem;
+    }
+    else if (groupmem->ngids == groupmem->gidlist_sz) {
+        /* allocate gidlist in multiples of 4 
+         * (for array align of 4-bytes in 32-bit and 8-bytes in 64-bit) */
+        const size_t groupmem_sz = sizeof(struct nss_mcdb_acct_make_groupmem)
+                                 + sizeof(gid_t) * groupmem->gidlist_sz;
+        struct nss_mcdb_acct_make_groupmem * const restrict groupmem_new =
+          nss_mcdb_acct_make_groupmem_alloc(groupmem_sz + (sizeof(gid_t) * 32));
+        if (__builtin_expect( groupmem_new == NULL, 0))
+            return nss_mcdb_acct_make_grouplist_free(false);
+        groupmem = memcpy(groupmem_new, groupmem, groupmem_sz);
+        groupmem->gidlist_sz += 32; /* incremental gidlist allocation above */
+    }
+
+    groupmem->gidlist[groupmem->ngids++] = gid;
+
+    return true;
+}
+
+size_t
+nss_mcdb_acct_make_groupmem_datastr(char * restrict buf, const size_t bufsz,
+                                    const struct nss_mcdb_acct_make_groupmem *
+                                      const restrict groupmem)
+{
+    return 0;  /* GPS: TODO */
+}
+
+bool
+nss_mcdb_acct_make_grouplist_write(
+  struct nss_mcdb_make_winfo * const restrict w)
+{
+    const struct nss_mcdb_acct_make_groupmem * restrict groupmem;
+    int i = 0;
+
+    w->tagc = '~';
+
+    do {
+        for (groupmem = nss_mcdb_acct_make_groupmem_hashmap[i];
+             groupmem;
+             groupmem = groupmem->next) {
+            w->klen = groupmem->namelen;
+            w->key  = groupmem->name;
+            w->dlen =
+              nss_mcdb_acct_make_groupmem_datastr(w->data, w->datasz, groupmem);
+            if (__builtin_expect( w->dlen == 0, 0))
+                return nss_mcdb_acct_make_grouplist_free(false);
+            if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+                return nss_mcdb_acct_make_grouplist_free(false);
+        }
+    } while (++i < nss_mcdb_acct_make_groupmem_hashmap_sz);
+
+    return nss_mcdb_acct_make_grouplist_free(true);
+}
+
+/*
+ * end initgroups() and getgrouplist() support
+ */
+
+
+
 size_t
 nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
 			 	  const struct passwd * const restrict pw)
@@ -208,6 +439,12 @@ nss_mcdb_acct_make_group_encode(
 {
     const struct group * const restrict gr = entp;
     char hexstr[8];
+
+    for (unsigned int i = 0; gr->gr_mem[i] != NULL; ++i) {
+        if (__builtin_expect(
+              !nss_mcdb_acct_make_grouplist_add(gr->gr_mem[i], gr->gr_gid), 0))
+            return false;
+    }
 
     w->dlen = nss_mcdb_acct_make_group_datastr(w->data, w->datasz, gr);
     if (__builtin_expect( w->dlen == 0, 0))
