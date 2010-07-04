@@ -112,7 +112,7 @@ _nss_mcdb_getsecretkey(const char * const restrict name,
                                       .tagc    = (unsigned char)'*' };
     const nss_status_t status = nss_mcdb_get_generic(NSS_DBTYPE_PUBLICKEY, &v);
     if (status == NSS_STATUS_SUCCESS) {
-      /* TODO: decrypt buf using decryptkey */
+      /* todo: decrypt buf using decryptkey */
       #ifdef __sun
         if (!xdecrypt(buf, decryptkey))
             return NSS_STATUS_RETURN;

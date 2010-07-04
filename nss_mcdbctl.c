@@ -1,3 +1,8 @@
+/* _BSD_SOURCE or _SVID_SOURCE for struct rpcent on Linux */
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#endif
+
 #include "nss_mcdb_make.h"
 #include "nss_mcdb_acct.h"
 #include "nss_mcdb_acct_make.h"
