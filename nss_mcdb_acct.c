@@ -219,10 +219,11 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
                          const long int limit,
                          int * const restrict errnop)
 {
-    /* arbitrary limit: min(256,_SC_NGROUPS_MAX); same as nss_mcdb_acct_make.c*/
-    /*(255 gids + initial gid amounts to 1 KB of 4-byte unsigned ints)*/
+    /* arbitrary limit: NSS_MCDB_NGROUPS_MAX in nss_mcdb_acct.h */
     const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
-    int sz =(0 < sc_ngroups_max && sc_ngroups_max < 256) ? sc_ngroups_max : 256;
+    int sz = (0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX)
+           ? sc_ngroups_max
+           : NSS_MCDB_NGROUPS_MAX;
     gid_t gidlist[sz];
     if (nss_mcdb_getgrouplist(user, group, gidlist, &sz) == -1) {
         /*(sz == 0 indicates error; valid value always >= 1 in *ngroups)

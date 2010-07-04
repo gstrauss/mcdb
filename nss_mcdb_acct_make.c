@@ -241,12 +241,13 @@ nss_mcdb_acct_make_group_flush(struct nss_mcdb_make_winfo * const restrict w)
 {
     const struct nss_mcdb_acct_make_groupmem * restrict groupmem;
     int i = 0;
-    /* arbitrary limit: min(256,_SC_NGROUPS_MAX); same as nss_mcdb_acct.c */
-    /*(255 gids + primary gid amounts to 1 KB of 4-byte unsigned ints)*/
+    /* arbitrary limit: NSS_MCDB_NGROUPS_MAX in nss_mcdb_acct.h */
     /*(permit max ngids - 1 supplemental groups to validate input)*/
     const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
     const int ngids =
-      (0 < sc_ngroups_max && sc_ngroups_max < 256) ? sc_ngroups_max-1 : 256-1;
+      (0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX)
+        ? sc_ngroups_max-1
+        : NSS_MCDB_NGROUPS_MAX-1;
 
     w->tagc = '~';
 
@@ -599,14 +600,12 @@ nss_mcdb_acct_make_group_parse(
     int c;
     long n;
     struct group gr;
-    /* arbitrary limit: min(256,_SC_NGROUPS_MAX); same as nss_mcdb_acct.c */
-    /*(255 gids + primary gid amounts to 1 KB of 4-byte unsigned ints)*/
+    /* arbitrary limit: NSS_MCDB_NGROUPS_MAX in nss_mcdb_acct.h */
     /*(permit max gr_mem-1 supplemental groups + NULL term to validate input)*/
     const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
-    char *gr_mem[(0 < sc_ngroups_max && sc_ngroups_max < 256)
+    char *gr_mem[(0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX-1)
                  ? sc_ngroups_max
-                 : 256];
-    /*(255 gr names + canonical name amounts to 1 KB of 4-byte pointers)*/
+                 : NSS_MCDB_NGROUPS_MAX];
 
     gr.gr_mem = gr_mem;
 

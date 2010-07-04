@@ -45,6 +45,11 @@ enum {
   NSS_SP_HDRSZ   = 60
 };
 
+/* ngroups_max reasonable value used in sizing some data structures
+ * (256) 4-byte or 4-char entries fills 1 KB and must fit in, e.g. struct group
+ * On Linux _SC_GETPW_R_SIZE_MAX and _SC_GETGR_R_SIZE_MAX are 1 KB
+ */
+#define NSS_MCDB_NGROUPS_MAX 256
 
 void _nss_mcdb_setpwent(void);
 void _nss_mcdb_endpwent(void);
