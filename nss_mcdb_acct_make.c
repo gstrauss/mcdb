@@ -214,13 +214,26 @@ nss_mcdb_acct_make_grouplist_add(const char * const restrict name,
     return true;
 }
 
-/* GPS: TODO: exposing this would also mean exposing struct for groupmem */
 static size_t
 nss_mcdb_acct_make_grouplist_datastr(char * restrict buf, const size_t bufsz,
                                      const struct nss_mcdb_acct_make_groupmem *
                                        const restrict groupmem)
 {
-    return 0;  /* GPS: TODO */
+    /* nss_mcdb_acct_make_group_flush() validates sane number of gids (ngids) */
+    const gid_t * const gidlist = groupmem->gidlist;
+    const uint32_t ngids = groupmem->ngids;
+    const size_t sz = NSS_GL_HDRSZ + (ngids << 3); /* 8-char encoding per gid */
+    if (sz <= bufsz) {
+	uint32_to_ascii8uphex(ngids, buf+NSS_GL_NGROUPS);
+	buf += NSS_GL_HDRSZ;
+	for (uint32_t i = 0; i < ngids; ++i, buf+=8)
+	    uint32_to_ascii8uphex(gidlist[i], buf);
+	return sz;
+    }
+    else {
+	errno = ERANGE;
+	return 0;
+    }
 }
 
 bool
@@ -228,6 +241,12 @@ nss_mcdb_acct_make_group_flush(struct nss_mcdb_make_winfo * const restrict w)
 {
     const struct nss_mcdb_acct_make_groupmem * restrict groupmem;
     int i = 0;
+    /* arbitrary limit: min(256,_SC_NGROUPS_MAX); same as nss_mcdb_acct.c */
+    /*(255 gids + primary gid amounts to 1 KB of 4-byte unsigned ints)*/
+    /*(permit max ngids - 1 supplemental groups to validate input)*/
+    const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
+    const int ngids =
+      (0 < sc_ngroups_max && sc_ngroups_max < 256) ? sc_ngroups_max-1 : 256-1;
 
     w->tagc = '~';
 
@@ -235,6 +254,8 @@ nss_mcdb_acct_make_group_flush(struct nss_mcdb_make_winfo * const restrict w)
         for (groupmem = nss_mcdb_acct_make_groupmem_hashmap[i];
              groupmem;
              groupmem = groupmem->next) {
+            if (__builtin_expect( groupmem->ngids > ngids, 0))
+                return nss_mcdb_acct_make_grouplist_free(false);
             w->klen = groupmem->namelen;
             w->key  = groupmem->name;
             w->dlen =
@@ -578,6 +599,9 @@ nss_mcdb_acct_make_group_parse(
     int c;
     long n;
     struct group gr;
+    /* arbitrary limit: min(256,_SC_NGROUPS_MAX); same as nss_mcdb_acct.c */
+    /*(255 gids + primary gid amounts to 1 KB of 4-byte unsigned ints)*/
+    /*(permit max gr_mem-1 supplemental groups + NULL term to validate input)*/
     const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
     char *gr_mem[(0 < sc_ngroups_max && sc_ngroups_max < 256)
                  ? sc_ngroups_max

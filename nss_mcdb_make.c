@@ -91,7 +91,7 @@ nss_mcdb_make_dbfile_flush( struct nss_mcdb_make_winfo * const restrict w )
     struct nss_mcdb_make_wbuf * const wbuf = &w->wbuf;
 
     if (w->flush != NULL) {  /* callback */
-        if (__builtin_expect( w->flush(w), 0))
+        if (__builtin_expect( !w->flush(w), 0))
             return false;
     }
 
