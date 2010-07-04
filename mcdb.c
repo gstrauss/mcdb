@@ -178,10 +178,11 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
     int fd;
     bool rc;
 
+    const int oflags = O_RDONLY | O_NONBLOCK | O_CLOEXEC;
   #if defined(__linux) || defined(__sun)
-    if ((fd = nointr_openat(map->dfd,map->fname,O_RDONLY|O_NONBLOCK,0)) == -1)
+    if ((fd = nointr_openat(map->dfd, map->fname, oflags, 0)) == -1)
   #else
-    if ((fd = nointr_open(map->fname, O_RDONLY|O_NONBLOCK, 0)) == -1)
+    if ((fd = nointr_open(map->fname, oflags, 0)) == -1)
   #endif
         return false;
 

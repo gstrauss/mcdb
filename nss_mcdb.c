@@ -143,10 +143,11 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
     }
   #endif
 
+    const int oflags = O_RDONLY | O_NONBLOCK | O_CLOEXEC;
   #if defined(__linux) || defined(__sun)
-    if ((fd = nointr_openat(dfd, map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
+    if ((fd = nointr_openat(dfd, map->fname, oflags, 0)) != -1)
   #else
-    if ((fd = nointr_open(map->fname, O_RDONLY|O_NONBLOCK, 0)) != -1)
+    if ((fd = nointr_open(map->fname, oflags, 0)) != -1)
   #endif
     {
         rc = mcdb_mmap_init(map, fd);
