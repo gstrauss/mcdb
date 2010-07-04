@@ -1,4 +1,4 @@
-#ifndef _ATFILE_SOURCE /* fstatat(), openat() */
+#ifndef _ATFILE_SOURCE /* openat() */
 #define _ATFILE_SOURCE
 #endif
 #ifndef _GNU_SOURCE /* enable O_CLOEXEC on GNU systems */
@@ -122,7 +122,6 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
         if (dfd > STDERR_FILENO) {
             if (O_CLOEXEC == 0)
                 (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
-            map->dfd = dfd;
         }
         else {
             if (dfd != -1) /* caller must have open STDIN, STDOUT, STDERR */
@@ -132,6 +131,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
             return false;
         }
     }
+    map->dfd = dfd;
     /* assert(sizeof(map->fname) > strlen(_nss_dbnames[dbtype])); */
     memcpy(map->fname, _nss_dbnames[dbtype], strlen(_nss_dbnames[dbtype])+1);
   #else

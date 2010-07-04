@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 struct nss_mcdb_make_wbuf {
-  struct mcdb_make * const restrict m;
+  struct mcdb_make * restrict m;
   char * const restrict buf;
   size_t offset;
   size_t bufsz;

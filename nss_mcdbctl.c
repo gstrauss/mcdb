@@ -12,10 +12,14 @@
 #include "nss_mcdb_netdb_make.h"
 #include "nointr.h"
 
+#include <sys/stat.h>  /* fchmod(), umask() */
+#include <fcntl.h>     /* open() */
 #include <assert.h>
 #include <stdbool.h>
-#include <stdlib.h>  /* malloc() free() */
-#include <unistd.h>  /* sysconf() */
+#include <stdlib.h>    /* malloc() free() mkstemp() */
+#include <stdio.h>     /* rename() */
+#include <string.h>    /* memcpy() strlen() */
+#include <unistd.h>    /* sysconf() unlink() */
 
 /* Note: blank line is required to denote end of mcdb input 
  * Ensure blank line is written after w.wbuf is flushed. */
@@ -38,7 +42,9 @@ int main(void)
     const long sc_host_name_max    = sysconf(_SC_HOST_NAME_MAX);
 
     struct fdb_st {
-      char * restrict file;
+      const char * const restrict file;
+      const char * const restrict mcdbfile;
+      const char * const restrict mcdbmakefile;
       size_t datasz;
       bool (*parse)(struct nss_mcdb_make_winfo * restrict,
                     char * restrict);
@@ -51,60 +57,87 @@ int main(void)
      * (HDRSZ + 1 KB buffer for db that do not specify max buf size) */
     const struct fdb_st fdb[] = {
         { "/etc/passwd",
+          "/etc/mcdb/passwd.mcdb",
+          "/etc/mcdb/passwd.mcdbmake",
           NSS_PW_HDRSZ+(size_t)sc_getpw_r_size_max,
           nss_mcdb_acct_make_passwd_parse,
           nss_mcdb_acct_make_passwd_encode,
           NULL },
         { "/etc/group",
+          "/etc/mcdb/group.mcdb",
+          "/etc/mcdb/group.mcdbmake",
           NSS_GR_HDRSZ+(size_t)sc_getgr_r_size_max,
           nss_mcdb_acct_make_group_parse,
           nss_mcdb_acct_make_group_encode,
           nss_mcdb_acct_make_group_flush },
         { "/etc/shadow",
+          "/etc/mcdb/shadow.mcdb",
+          "/etc/mcdb/shadow.mcdbmake",
           NSS_SP_HDRSZ+(size_t)sc_getpw_r_size_max,
           nss_mcdb_acct_make_shadow_parse,
           nss_mcdb_acct_make_spwd_encode,
           NULL },
       #if 0  /* implemented, but not enabling by default; little benefit */
         { "/etc/ethers",
+          "/etc/mcdb/ethers.mcdb",
+          "/etc/mcdb/ethers.mcdbmake",
           NSS_EA_HDRSZ+(size_t)sc_host_name_max,
           nss_mcdb_misc_make_ethers_parse,
           nss_mcdb_misc_make_ether_addr_encode,
           NULL },
         { "/etc/aliases",
+          "/etc/mcdb/aliases.mcdb",
+          "/etc/mcdb/aliases.mcdbmake",
           NSS_AE_HDRSZ+1024,
           nss_mcdb_misc_make_aliases_parse,
           nss_mcdb_misc_make_aliasent_encode,
           NULL },
       #endif
         { "/etc/hosts",
+          "/etc/mcdb/hosts.mcdb",
+          "/etc/mcdb/hosts.mcdbmake",
           NSS_HE_HDRSZ+1024,
           nss_mcdb_netdb_make_hosts_parse,
           nss_mcdb_netdb_make_hostent_encode,
           NULL },
         { "/etc/networks",
+          "/etc/mcdb/networks.mcdb",
+          "/etc/mcdb/networks.mcdbmake",
           NSS_NE_HDRSZ+1024,
           nss_mcdb_netdb_make_networks_parse,
           nss_mcdb_netdb_make_netent_encode,
           NULL },
         { "/etc/protocols",
+          "/etc/mcdb/protocols.mcdb",
+          "/etc/mcdb/protocols.mcdbmake",
           NSS_PE_HDRSZ+1024,
           nss_mcdb_netdb_make_protocols_parse,
           nss_mcdb_netdb_make_protoent_encode,
           NULL },
         { "/etc/rpc",
+          "/etc/mcdb/rpc.mcdb",
+          "/etc/mcdb/rpc.mcdbmake",
           NSS_RE_HDRSZ+1024,
           nss_mcdb_netdb_make_rpc_parse,
           nss_mcdb_netdb_make_rpcent_encode,
           NULL },
         { "/etc/services",
+          "/etc/mcdb/services.mcdb",
+          "/etc/mcdb/services.mcdbmake",
           NSS_SE_HDRSZ+1024,
           nss_mcdb_netdb_make_services_parse,
           nss_mcdb_netdb_make_servent_encode,
           NULL }
     };
 
+    struct mcdb_make m;
+    struct stat st;
+    time_t mtime;
+    size_t len;
+    int fd = -1;
     bool rc;
+    const char * restrict fname;
+    char fnametmp[64];
 
     if (wbuf->buf == NULL || w.data == NULL) {
         free(w.data);
@@ -126,34 +159,75 @@ int main(void)
     /* (mcdb line must fit in WBUFSZ, including key, value, mcdb line tokens) */
     assert(DBUFSZ*2 <= WBUFSZ);
 
-    /* <<<TODO: when wbuf->fd is changed to point to individual files, be sure
-     *          to create data files for secure databases (e.g. shadow) with
-     *          restrictive permissions.  There should never be a race when the
-     *          file could be opened by less privileged users.
-     *          Use mkstemp and see mcdb_makefmt.c:mcdb_makefmt_fdintofile()
-     */
+    /* initialize struct mcdb_make for writing .mcdb 
+     * (comment out to write .mcdbmake input files) */
+    memset((wbuf->m = &m), '\0', sizeof(struct mcdb_make));
 
     /* parse databases */
+    /* (file mgmt code is similar to mcdb_makefmt.c:mcdb_makefmt_fdintofile())*/
     for (int i = 0; i < sizeof(fdb)/sizeof(struct fdb_st); ++i) {
+        fname    = wbuf->m != NULL ? fdb[i].mcdbfile : fdb[i].mcdbmakefile;
         w.datasz = fdb[i].datasz;
         w.encode = fdb[i].encode;
         w.flush  = fdb[i].flush;
         assert(w.datasz <= DBUFSZ);
+
+        /* preserve permission modes if previous mcdb exists; else read-only
+         * (since mcdb is *constant* -- not modified -- after creation) */
+        rc = false;
+        if (stat(fdb[i].file, &st) != 0)
+            break;
+        mtime = st.st_mtime;
+        if (stat(fname, &st) != 0) {
+            st.st_mtime = 0;
+            st.st_mode = (0 != strcmp("/etc/shadow", fdb[i].file))
+              ? S_IRUSR | S_IRGRP | S_IROTH    /* default read-only */
+              : S_IRUSR;  /* default root read-only for /etc/shadow */
+            if (errno != ENOENT)
+                break;
+        }
+        if (mtime < st.st_mtime) { /*dbfile up-to-date (redo if time matches)*/
+            rc = true;
+            continue;
+        }
+        len = strlen(fname);
+        if (len + 8 > sizeof(fnametmp))
+            break;
+        memcpy(fnametmp, fname, len);
+        memcpy(fnametmp+len, ".XXXXXX", 8);
+        if ((fd = mkstemp(fnametmp)) == -1)
+            break;
+        wbuf->fd = fd;
+
+        if (wbuf->m != NULL) {
+            if (mcdb_make_start(wbuf->m, fd, malloc, free) != 0)
+                break;
+        }
 
         /* generate mcdb make info */
         rc = nss_mcdb_make_dbfile_parse(&w, fdb[i].file, fdb[i].parse);
         if (!rc              /* (expect shadow passwd db to fail unless root) */
             && (fdb[i].parse != nss_mcdb_acct_make_shadow_parse || 0==getuid()))
             break;
-
-        rc = nss_mcdb_make_dbfile_flush(&w);
+        rc =   nss_mcdb_make_dbfile_flush(&w)
+            && (wbuf->m == NULL || mcdb_make_finish(wbuf->m) == 0)
+            && fchmod(fd, st.st_mode) == 0
+            && nointr_close(fd) == 0    /* NFS might report write errors here */
+            && (fd = -2,                /* (fd=-2 so not re-closed)*/
+                rename(fnametmp, fname) == 0);
         if (!rc)
             break;
+        fd = -1;
+    }
 
-        /* visual separator of 3 blank lines for testing (no other purpose) */
-        /* (not catching nointr_write() return value in rc) */
-        if (nointr_write(wbuf->fd, "\n\n\n", 3) == -1)
-            break;
+    if (fd != -1) {
+        const int errnum = errno;
+        unlink(fnametmp);
+        if (fd >= 0)
+            (void)nointr_close(fd);
+        if (wbuf->m != NULL)
+            mcdb_make_destroy(wbuf->m);
+        errno = errnum;
     }
 
     free(w.data);

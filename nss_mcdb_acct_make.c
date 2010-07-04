@@ -12,7 +12,7 @@
 
 #include <errno.h>
 #include <string.h>
-#include <stdlib.h>  /* strtol() strtoul() */
+#include <stdlib.h>  /* malloc() calloc() free() strtol() strtoul() */
 
 #include <pwd.h>
 #include <grp.h>
@@ -162,8 +162,8 @@ nss_mcdb_acct_make_grouplist_add(const char * const restrict name,
     if (__builtin_expect( nss_mcdb_acct_make_groupmem_hashmap == NULL, 0)) {
         nss_mcdb_acct_make_groupmem_hashmap =
           (struct nss_mcdb_acct_make_groupmem **)
-          malloc(sizeof(struct nss_mcdb_acct_make_groupmem_hashmap *)
-                 * nss_mcdb_acct_make_groupmem_hashmap_sz);
+          calloc(nss_mcdb_acct_make_groupmem_hashmap_sz,
+                 sizeof(struct nss_mcdb_acct_make_groupmem_hashmap *));
         if (__builtin_expect( nss_mcdb_acct_make_groupmem_hashmap == NULL, 0))
             return nss_mcdb_acct_make_grouplist_free(false);
     }
