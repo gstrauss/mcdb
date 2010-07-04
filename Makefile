@@ -49,8 +49,35 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 .PHONY: install
 install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2
 
+
+# 64-bit nss_mcdb_* library
+# (hack: most modern CPUs in high-end computers are 64-bit; though not i686)
+ifneq (i686,$(shell uname -p))
+ifeq (,$(wildcard lib64))
+  $(shell mkdir lib64)
+endif
+lib64/%.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+LIB64_PIC_OBJS:= $(addprefix lib64/,$(PIC_OBJS))
+$(LIB64_PIC_OBJS): CFLAGS+= -fpic -m64
+lib64/libnss_mcdb.so.2: $(LIB64_PIC_OBJS)
+	$(CC) -shared -fpic -Wl,-soname,$(@F) -o $@ $^
+
+/lib64/libnss_mcdb.so.2: lib64/libnss_mcdb.so.2
+	/bin/cp -f $< $@.$$$$ \
+	&& /bin/mv -f $@.$$$$ $@
+
+/usr/lib64/libnss_mcdb.so.2: /lib64/libnss_mcdb.so.2
+	[ -L $@ ] || /bin/ln -s $< $@
+
+install: /lib64/libnss_mcdb.so.2 /usr/lib64/libnss_mcdb.so.2
+endif
+
+
 .PHONY: clean
 clean:
-	$(RM) *.o libmcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
+	! [ "$$(/usr/bin/id -u)" = "0" ]
+	$(RM) -r *.o libmcdb.a libnss_mcdb_make.a libnss_mcdb.so.2 lib64
 	$(RM) mcdbctl nss_mcdbctl testzero
 
