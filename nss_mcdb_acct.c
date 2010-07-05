@@ -222,8 +222,8 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
     /* arbitrary limit: NSS_MCDB_NGROUPS_MAX in nss_mcdb_acct.h */
     const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
     int sz = (0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX)
-           ? sc_ngroups_max
-           : NSS_MCDB_NGROUPS_MAX;
+           ? sc_ngroups_max+1
+           : NSS_MCDB_NGROUPS_MAX+1;
     gid_t gidlist[sz];
     if (nss_mcdb_getgrouplist(user, group, gidlist, &sz) == -1) {
         /*(sz == 0 indicates error; valid value always >= 1 in *ngroups)
@@ -240,7 +240,9 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
     /* nss_mcdb_acct_grouplist_decode() puts gid passed in list first.
      * If -1, remove from list due to how __GLIBC__ nscd caches initgroups */
     if (group == (gid_t)-1) {
-        assert((gid_t)-1 != 65535);
+        /*(nss_mcdb_acct_grouplist_decode() puts passed group as first entry) */
+        assert(gidlist[0] == (gid_t)-1);
+        assert((gid_t)-1 != 65535);  /* by convention 'nobody' */
         gidlist[0] = gidlist[--sz];
     }
   #endif

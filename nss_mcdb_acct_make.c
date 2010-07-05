@@ -242,12 +242,12 @@ nss_mcdb_acct_make_group_flush(struct nss_mcdb_make_winfo * const restrict w)
     const struct nss_mcdb_acct_make_groupmem * restrict groupmem;
     int i = 0;
     /* arbitrary limit: NSS_MCDB_NGROUPS_MAX in nss_mcdb_acct.h */
-    /*(permit max ngids - 1 supplemental groups to validate input)*/
+    /*(permit max ngids supplemental groups to validate input)*/
     const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
     const int ngids =
       (0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX)
-        ? sc_ngroups_max-1
-        : NSS_MCDB_NGROUPS_MAX-1;
+        ? sc_ngroups_max
+        : NSS_MCDB_NGROUPS_MAX;
 
     w->tagc = '~';
 
@@ -601,11 +601,13 @@ nss_mcdb_acct_make_group_parse(
     long n;
     struct group gr;
     /* arbitrary limit: NSS_MCDB_NGROUPS_MAX in nss_mcdb_acct.h */
-    /*(permit max gr_mem-1 supplemental groups + NULL term to validate input)*/
+    /*(permit nmax gr_mem supplemental groups + NULL)*/
     const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
-    char *gr_mem[(0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX-1)
-                 ? sc_ngroups_max
-                 : NSS_MCDB_NGROUPS_MAX];
+    const long nmax =
+      (0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX)
+        ? sc_ngroups_max
+        : NSS_MCDB_NGROUPS_MAX;
+    char *gr_mem[nmax+1];
 
     gr.gr_mem = gr_mem;
 
@@ -647,7 +649,7 @@ nss_mcdb_acct_make_group_parse(
             if ((c = *p) == '\0')       /* error: invalid line */
                 return false;
             *p = '\0';
-            if (n < (sizeof(gr_mem)/sizeof(char *) - 1))
+            if (n < nmax)
                 gr.gr_mem[n++] = b;
             else
                 return false; /* too many members to fit in fixed-sized array */
