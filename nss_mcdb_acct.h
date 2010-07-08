@@ -30,7 +30,7 @@ enum {
 
 enum {
   NSS_GL_NGROUPS =  0,
-  NSS_GL_HDRSZ   =  4
+  NSS_GL_HDRSZ   =  8
 };
 
 enum {

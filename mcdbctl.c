@@ -226,7 +226,7 @@ mcdbctl_query(const int argc, char ** restrict argv)
       query_type = MCDBCTL_BAD_QUERY_TYPE;
 
     /* validate args  (query type string == argv[1]) */
-    if (0 == strcmp(argv[1], "get")) {
+    if (argc > 3 && 0 == strcmp(argv[1], "get")) {
         if (argc == 5) {
             char *endptr;
             seq = strtoul(argv[4], &endptr, 10);
@@ -315,10 +315,10 @@ main(const int argc, char ** const restrict argv)
       ? mcdbctl_make(argc, argv)
       : mcdbctl_query(argc, argv);
 
-    mcdb_usage = "mcdbctl make  <fname.mcdb> <input.txt|->\n"
-                 "mcdbctl dump  <fname.mcdb>\n"
-                 "mcdbctl stats <fname.mcdb>\n"
-                 "mcdbctl get   <fname.mcdb> <key> [seq]\n";
+    mcdb_usage = "mcdbctl make  <fname.mcdb> <datafile|->\n"
+                 "         mcdbctl dump  <fname.mcdb>\n"
+                 "         mcdbctl stats <fname.mcdb>\n"
+                 "         mcdbctl get   <fname.mcdb> <key> [seq]\n";
 
     return rv == EXIT_SUCCESS ? EXIT_SUCCESS : mcdb_error(rv,basename(argv[0]));
 }

@@ -210,6 +210,8 @@ nss_mcdb_getgrouplist(const char * const restrict user, gid_t group,
 #include <assert.h>
 #endif
 
+static long sc_ngroups_max_cached = -1L;
+
 nss_status_t
 _nss_mcdb_initgroups_dyn(const char * const restrict user,
                          const gid_t group,
@@ -220,7 +222,9 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
                          int * const restrict errnop)
 {
     /* arbitrary limit: NSS_MCDB_NGROUPS_MAX in nss_mcdb_acct.h */
-    const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
+    const long sc_ngroups_max = (sc_ngroups_max_cached != -1L)
+      ? sc_ngroups_max_cached
+      : (sc_ngroups_max_cached = sysconf(_SC_NGROUPS_MAX));
     int sz = (0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX)
            ? sc_ngroups_max+1
            : NSS_MCDB_NGROUPS_MAX+1;
