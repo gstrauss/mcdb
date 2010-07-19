@@ -29,6 +29,9 @@ int xdecrypt(char *secret, char *passwd);
  *     /etc/ethers
  * man getpublickey (Solaris)
  * man getsecretkey (Solaris)
+ * man shells(5)  setusershell getusershell endusershell
+ *     /etc/shells  (not implemented here; /etc/shells usually very small file)
+ *     (_BSD_SOURCE || ( _XOPEN_SOURCE && _XOPEN_SOURCE < 500)  (note: < 500))
  */
 
 static nss_status_t
