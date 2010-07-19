@@ -275,7 +275,7 @@ mcdb_mmap_free(struct mcdb_mmap * const restrict map)
 void  __attribute_noinline__
 mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 {
-    if (map->dfd > STDERR_FILENO)
+    if (map->dfd != -1)
         (void) nointr_close(map->dfd);
     mcdb_mmap_free(map);
 }

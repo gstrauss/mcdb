@@ -26,6 +26,9 @@
  */
 #if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
 extern inline
+int nointr_dup(int);
+int nointr_dup(int);
+extern inline
 int nointr_open(const char * restrict, int, mode_t);
 int nointr_open(const char * restrict, int, mode_t);
 extern inline

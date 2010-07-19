@@ -11,10 +11,19 @@
 
 /* Note: please do not use these routines indescriminantly.
  * There are times when a library call should be interrupted by EINTR and
- * processed as-is.  One such example is when read(), where the data read
- * should be processed, unless a certain amount of data is required and it
- * is reasonable to block and wait longer.
+ * processed as-is.  One such example is read(), where the data read should
+ * be processed, unless a certain amount of data is required and it is
+ * reasonable to block and wait longer.
  */
+
+int  C99INLINE
+nointr_dup(const int fd)
+  __attribute_warn_unused_result__;
+#if !defined(NO_C99INLINE)
+int  C99INLINE
+nointr_dup(const int fd)
+{ int r; retry_eintr_do_while((r = dup(fd)), (r != -1)); return r; }
+#endif
 
 int  C99INLINE
 nointr_open(const char * const restrict fn, const int flags, const mode_t mode)

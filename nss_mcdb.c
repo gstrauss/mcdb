@@ -117,19 +117,33 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
     map->fn_free   = _nss_mcdb_mmap_free;
 
   #if defined(__linux) || defined(__sun)
-    if (__builtin_expect(dfd <= STDERR_FILENO, false)) {
-        dfd = nointr_open(NSS_MCDB_DBPATH,O_RDONLY|O_CLOEXEC,0);
-        if (dfd > STDERR_FILENO) {
-            if (O_CLOEXEC == 0)
-                (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
+    if (__builtin_expect( dfd == -1, false)) {
+        dfd = nointr_open(NSS_MCDB_DBPATH, O_RDONLY | O_CLOEXEC, 0);
+        if (dfd <= STDERR_FILENO) {
+            /* accommodate security programs running without std fds open.
+             * dup() until dfd > STDERR_FILENO, and then closing intermediates.
+             * (e.g. GNU coreutils /bin/su closes all fds before execve of
+             *  /sbin/unix_chkpwd, which queries nss info for passwd,shadow) */
+            if (dfd != -1) { /* caller does not have open stdin/stdout/stderr */
+                int i = 0;
+                int ofd[3];
+                do {
+                    ofd[i++] = dfd;
+                    dfd = nointr_dup(dfd);
+                    /* should prefer dup3() with O_CLOEXEC where available */
+                } while (dfd <= STDERR_FILENO && dfd != -1 && i < 3);
+                while (i--) { (void) nointr_close(ofd[i]); }
+                if (dfd != -1)
+                    (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
+            }
+            if (dfd == -1) {
+                pthread_mutex_unlock(&_nss_mcdb_global_mutex);
+                errno = EBADF;
+                return false;
+            }
         }
-        else {
-            if (dfd != -1) /* caller must have open STDIN, STDOUT, STDERR */
-                (void) nointr_close(dfd);
-            pthread_mutex_unlock(&_nss_mcdb_global_mutex);
-            errno = EBADF;
-            return false;
-        }
+        if (O_CLOEXEC == 0)
+            (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
     }
     map->dfd = dfd;
     /* assert(sizeof(map->fname) > strlen(_nss_dbnames[dbtype])); */
