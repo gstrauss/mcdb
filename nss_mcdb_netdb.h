@@ -163,13 +163,13 @@ nss_status_t
 _nss_mcdb_getservbyname_r(const char * restrict, const char * restrict,
                           struct servent * restrict, char * restrict, size_t,
                           int * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((1,3,4,6))  __attribute_warn_unused_result__;
 
 nss_status_t
 _nss_mcdb_getservbyport_r(int, const char * restrict,
                           struct servent * restrict, char * restrict, size_t,
                           int * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull_x__((3,4,6))  __attribute_warn_unused_result__;
 
 
 #endif

@@ -163,17 +163,22 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
 
 void  inline
 mcdb_make_addbuf_data(struct mcdb_make * const restrict m,
-                      const char * const restrict buf, size_t len)
+                      const char * const restrict buf, const size_t len)
 {
     /* len validated in mcdb_make_addbegin(); passing any other len is wrong,
-     * unless the len is shorter from partial contents of buf. */
-    memcpy(m->map + m->pos - m->offset, buf, len);
+     * unless the len is shorter from partial contents of buf.
+     * optimization: check len==1 (tagc) to avoid memcpy call for single char */
+    char * const p = m->map + m->pos - m->offset;
     m->pos += len;
+    if (len != 1)
+        memcpy(p, buf, len);
+    else
+        *p = *buf;
 }
 
 void  inline
 mcdb_make_addbuf_key(struct mcdb_make * const restrict m,
-                     const char * const restrict buf, size_t len)
+                     const char * const restrict buf, const size_t len)
 {
     /* len validated in mcdb_make_addbegin(); passing any other len is wrong,
      * unless the len is shorter from partial contents of buf. */
@@ -183,13 +188,13 @@ mcdb_make_addbuf_key(struct mcdb_make * const restrict m,
 }
 
 void  inline
-mcdb_make_addend(struct mcdb_make * restrict m)
+mcdb_make_addend(struct mcdb_make * const restrict m)
 {
     ++m->head->num;
 }
 
 void  inline
-mcdb_make_addrevert(struct mcdb_make * restrict m)
+mcdb_make_addrevert(struct mcdb_make * const restrict m)
 {
     m->pos = m->head->hp[m->head->num].p;
 }
