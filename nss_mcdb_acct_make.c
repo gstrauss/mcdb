@@ -1,6 +1,7 @@
 /* memccpy() on Linux requires _XOPEN_SOURCE or _BSD_SOURCE or _SVID_SOURCE */
+/* strtoull() needs _XOPEN_SOURCE 600 on some platforms */
 #ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 #endif
 
 #include "nss_mcdb_acct_make.h"
@@ -283,18 +284,39 @@ nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
 {
     const size_t pw_name_len   = strlen(pw->pw_name);
     const size_t pw_passwd_len = strlen(pw->pw_passwd);
+  #if defined(__sun)
+    const size_t pw_age_len    = strlen(pw->pw_age);
+    const size_t pw_comment_len= strlen(pw->pw_comment);
+  #elif defined(__FreeBSD__)
+    const size_t pw_class_len  = strlen(pw->pw_class);
+  #endif
     const size_t pw_gecos_len  = strlen(pw->pw_gecos);
     const size_t pw_dir_len    = strlen(pw->pw_dir);
     const size_t pw_shell_len  = strlen(pw->pw_shell);
     const uintptr_t pw_name_offset   = 0;
     const uintptr_t pw_passwd_offset = pw_name_offset   + pw_name_len   + 1;
+  #if defined(__sun)
+    const uintptr_t pw_age_offset    = pw_passwd_offset + pw_passwd_len + 1;
+    const uintptr_t pw_comment_offset= pw_age_offset    + pw_age_len    + 1;
+    const uintptr_t pw_gecos_offset  = pw_comment_offset+ pw_comment_len+ 1;
+  #elif defined(__FreeBSD__)
+    const uintptr_t pw_class_offset  = pw_passwd_offset + pw_passwd_len + 1;
+    const uintptr_t pw_gecos_offset  = pw_class_offset  + pw_class_len  + 1;
+  #else
     const uintptr_t pw_gecos_offset  = pw_passwd_offset + pw_passwd_len + 1;
+  #endif
     const uintptr_t pw_dir_offset    = pw_gecos_offset  + pw_gecos_len  + 1;
     const uintptr_t pw_shell_offset  = pw_dir_offset    + pw_dir_len    + 1;
     const uintptr_t pw_shell_end     = pw_shell_offset  + pw_shell_len;
     /*(pw_shell_end < bufsz to leave +1 in buffer for final '\n' or '\0')*/
     if (   __builtin_expect(NSS_PW_HDRSZ + pw_shell_end < bufsz, 1)
 	&& __builtin_expect(pw_passwd_offset <= USHRT_MAX, 1)
+      #if defined(__sun)
+	&& __builtin_expect(pw_age_offset    <= USHRT_MAX, 1)
+	&& __builtin_expect(pw_comment_offset<= USHRT_MAX, 1)
+      #elif defined(__FreeBSD__)
+	&& __builtin_expect(pw_class_offset  <= USHRT_MAX, 1)
+      #endif
 	&& __builtin_expect(pw_gecos_offset  <= USHRT_MAX, 1)
 	&& __builtin_expect(pw_dir_offset    <= USHRT_MAX, 1)
 	&& __builtin_expect(pw_shell_offset  <= USHRT_MAX, 1)) { 
@@ -305,16 +327,39 @@ nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
 	uint16_to_ascii4uphex((uint32_t)pw_shell_offset,  buf+NSS_PW_SHELL);
 	uint32_to_ascii8uphex((uint32_t)pw->pw_uid,       buf+NSS_PW_UID);
 	uint32_to_ascii8uphex((uint32_t)pw->pw_gid,       buf+NSS_PW_GID);
+      #if defined(__sun)
+	uint16_to_ascii4uphex((uint32_t)pw_age_offset,    buf+NSS_PW_AGE);
+	uint16_to_ascii4uphex((uint32_t)pw_comment_offset,buf+NSS_PW_COMMENT);
+      #elif defined(__FreeBSD__)
+	uint32_to_ascii8uphex((uint32_t)(pw->pw_change>>32),buf+NSS_PW_CHANGE);
+	uint32_to_ascii8uphex((uint32_t)pw->pw_change,    buf+NSS_PW_CHANGE+8);
+	uint32_to_ascii8uphex((uint32_t)(pw->pw_expire>>32),buf+NSS_PW_EXPIRE);
+	uint32_to_ascii8uphex((uint32_t)pw->pw_expire,    buf+NSS_PW_EXPIRE+8);
+	uint32_to_ascii8uphex((uint32_t)pw->pw_fields,    buf+NSS_PW_FIELDS);
+	uint16_to_ascii4uphex((uint32_t)pw_class_offset,  buf+NSS_PW_CLASS);
+      #endif
 	/* copy strings into buffer */
 	buf += NSS_PW_HDRSZ;
 	memcpy(buf+pw_name_offset,   pw->pw_name,   pw_name_len);
 	memcpy(buf+pw_passwd_offset, pw->pw_passwd, pw_passwd_len);
+      #if defined(__sun)
+	memcpy(buf+pw_age_offset,    pw->pw_age,    pw_age_len);
+	memcpy(buf+pw_comment_offset,pw->pw_comment,pw_comment_len);
+      #elif defined(__FreeBSD__)
+	memcpy(buf+pw_class_offset,  pw->pw_class,  pw_class_len);
+      #endif
 	memcpy(buf+pw_gecos_offset,  pw->pw_gecos,  pw_gecos_len);
 	memcpy(buf+pw_dir_offset,    pw->pw_dir,    pw_dir_len);
 	memcpy(buf+pw_shell_offset,  pw->pw_shell,  pw_shell_len);
 	/* separate entries with ':' for readability */
 	buf[pw_passwd_offset-1]= ':';  /*(between pw_name and pw_passwd)*/
-	buf[pw_gecos_offset-1] = ':';  /*(between pw_passwd and pw_gecos)*/
+      #if defined(__sun)
+	buf[pw_age_offset-1]   = ':';  /*(between pw_passwd and pw_age)*/
+	buf[pw_comment_offset-1]= ':'; /*(between pw_age and pw_comment)*/
+      #elif defined(__FreeBSD__)
+	buf[pw_class_offset-1] = ':';  /*(between pw_passwd and pw_class)*/
+      #endif
+	buf[pw_gecos_offset-1] = ':';  /*(between pw_passwd/prev and pw_gecos)*/
 	buf[pw_dir_offset-1]   = ':';  /*(between pw_gecos and pw_dir)*/
 	buf[pw_shell_offset-1] = ':';  /*(between pw_dir and pw_shell)*/
 	buf[pw_shell_end] = '\0';      /* end string section */
@@ -520,6 +565,10 @@ nss_mcdb_acct_make_passwd_parse(
 
     for (; *p; ++p) {
 
+        /* skip comment lines beginning with '#' (supported by some vendors) */
+        if (*p == '#')
+            TOKEN_POUNDCOMMENT_SKIP(p);
+
         /* pw_name */
         pw.pw_name = b = p;
         TOKEN_COLONDELIM_END(p);
@@ -540,12 +589,15 @@ nss_mcdb_acct_make_passwd_parse(
         if (*b == ':' || *p != ':')
             return false;               /* error: invalid line */
         *p = '\0';
+        errno = 0;
         n = strtol(b, &e, 10);
-        if (*e != '\0' || n < 0 || n == LONG_MAX || n >= INT_MAX)
-            return false;               /* error: invalid uid */
-        if ((uid_t)-1 > 0 && !(n <= (uid_t)-1))
-            return false;               /* error: invalid uid */
-        pw.pw_uid = (uid_t)n;
+        if (*e != '\0' || ((n == LONG_MIN || n == LONG_MAX) && errno == ERANGE))
+            return false;               /* error: invalid number */
+        pw.pw_uid = (n >= 0 && (uid_t)n >= 0 && n == (uid_t)n)
+          ? (uid_t)n
+          : (n == -2 ? (uid_t)-2 : (uid_t)-1);
+        if (pw.pw_uid == (uid_t)-1)
+            return false;
 
         /* pw_gid */
         b = ++p;
@@ -553,12 +605,54 @@ nss_mcdb_acct_make_passwd_parse(
         if (*b == ':' || *p != ':')
             return false;               /* error: invalid line */
         *p = '\0';
+        errno = 0;
         n = strtol(b, &e, 10);
-        if (*e != '\0' || n < 0 || n == LONG_MAX || n >= INT_MAX)
-            return false;               /* error: invalid gid */
-        if ((gid_t)-1 > 0 && !(n <= (gid_t)-1))
-            return false;               /* error: invalid gid */
-        pw.pw_gid = (gid_t)n;
+        if (*e != '\0' || ((n == LONG_MIN || n == LONG_MAX) && errno == ERANGE))
+            return false;               /* error: invalid number */
+        pw.pw_gid = (n >= 0 && (gid_t)n >= 0 && n == (gid_t)n)
+          ? (gid_t)n
+          : (n == -2 ? (gid_t)-2 : (gid_t)-1);
+        if (pw.pw_gid == (gid_t)-1)
+            return false;
+
+      #ifdef __FreeBSD__
+        /* pw_change */
+        b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != ':')
+            return NULL;                /* error: invalid line */
+        pw.pw_change = (time_t)-1;      /* -1 if field is empty */
+        if (b != p) {
+            *p = '\0';
+            errno = 0;
+            pw.pw_change = strtoull(b, &e, 10);
+            if (*e != '\0' || (pw.pw_change == ULLONG_MAX && errno == ERANGE))
+                return false;           /* error: invalid number */
+        }
+
+        /* pw_class */
+        pw.pw_class = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != ':')                  /* class can be blank (?) */
+            return false;               /* error: invalid line */
+        *p = '\0';
+      #endif
+
+      #ifdef __sun
+        /* pw_age */
+        pw.pw_age = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != ':')                  /* age can be blank */
+            return false;               /* error: invalid line */
+        *p = '\0';
+
+        /* pw_comment */
+        pw.pw_comment = b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != ':')                  /* comment can be blank */
+            return false;               /* error: invalid line */
+        *p = '\0';
+      #endif
 
         /* pw_gecos */
         pw.pw_gecos = b = ++p;
@@ -577,9 +671,46 @@ nss_mcdb_acct_make_passwd_parse(
         /* pw_shell */
         pw.pw_shell = b = ++p;
         TOKEN_COLONDELIM_END(p);
-        if (*p != '\n')                 /* shell can be blank */
+      #ifdef __FreeBSD__
+        if (*p != ':')                  /* shell can be blank (delim:colon) */
+      #else
+        if (*p != '\n')                 /* shell can be blank (delim:newline) */
+      #endif
             return false;               /* error: invalid line */
         *p = '\0';
+
+      #ifdef __FreeBSD__
+        /* pw_expire */
+        b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != ':')
+            return NULL;                /* error: invalid line */
+        pw.pw_expire = (time_t)-1;      /* -1 if field is empty */
+        if (b != p) {
+            *p = '\0';
+            errno = 0;
+            pw.pw_expire = strtoull(b, &e, 10);
+            if (*e != '\0' || (pw.pw_expire == ULLONG_MAX && errno == ERANGE))
+                return false;           /* error: invalid number */
+        }
+
+        /* pw_fields */
+        b = ++p;
+        TOKEN_COLONDELIM_END(p);
+        if (*p != '\n')                 /* (delim:newline) */
+            return false;               /* error: invalid line */
+        pw.pw_fields = -1;              /* -1 if field is empty */
+        if (b != p) {
+            *p = '\0';
+            errno = 0;
+            n = strtol(b, &e, 10);
+            if (*e != '\0' || ((n==LONG_MIN || n==LONG_MAX) && errno == ERANGE))
+                return false;           /* error: invalid number */
+            if (sizeof(long) != sizeof(int) && (n < INT_MIN || INT_MAX < n))
+                return false;           /* error: number out of range */
+            pw.pw_fields = (int)n;
+        }
+      #endif
 
         /* find newline (to prep for beginning of next line) (checked above) */
 
@@ -613,6 +744,10 @@ nss_mcdb_acct_make_group_parse(
 
     for (; *p; ++p) {
 
+        /* skip comment lines beginning with '#' (supported by some vendors) */
+        if (*p == '#')
+            TOKEN_POUNDCOMMENT_SKIP(p);
+
         /* gr_name */
         gr.gr_name = b = p;
         TOKEN_COLONDELIM_END(p);
@@ -633,17 +768,20 @@ nss_mcdb_acct_make_group_parse(
         if (*b == ':' || *p != ':')
             return false;               /* error: invalid line */
         *p = '\0';
+        errno = 0;
         n = strtol(b, &e, 10);
-        if (*e != '\0' || n < 0 || n == LONG_MAX || n >= INT_MAX)
-            return false;               /* error: invalid gid */
-        if ((gid_t)-1 > 0 && !(n <= (gid_t)-1))
-            return false;               /* error: invalid gid */
-        gr.gr_gid = (gid_t)n;
+        if (*e != '\0' || ((n == LONG_MIN || n == LONG_MAX) && errno == ERANGE))
+            return false;               /* error: invalid number */
+        gr.gr_gid = (n >= 0 && (gid_t)n >= 0 && n == (gid_t)n)
+          ? (gid_t)n
+          : (n == -2 ? (gid_t)-2 : (gid_t)-1);
+        if (gr.gr_gid == (gid_t)-1)
+            return false;
 
         /* gr_mem */
         n = 0;
         do {
-            if (*(b = ++p) == '\n')
+            if ((c = *(b = ++p)) == '\n')
                 break;                  /* done; no more aliases*/
             TOKEN_COMMADELIM_END(p);
             if ((c = *p) == '\0')       /* error: invalid line */
@@ -671,7 +809,7 @@ nss_mcdb_acct_make_group_parse(
 
 static char *
 nss_mcdb_acct_make_parse_long_int_colon(char * const restrict b,
-                                        long int * const restrict n)
+                                        long * const restrict n)
 {
     char *p = b;
     char *e;
@@ -699,6 +837,10 @@ nss_mcdb_acct_make_shadow_parse(
 
     for (; *p; ++p) {
 
+        /* skip comment lines beginning with '#' (supported by some vendors) */
+        if (*p == '#')
+            TOKEN_POUNDCOMMENT_SKIP(p);
+
         /* sp_namp */
         sp.sp_namp = b = p;
         TOKEN_COLONDELIM_END(p);
@@ -709,7 +851,7 @@ nss_mcdb_acct_make_shadow_parse(
         /* sp_pwdp */
         sp.sp_pwdp = b = ++p;
         TOKEN_COLONDELIM_END(p);
-        if (*b == ':' || *p != ':')
+        if (*b == ':' || *p != ':')     /* (?is empty "" sp_pwdp permitted?) */
             return false;               /* error: invalid line */
         *p = '\0';
 
@@ -746,6 +888,7 @@ nss_mcdb_acct_make_shadow_parse(
         sp.sp_flag = -1;                /* -1 if field is empty */
         if (b != p) {
             *p = '\0';
+            errno = 0;
             sp.sp_flag = strtoul(b, &e, 10);
             if (*e != '\0' || (sp.sp_flag == ULONG_MAX && errno == ERANGE))
                 return false;           /* error: invalid number */

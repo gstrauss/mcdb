@@ -304,26 +304,49 @@ nss_mcdb_acct_passwd_decode(struct mcdb * const restrict m,
     struct passwd * const pw = (struct passwd *)v->vstruct;
     char * const buf = v->buf;
     /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_pw_passwd = uint16_from_ascii4uphex(dptr+NSS_PW_PASSWD);
-    const uintptr_t idx_pw_gecos  = uint16_from_ascii4uphex(dptr+NSS_PW_GECOS);
-    const uintptr_t idx_pw_dir    = uint16_from_ascii4uphex(dptr+NSS_PW_DIR);
-    const uintptr_t idx_pw_shell  = uint16_from_ascii4uphex(dptr+NSS_PW_SHELL);
-    pw->pw_uid   = (uid_t)          uint32_from_ascii8uphex(dptr+NSS_PW_UID);
-    pw->pw_gid   = (gid_t)          uint32_from_ascii8uphex(dptr+NSS_PW_GID);
+    const uintptr_t idx_pw_passwd =uint16_from_ascii4uphex(dptr+NSS_PW_PASSWD);
+    const uintptr_t idx_pw_gecos  =uint16_from_ascii4uphex(dptr+NSS_PW_GECOS);
+    const uintptr_t idx_pw_dir    =uint16_from_ascii4uphex(dptr+NSS_PW_DIR);
+    const uintptr_t idx_pw_shell  =uint16_from_ascii4uphex(dptr+NSS_PW_SHELL);
+  #if defined(__sun)
+    const uintptr_t idx_pw_age    =uint16_from_ascii4uphex(dptr+NSS_PW_AGE);
+    const uintptr_t idx_pw_comment=uint16_from_ascii4uphex(dptr+NSS_PW_COMMENT);
+  #elif defined(__FreeBSD__)
+    const uintptr_t idx_pw_class  =uint16_from_ascii4uphex(dptr+NSS_PW_CLASS);
+    pw->pw_change = ((time_t) uint32_from_ascii8uphex(dptr+NSS_PW_CHANGE))<<32
+                  | ((time_t) uint32_from_ascii8uphex(dptr+NSS_PW_CHANGE+8));
+    pw->pw_expire = ((time_t) uint32_from_ascii8uphex(dptr+NSS_PW_EXPIRE))<<32
+                  | ((time_t) uint32_from_ascii8uphex(dptr+NSS_PW_EXPIRE+8));
+    pw->pw_fields = (int)          uint32_from_ascii8uphex(dptr+NSS_PW_FIELDS);
+  #endif
+    pw->pw_uid    = (uid_t)        uint32_from_ascii8uphex(dptr+NSS_PW_UID);
+    pw->pw_gid    = (gid_t)        uint32_from_ascii8uphex(dptr+NSS_PW_GID);
     /* populate pw string pointers */
-    pw->pw_name  = buf;
-    pw->pw_passwd= buf+idx_pw_passwd;
-    pw->pw_gecos = buf+idx_pw_gecos;
-    pw->pw_dir   = buf+idx_pw_dir;
-    pw->pw_shell = buf+idx_pw_shell;
+    pw->pw_name   = buf;
+    pw->pw_passwd = buf+idx_pw_passwd;
+  #if defined(__sun)
+    pw->pw_age    = buf+idx_pw_age;
+    pw->pw_comment= buf+idx_pw_comment;
+  #elif defined(__FreeBSD__)
+    pw->pw_class  = buf+idx_pw_class;
+  #endif
+    pw->pw_gecos  = buf+idx_pw_gecos;
+    pw->pw_dir    = buf+idx_pw_dir;
+    pw->pw_shell  = buf+idx_pw_shell;
     if (dlen < v->bufsz) {
         memcpy(buf, dptr+NSS_PW_HDRSZ, dlen);
         /* terminate strings; replace ':' separator in data with '\0' */
-        buf[idx_pw_passwd-1] = '\0';     /* terminate pw_name   */
-        buf[idx_pw_gecos-1]  = '\0';     /* terminate pw_passwd */
-        buf[idx_pw_dir-1]    = '\0';     /* terminate pw_gecos  */
-        buf[idx_pw_shell-1]  = '\0';     /* terminate pw_dir    */
-        buf[dlen]            = '\0';     /* terminate pw_shell  */
+        buf[idx_pw_passwd-1] = '\0';     /* terminate pw_name    */
+      #if defined(__sun)
+        buf[idx_pw_age-1]    = '\0';     /* terminate pw_passwd  */
+        buf[idx_pw_comment-1]= '\0';     /* terminate pw_age     */
+      #elif defined(__FreeBSD__)
+        buf[idx_pw_class-1]  = '\0';     /* terminate pw_passwd  */
+      #endif
+        buf[idx_pw_gecos-1]  = '\0';     /* terminate pw_(prev)  */
+        buf[idx_pw_dir-1]    = '\0';     /* terminate pw_gecos   */
+        buf[idx_pw_shell-1]  = '\0';     /* terminate pw_dir     */
+        buf[dlen]            = '\0';     /* terminate pw_shell   */
         return NSS_STATUS_SUCCESS;
     }
     else {

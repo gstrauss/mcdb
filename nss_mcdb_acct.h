@@ -16,7 +16,19 @@ enum {
   NSS_PW_SHELL   = 12,
   NSS_PW_UID     = 16,
   NSS_PW_GID     = 24,
+ #if defined(__sun)
+  NSS_PW_AGE     = 32,
+  NSS_PW_COMMENT = 36,
+  NSS_PW_HDRSZ   = 40
+ #elif defined(__FreeBSD__)
+  NSS_PW_CHANGE  = 32,
+  NSS_PW_EXPIRE  = 48,
+  NSS_PW_FIELDS  = 64,
+  NSS_PW_CLASS   = 72,
+  NSS_PW_HDRSZ   = 76
+ #else
   NSS_PW_HDRSZ   = 32
+ #endif
 };
 
 enum {

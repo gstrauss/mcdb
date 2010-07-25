@@ -64,5 +64,8 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * restrict,
 #define TOKEN_COMMAHASHDELIM_END(p) \
  while (*(p)!=',' && *(p)!='#' && *(p)!='\n' && *(p)!='\0') ++(p)
 
+#define TOKEN_POUNDCOMMENT_SKIP(p) \
+ { do { ++p; } while (*p!='\n' && *p!='\0'); if (*p!='\0') continue; break; }
+
 
 #endif
