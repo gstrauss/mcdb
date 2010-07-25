@@ -39,7 +39,10 @@ enum nss_dbtype {
  * obtain and release a session to the database upon every call.  To avoid the
  * locking overhead, thread can call set*ent() and then can make (many) get*()
  * calls in the same session.  When done, end*ent() should be called to release
- * the session. */
+ * the session.  If the set*ent() ... end*ent() routines are used in a threaded
+ * program, care should be taken to ensure other threads are *not* in process
+ * of accessing the mcdb when end*ent() is called, or else crashes are likely
+ * if the mcdb is updated. */
 
 struct nss_mcdb_vinfo {
   /* fail with errno = ERANGE if insufficient buf space supplied */

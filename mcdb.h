@@ -63,13 +63,15 @@ extern "C" {
 struct mcdb_mmap {
   unsigned char *ptr;         /* mmap pointer */
   uint32_t size;              /* mmap size */
+  uint32_t pad0;              /* (unused; padding) */
   time_t mtime;               /* mmap file mtime */
   struct mcdb_mmap * volatile next;    /* updated (new) mcdb_mmap */
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
   void (*fn_free)(void *);             /* fn ptr to free() */
   volatile uint32_t refcnt;            /* registered access reference count */
   int dfd;                    /* fd open to dir in which mmap file resides */
-  char fname[64];             /* basename of mmap file, relative to dir fd */
+  char *fname;                /* basename of mmap file, relative to dir fd */
+  char fnamebuf[64];          /* buffer in which to store short fname */
 };
 
 struct mcdb {
@@ -106,38 +108,66 @@ mcdb_read(struct mcdb * restrict, uint32_t, uint32_t, void * restrict)
 #define mcdb_dataptr(m)      ((m)->map->ptr+(m)->dpos)
 
 extern struct mcdb_mmap *  __attribute_malloc__
-mcdb_mmap_create(const char *,const char *,void * (*)(size_t),void (*)(void *))
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-extern bool
-mcdb_mmap_init(struct mcdb_mmap * restrict, int)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-extern bool
-mcdb_mmap_refresh(struct mcdb_mmap * restrict)
-  __attribute_nonnull__;
-extern void
-mcdb_mmap_free(struct mcdb_mmap * restrict)
-  __attribute_nonnull__;
+mcdb_mmap_create(struct mcdb_mmap * restrict,
+                 const char *,const char *,void * (*)(size_t),void (*)(void *))
+  __attribute_nonnull_x__((3,4,5))  __attribute_warn_unused_result__;
 extern void
 mcdb_mmap_destroy(struct mcdb_mmap * restrict)
   __attribute_nonnull__;
+/* check if constant db has been updated and refresh mmap
+ * (for use with mcdb mmaps held open for any period of time)
+ * (i.e. for any use other than mcdb_mmap_create(), query, mcdb_mmap_destroy())
+ * caller may call mcdb_mmap_refresh() before mcdb_find() or mcdb_findstart(),
+ * or at other scheduled intervals, or not at all, depending on program need.
+ * Note: threaded programs should use thread-safe mcdb_thread_refresh()
+ * (which passes a ptr to the map ptr and might update value of that ptr ptr) */
+#define mcdb_mmap_refresh(map) \
+  (__builtin_expect(!mcdb_mmap_refresh_check(map), true) \
+   || __builtin_expect(mcdb_mmap_reopen(map), true))
+#define mcdb_mmap_refresh_threadsafe(mapptr) \
+  (__builtin_expect(!mcdb_mmap_refresh_check(*(mapptr)), true) \
+   || __builtin_expect(mcdb_mmap_reopen_threadsafe(mapptr), true))
 
-enum mcdb_register_flags {
-  MCDB_REGISTER_DONE = 0,
-  MCDB_REGISTER_USE  = 1,
+extern bool
+mcdb_mmap_init(struct mcdb_mmap * restrict, int)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+extern void
+mcdb_mmap_free(struct mcdb_mmap * restrict)
+  __attribute_nonnull__;
+extern bool
+mcdb_mmap_reopen(struct mcdb_mmap * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+extern bool
+mcdb_mmap_refresh_check(const struct mcdb_mmap * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+
+
+enum mcdb_flags {
+  MCDB_REGISTER_USE_DECR = 0,
+  MCDB_REGISTER_USE_INCR = 1,
   MCDB_REGISTER_MUNMAP_SKIP = 2,
   MCDB_REGISTER_MUTEX_LOCK_HOLD = 4,
   MCDB_REGISTER_MUTEX_UNLOCK_HOLD = 8
 };
 
 extern bool
-mcdb_register_access(struct mcdb_mmap * volatile *, enum mcdb_register_flags)
+mcdb_mmap_thread_registration(struct mcdb_mmap ** restrict,
+                              enum mcdb_flags)
   __attribute_nonnull__;
+extern bool
+mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
-#define mcdb_register(map)    mcdb_register_access(&(map), MCDB_REGISTER_USE)
-#define mcdb_unregister(map)  mcdb_register_access(&(map), MCDB_REGISTER_DONE)
+
+#define mcdb_thread_register(mcdb) \
+  mcdb_mmap_thread_registration(&(mcdb)->map, MCDB_REGISTER_USE_INCR)
+#define mcdb_thread_unregister(mcdb) \
+  mcdb_mmap_thread_registration(&(mcdb)->map, MCDB_REGISTER_USE_DECR)
 #define mcdb_thread_refresh(mcdb) \
+  mcdb_mmap_refresh_threadsafe(&(mcdb)->map)
+#define mcdb_thread_refresh_self(mcdb) \
   (__builtin_expect((mcdb)->map->next == NULL, true) \
-   || __builtin_expect(mcdb_register((mcdb)->map), true))
+   || __builtin_expect(mcdb_thread_register(mcdb), true))
 
 
 #define MCDB_SLOTS 256                      /* must be power-of-2 */

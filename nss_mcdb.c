@@ -1,10 +1,3 @@
-#ifndef _ATFILE_SOURCE /* openat() */
-#define _ATFILE_SOURCE
-#endif
-#ifndef _GNU_SOURCE /* enable O_CLOEXEC on GNU systems */
-#define _GNU_SOURCE 1
-#endif
-
 #include "nss_mcdb.h"
 #include "mcdb.h"
 #include "nointr.h"
@@ -28,10 +21,6 @@
 #define pthread_mutex_unlock(mutexp) (void)0
 #endif
 
-#ifndef O_CLOEXEC /* O_CLOEXEC available since Linux 2.6.23 */
-#define O_CLOEXEC 0
-#endif
-
 /*
  * man nsswitch.conf
  *     /etc/nsswitch.conf
@@ -43,28 +32,39 @@
  *   28.4.2 Internals of the NSS Module Functions
  */
 
+/* Note various thread-safety optimizations are taken below since these routines
+ * retain mmap of mcdb files once opened.  Since the mcdb files are not munmap'd
+ * there are no race conditions having to do with opening and closing the mcdb.
+ * (Opening each mcdb is protect by a mutex.)
+ *
+ * shadow.mcdb is kept mmap'd, like all other mcdb.  If this is an issue, then
+ * modify setspent(), endspent(), and getspnam() to use custom routines instead
+ * of the generic routines.  The shadow routines would then mcdb_mmap_create(),
+ * use mcdb, and mcdb_mmap_destroy() every getspnam() or {set,get,end}spent().
+ * (and -would not- use the static storage (e.g. no use of _nss_mcdb_mmap_st[]))
+ */
+
 /* compile-time setting for security
- * /etc/mcdb/ recommended so that .mcdb are on same partition as flat files
- * (implies that if flat files are visible, then so are .mcdb equivalents) */
+ * /etc/mcdb/ is recommended so that .mcdb are on same partition as flat files
+ * (implies that if flat files visible, then likely so are .mcdb equivalents) */
 #ifndef NSS_MCDB_DBPATH
 #define NSS_MCDB_DBPATH "/etc/mcdb/"
 #endif
 
-/* path to db must match up to enum nss_dbtype index */
-/* NOTE: str must fit in struct mcdb_mmap->fname array (currently 64 bytes) */
+/* NOTE: path to db must match up to enum nss_dbtype index */
 static const char * const restrict _nss_dbnames[] = {
-    "aliases.mcdb",
-    "ethers.mcdb",
-    "group.mcdb",
-    "hosts.mcdb",
-    "netgroup.mcdb",
-    "networks.mcdb",
-    "passwd.mcdb",
-    "protocols.mcdb",
-    "publickey.mcdb",
-    "rpc.mcdb",
-    "services.mcdb",
-    "shadow.mcdb"
+    NSS_MCDB_DBPATH"aliases.mcdb",
+    NSS_MCDB_DBPATH"ethers.mcdb",
+    NSS_MCDB_DBPATH"group.mcdb",
+    NSS_MCDB_DBPATH"hosts.mcdb",
+    NSS_MCDB_DBPATH"netgroup.mcdb",
+    NSS_MCDB_DBPATH"networks.mcdb",
+    NSS_MCDB_DBPATH"passwd.mcdb",
+    NSS_MCDB_DBPATH"protocols.mcdb",
+    NSS_MCDB_DBPATH"publickey.mcdb",
+    NSS_MCDB_DBPATH"rpc.mcdb",
+    NSS_MCDB_DBPATH"services.mcdb",
+    NSS_MCDB_DBPATH"shadow.mcdb"
 };
 
 #define _nss_num_dbs (sizeof(_nss_dbnames)/sizeof(char *))
@@ -78,18 +78,19 @@ static struct mcdb_mmap *_nss_mcdb_mmap[_nss_num_dbs];
 static __thread struct mcdb _nss_mcdb_st[_nss_num_dbs];
 
 
-/* custom free for mcdb_mmap_create() to not free initial static storage */
+/* custom free for mcdb_mmap_* routines to not free initial static storage */
 static void
-_nss_mcdb_mmap_free(void * const v)
+_nss_mcdb_mmap_fn_free(void * const v)
 {
-    struct mcdb_mmap * const m = v;
-    if (&_nss_mcdb_mmap_st[_nss_num_dbs] <= m || m < &_nss_mcdb_mmap_st[0])
-        free(v);
+    /* do not free initial static storage */
+    if (   v >=(void *)&_nss_mcdb_mmap_st[0]
+        && v < (void *)&_nss_mcdb_mmap_st[_nss_num_dbs]  )
+        return;
+
+    /* otherwise free() allocated memory */
+    free(v);
 }
 
-/* (similar to mcdb_mmap_create() but mutex-protected, shared dir fd,
- *  and use static storage for initial struct mcdb_mmap for each dbtype)
- */
 static bool  __attribute_noinline__
 _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
   __attribute_cold__  __attribute_warn_unused_result__;
@@ -99,75 +100,25 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
   #ifdef _THREAD_SAFE
     static pthread_mutex_t _nss_mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
   #endif
-    static int dfd = -1;
     struct mcdb_mmap * const restrict map = &_nss_mcdb_mmap_st[dbtype];
-    int fd;
-    bool rc = false;
+    bool rc;
 
     if (pthread_mutex_lock(&_nss_mcdb_global_mutex) != 0)
         return false;
-
     if (_nss_mcdb_mmap[dbtype] != 0) {
         /* init'ed by another thread while waiting for mutex */
         pthread_mutex_unlock(&_nss_mcdb_global_mutex);
         return true;
     }
 
-    map->fn_malloc = malloc;
-    map->fn_free   = _nss_mcdb_mmap_free;
-
-  #if defined(__linux) || defined(__sun)
-    if (__builtin_expect( dfd == -1, false)) {
-        dfd = nointr_open(NSS_MCDB_DBPATH, O_RDONLY | O_CLOEXEC, 0);
-        if (dfd <= STDERR_FILENO) {
-            /* accommodate security programs running without std fds open.
-             * dup() until dfd > STDERR_FILENO, and then closing intermediates.
-             * (e.g. GNU coreutils /bin/su closes all fds before execve of
-             *  /sbin/unix_chkpwd, which queries nss info for passwd,shadow) */
-            if (dfd != -1) { /* caller does not have open stdin/stdout/stderr */
-                int i = 0;
-                int ofd[3];
-                do {
-                    ofd[i++] = dfd;
-                    dfd = nointr_dup(dfd);
-                    /* should prefer dup3() with O_CLOEXEC where available */
-                } while (dfd <= STDERR_FILENO && dfd != -1 && i < 3);
-                while (i--) { (void) nointr_close(ofd[i]); }
-                if (dfd != -1)
-                    (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
-            }
-            if (dfd == -1) {
-                pthread_mutex_unlock(&_nss_mcdb_global_mutex);
-                errno = EBADF;
-                return false;
-            }
-        }
-        if (O_CLOEXEC == 0)
-            (void) fcntl(dfd, F_SETFD, FD_CLOEXEC);
-    }
-    map->dfd = dfd;
-    /* assert(sizeof(map->fname) > strlen(_nss_dbnames[dbtype])); */
-    memcpy(map->fname, _nss_dbnames[dbtype], strlen(_nss_dbnames[dbtype])+1);
-  #else
-    if (snprintf(map->fname, sizeof(map->fname), "%s%s",
-                 NSS_MCDB_DBPATH, _nss_dbnames[dbtype]) >= sizeof(map->fname)) {
-        pthread_mutex_unlock(&_nss_mcdb_global_mutex);
-        errno = ENAMETOOLONG;
-        return false;
-    }
-  #endif
-
-    const int oflags = O_RDONLY | O_NONBLOCK | O_CLOEXEC;
-  #if defined(__linux) || defined(__sun)
-    if ((fd = nointr_openat(dfd, map->fname, oflags, 0)) != -1)
-  #else
-    if ((fd = nointr_open(map->fname, oflags, 0)) != -1)
-  #endif
-    {
-        rc = mcdb_mmap_init(map, fd);
-        (void) nointr_close(fd); /* close fd once mmap'ed */
-        if (rc)      /*(ought to be preceded by StoreStore memory barrier)*/
-            _nss_mcdb_mmap[dbtype] = map;
+    /* pass full path in fname instead of separate dirname and basename
+     * (not using openat(), fstatat() where someone might close dfd on us)
+     * use static storage for initial struct mcdb_mmap for each dbtype
+     * and therefore pass custom _nss_mcdb_mmap_fn_free() to not free statics */
+    if ((rc = (NULL != mcdb_mmap_create(map, NULL, _nss_dbnames[dbtype],
+                                        malloc, _nss_mcdb_mmap_fn_free)))) {
+        /*(ought to be preceded by StoreStore memory barrier)*/
+        _nss_mcdb_mmap[dbtype] = map;
     }
 
     pthread_mutex_unlock(&_nss_mcdb_global_mutex);
@@ -183,16 +134,17 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
 static bool _nss_mcdb_stayopen = true;
 
 /* release shared mcdb_mmap */
-#define _nss_mcdb_db_relshared(map,flags) mcdb_register_access(&(map),(flags))
+#define _nss_mcdb_db_relshared(map,flags) \
+  mcdb_mmap_thread_registration(&(map),(flags))
 
 /* get shared mcdb_mmap */
 static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
-                       const enum mcdb_register_flags mcdb_flags)
+                       const enum mcdb_flags mcdb_flags)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
-                       const enum mcdb_register_flags mcdb_flags)
+                       const enum mcdb_flags mcdb_flags)
 {
     /* reuse set*ent(),get*ent(),end*end() session if open in current thread */
     if (_nss_mcdb_st[dbtype].map != NULL)
@@ -207,13 +159,14 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
           case NSS_DBTYPE_PROTOCOLS:
           case NSS_DBTYPE_RPC:
           case NSS_DBTYPE_SERVICES: if (_nss_mcdb_stayopen) break;
-          default: (void) mcdb_mmap_refresh(_nss_mcdb_mmap[dbtype]); break;
+          default: (void) mcdb_mmap_refresh_threadsafe(&_nss_mcdb_mmap[dbtype]);
+                   break;
         }
     }
     else if (!_nss_mcdb_db_openshared(dbtype))
         return NULL;
 
-    return mcdb_register_access(&_nss_mcdb_mmap[dbtype], mcdb_flags)
+    return mcdb_mmap_thread_registration(&_nss_mcdb_mmap[dbtype], mcdb_flags)
       ? _nss_mcdb_mmap[dbtype]
       : NULL;  /* (fails if obtaining mutex fails, i.e. EAGAIN) */
 }
@@ -222,7 +175,7 @@ nss_status_t  __attribute_noinline__  /*(skip inline into _nss_mcdb_getent)*/
 nss_mcdb_setent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
-    const enum mcdb_register_flags mcdb_flags = MCDB_REGISTER_USE;
+    const enum mcdb_flags mcdb_flags = MCDB_REGISTER_USE_INCR;
     if (m->map != NULL
         || (m->map = _nss_mcdb_db_getshared(dbtype, mcdb_flags)) != NULL) {
         m->hpos = MCDB_HEADER_SZ;
@@ -236,8 +189,8 @@ nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     struct mcdb_mmap *map = m->map;
-    const enum mcdb_register_flags mcdb_flags =
-        MCDB_REGISTER_DONE | MCDB_REGISTER_MUNMAP_SKIP;
+    const enum mcdb_flags mcdb_flags =
+        MCDB_REGISTER_USE_DECR | MCDB_REGISTER_MUNMAP_SKIP;
     m->map = NULL;  /* set thread-local ptr NULL even though munmap skipped */
     return (map == NULL || _nss_mcdb_db_relshared(map, mcdb_flags))
       ? NSS_STATUS_SUCCESS
@@ -279,8 +232,8 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 {
     struct mcdb m;
     nss_status_t status;
-    const enum mcdb_register_flags mcdb_flags_lock =
-      MCDB_REGISTER_USE | MCDB_REGISTER_MUTEX_LOCK_HOLD;
+    const enum mcdb_flags mcdb_flags_lock =
+      MCDB_REGISTER_USE_INCR | MCDB_REGISTER_MUTEX_LOCK_HOLD;
 
     /* Queries to mcdb are quick, so attempt to reduce locking overhead.
      * Set mcdb_flags to get and release mcdb_global_mutex once instead of
@@ -302,8 +255,8 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 
     /* set*ent(),get*ent(),end*end() session not open/reused in current thread*/
     if (_nss_mcdb_st[dbtype].map == NULL) {
-        const enum mcdb_register_flags mcdb_flags_unlock =
-            MCDB_REGISTER_DONE
+        const enum mcdb_flags mcdb_flags_unlock =
+            MCDB_REGISTER_USE_DECR
           | MCDB_REGISTER_MUNMAP_SKIP
           | MCDB_REGISTER_MUTEX_UNLOCK_HOLD;
         _nss_mcdb_db_relshared(m.map, mcdb_flags_unlock);
