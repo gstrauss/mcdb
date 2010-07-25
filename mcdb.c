@@ -160,8 +160,10 @@ mcdb_mmap_free(struct mcdb_mmap * const restrict map)
 {
     mcdb_mmap_unmap(map);
     if (map->fn_free) {
-        if (map->fname != NULL && map->fname != map->fnamebuf)
+        if (map->fname != NULL && map->fname != map->fnamebuf) {
             map->fn_free(map->fname);
+            map->fname = NULL;
+        }
         map->fn_free(map);
     }
 }

@@ -77,6 +77,21 @@ static struct mcdb_mmap *_nss_mcdb_mmap[_nss_num_dbs];
 
 static __thread struct mcdb _nss_mcdb_st[_nss_num_dbs];
 
+#ifdef _FORTIFY_SOURCE
+static void _nss_mcdb_atexit(void)
+{
+    struct mcdb_mmap * restrict map;
+    for (uintptr_t i = 0; i < _nss_num_dbs; ++i) {
+        map = &_nss_mcdb_mmap_st[i];
+        if (   _nss_mcdb_mmap_st[i].ptr != NULL
+            || _nss_mcdb_mmap_st[i].fname != NULL  ) {
+            mcdb_mmap_destroy(&_nss_mcdb_mmap_st[i]);
+            _nss_mcdb_mmap_st[i].ptr = NULL;
+            _nss_mcdb_mmap_st[i].fname = NULL;
+        }
+    }
+}
+#endif
 
 /* custom free for mcdb_mmap_* routines to not free initial static storage */
 static void
@@ -110,6 +125,11 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
         pthread_mutex_unlock(&_nss_mcdb_global_mutex);
         return true;
     }
+
+  #ifdef _FORTIFY_SOURCE
+    {   static bool atexit_once = true;
+        if (atexit_once) { atexit_once = false; atexit(_nss_mcdb_atexit); }   }
+  #endif
 
     /* pass full path in fname instead of separate dirname and basename
      * (not using openat(), fstatat() where someone might close dfd on us)
