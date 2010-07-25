@@ -706,7 +706,7 @@ nss_mcdb_acct_make_passwd_parse(
             n = strtol(b, &e, 10);
             if (*e != '\0' || ((n==LONG_MIN || n==LONG_MAX) && errno == ERANGE))
                 return false;           /* error: invalid number */
-            if (sizeof(long) != sizeof(int) && (n < INT_MIN || INT_MAX < n))
+            if (LONG_MAX != INT_MAX && (n < INT_MIN || INT_MAX < n))
                 return false;           /* error: number out of range */
             pw.pw_fields = (int)n;
         }
@@ -809,21 +809,33 @@ nss_mcdb_acct_make_group_parse(
 
 static char *
 nss_mcdb_acct_make_parse_long_int_colon(char * const restrict b,
-                                        long * const restrict n)
+                                       #ifdef __sun
+                                        int * const restrict 
+                                       #else
+                                        long * const restrict 
+                                       #endif
+                                                              v)
 {
     char *p = b;
     char *e;
+    long n = -1;                        /* -1 if field is empty */
     TOKEN_COLONDELIM_END(p);
     if (*p != ':')
         return NULL;                    /* error: invalid line */
-    *n = -1;                            /* -1 if field is empty */
     if (b != p) {
         *p = '\0';
         errno = 0;
-        *n = strtol(b, &e, 10);
-        if (*e != '\0' || ((*n==LONG_MIN || *n==LONG_MAX) && errno == ERANGE))
+        n = strtol(b, &e, 10);
+        if (*e != '\0' || ((n==LONG_MIN || n==LONG_MAX) && errno == ERANGE))
             return NULL;                /* error: invalid number */
+        if (LONG_MAX != INT_MAX && (n < INT_MIN || INT_MAX < n))
+            return NULL;                /* error: number out of range */
     }
+  #ifdef __sun
+    *v = (int)n;
+  #else
+    *v = n;
+  #endif
     return p;
 }
 
@@ -833,6 +845,7 @@ nss_mcdb_acct_make_shadow_parse(
   struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
 {
     char *b, *e;
+    unsigned long u;
     struct spwd sp;
 
     for (; *p; ++p) {
@@ -889,9 +902,12 @@ nss_mcdb_acct_make_shadow_parse(
         if (b != p) {
             *p = '\0';
             errno = 0;
-            sp.sp_flag = strtoul(b, &e, 10);
-            if (*e != '\0' || (sp.sp_flag == ULONG_MAX && errno == ERANGE))
+            u = strtoul(b, &e, 10);
+            if (*e != '\0' || (u == ULONG_MAX && errno == ERANGE))
                 return false;           /* error: invalid number */
+            if (ULONG_MAX != UINT_MAX && UINT_MAX < u)
+                return false;           /* error: number out of range */
+            sp.sp_flag = u;
         }
 
         /* find newline (to prep for beginning of next line) (checked above) */

@@ -150,7 +150,8 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
  * (similar to set*ent(int stayopen) flag in glibc for netdb databases)
  * (protocols, rpc, services are unlikely to change frequently in most configs)
  * (hosts and networks database lookups differ: they perform mcdb stat() check)
- * (future: might provide accessor routine to enable/disable) */
+ * (future: might provide accessor routine to enable/disable)
+ * (FreeBSD provides setpassent() and setgroupent() API with stayopen flag) */
 static bool _nss_mcdb_stayopen = true;
 
 /* release shared mcdb_mmap */
