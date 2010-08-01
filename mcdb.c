@@ -146,6 +146,9 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     if (fstat(fd, &st) != 0) return false;
     x = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (x == MAP_FAILED) return false;
+  #ifdef __GNUC__
+    __builtin_prefetch((char *)x+960, 0, 1); /*(touch mem page w/ mcdb header)*/
+  #endif
     if (st.st_size > USHRT_MAX) /*(skip extra syscall overhead for small mcdb)*/
         posix_madvise(((char *)x)+USHRT_MAX, st.st_size-USHRT_MAX,
                       POSIX_MADV_RANDOM);
