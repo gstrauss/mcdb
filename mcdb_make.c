@@ -2,6 +2,10 @@
  * License: GPLv3
  */
 
+#ifdef __GNUC__
+#define __USE_STRING_INLINES
+#endif
+
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif

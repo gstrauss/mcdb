@@ -44,11 +44,8 @@ nss_mcdb_nsswitch(const char * restrict svc,
     }
 
     if (nsswitch != MAP_FAILED) { /* search /etc/nsswitch.conf for svc entry */
-        const char * restrict p;
-        size_t svclen;
-        if ((p = strrchr(svc, '/')) != NULL)
-            svc = p+1;
-        svclen = ((p = strrchr(svc, '.')) != NULL) ? p - svc : strlen(svc);
+        const char * restrict p = strrchr(svc, '/');
+        const size_t svclen = strlen((p != NULL) ? (svc = p+1) : svc);
         for (p = (char *)nsswitch; *p != '\0'; ++p) {
             while (*p == ' ' || *p == '\t') ++p;
             if (*p == *svc && 0 == strncmp(p, svc, svclen)) {
