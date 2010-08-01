@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>   /* open(), O_RDONLY */
 #include <stdbool.h> /* bool */
-#include <stdio.h>   /* printf(), IOV_MAX */
+#include <stdio.h>   /* printf(), snprintf(), IOV_MAX */
 #include <stdlib.h>  /* malloc(), free(), EXIT_SUCCESS */
 #include <string.h>  /* strlen() */
 #include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO */
@@ -77,7 +77,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
 
         /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
         /* klen, dlen each limited to (2GB - 8); space for extra tokens exists*/
-        if (iovlen + klen + 5 > SSIZE_MAX || iovcnt + 7 > MCDB_IOVNUM) {
+        if (iovlen + klen + 5 > SSIZE_MAX || iovcnt + 7 >= MCDB_IOVNUM) {
             if (!writev_loop(STDOUT_FILENO, iov, iovcnt, (ssize_t)iovlen))
                 return MCDB_ERROR_WRITE;
             iovcnt = 0;

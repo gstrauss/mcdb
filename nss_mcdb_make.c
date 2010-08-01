@@ -12,12 +12,90 @@
 #include <fcntl.h>    /* open() */
 #include <stdbool.h>  /* true false */
 #include <stdio.h>    /* snprintf() */
-#include <string.h>   /* memcpy() */
-#include <unistd.h>   /* fstat() */
+#include <string.h>   /* memcpy() strcmp() strncmp() strrchr() */
+#include <unistd.h>   /* fstat() close() */
+#include <errno.h>
 
 #ifndef O_CLOEXEC /* O_CLOEXEC available since Linux 2.6.23 */
 #define O_CLOEXEC 0
 #endif
+
+#ifndef NSSWITCH_CONF_PATH
+#define NSSWITCH_CONF_PATH "/etc/nsswitch.conf"
+#endif
+
+static bool
+nss_mcdb_nsswitch(const char * restrict svc,
+                  char * const restrict data,
+                  const size_t datasz)
+{
+    static void * restrict nsswitch = MAP_FAILED;
+    if (nsswitch == MAP_FAILED) {/*mmap /etc/nsswitch.conf and keep mmap open*/
+        struct stat st;
+        const int fd =
+          nointr_open(NSSWITCH_CONF_PATH, O_RDONLY|O_NONBLOCK|O_CLOEXEC, 0);
+        if (fd != -1) {
+            if (fstat(fd, &st) == 0)
+                nsswitch = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+            (void) nointr_close(fd);
+        }
+        else if (errno != ENOENT)
+            return false;   /* failed to open /etc/nsswitch.conf that exists */
+    }
+
+    if (nsswitch != MAP_FAILED) { /* search /etc/nsswitch.conf for svc entry */
+        const char * restrict p;
+        size_t svclen;
+        if ((p = strrchr(svc, '/')) != NULL)
+            svc = p+1;
+        svclen = ((p = strrchr(svc, '.')) != NULL) ? p - svc : strlen(svc);
+        for (p = (char *)nsswitch; *p != '\0'; ++p) {
+            while (*p == ' ' || *p == '\t') ++p;
+            if (*p == *svc && 0 == strncmp(p, svc, svclen)) {
+                p += svclen;
+                while (*p == ' ' || *p == '\t') ++p;
+                if (*p == ':') {  /* colon must be on same line as svc label */
+                    do { ++p; } while (*p == ' ' || *p == '\t');
+                    if (*p == '\0') break;
+                    if (*p != '#' && *p != '\n') {
+                        /* copy and normalize entry
+                         * tab -> space and squash multiple whitespace chars */
+                        size_t i = 0;
+                        for (;*p!='#' && *p!='\n' && *p!='\0' && i<datasz; ++p){
+                            if (*p == '\\' && *(p+1) == '\n')
+                                ++p;  /* (join continuation lines) */
+                            else if (*p != ' ' && *p != '\t')
+                                data[i++] = *p;
+                            else if (*(p+1) != ' ' && *(p+1) != '\t')
+                                data[i++] = ' ';
+                        }
+                        if (*p != '#' && *p != '\n' && *p != '\0')
+                            return false;  /* insufficient space in data buf */
+                        if (data[i-1] == ' ')
+                            --i;
+                        data[i] = '\0';
+                        return true;
+                    }
+                }
+            }
+            /* read to end of line, handling continuation lines */
+            while (*p != '\n' && *p != '\0')
+                p += (*p != '\\' || *(p+1) != '\n') ? 1 : 2;
+            if (*p == '\0') break;
+        }
+    }
+
+    /* svc not found in /etc/nsswitch.conf
+     * default entry is "mcdb" since mcdb is being created if this code is run
+     * (default entry is "mcdb dns" for hosts database) */
+    if (sizeof("mcdb dns") >= datasz)
+        return false;
+    if (0 != strcmp(svc, "hosts"))
+        memcpy(data, "mcdb", sizeof("mcdb"));
+    else
+        memcpy(data, "mcdb dns", sizeof("mcdb dns"));
+    return true;
+}
 
 /*
  * mechanism to create mcdb directly and mechanism to output mcdbctl make input
@@ -120,6 +198,21 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * const restrict w,
             if (mcdb_make_start(m, wbuf->fd, m->fn_malloc, m->fn_free) != 0)
                 break;
         }
+
+        /* create first item in mcdb data as entry from nsswitch.conf
+         * (optional; currently unused, but libc implementations could
+         *  optimistically open mcdb, read nsswitch config, and continue.
+         *  (No hash lookup needed; first data entry contains nsswitch config)
+         *  If mcdb exists, it is likely going to be first database to
+         *  search, and database file will already be open and mmap'd) */
+        if (!nss_mcdb_nsswitch(input, w->data, w->datasz))
+            break;
+        w->dlen = strlen(w->data);
+        w->tagc = '\0';
+        w->key  = "";
+        w->klen = 0;
+        if (!nss_mcdb_make_mcdbctl_write(w))
+            break;
 
         rc = parse_mmap(w,map) && (w->flush == NULL || w->flush(w));/*callback*/
         if (!rc)
