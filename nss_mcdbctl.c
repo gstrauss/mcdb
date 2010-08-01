@@ -133,6 +133,8 @@ int main(void)
     struct mcdb_make m;
     struct stat st;
     time_t mtime;
+    const time_t mtime_nsswitch =
+      (stat("/etc/nsswitch.conf", &st) == 0) ? st.st_mtime : 0;
     size_t len;
     int fd = -1;
     bool rc = false;
@@ -189,9 +191,9 @@ int main(void)
             if (errno != ENOENT)
                 break;
         }
-        if (mtime < st.st_mtime) { /*dbfile up-to-date (redo if time matches)*/
+        if (mtime < st.st_mtime && mtime_nsswitch < st.st_mtime) {
             rc = true;
-            continue;
+            continue;  /* dbfile up-to-date (redo if time matches) */
         }
         len = strlen(fname);
         if (len + 8 > sizeof(fnametmp))
