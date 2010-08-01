@@ -143,14 +143,11 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     mcdb_mmap_unmap(map);
 
     /* size of mcdb is limited to 4 GB minus difference needed to page-align */
-    /* POSIX_MADV_RANDOM only for larger mcdb.  Smaller mcdb have negligible
-     * memory impact and benefit from pre-faulting and increased caching */
     if (fstat(fd, &st) != 0) return false;
     x = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (x == MAP_FAILED) return false;
-    posix_madvise(x, st.st_size, (st.st_size <= USHRT_MAX  /*(64 KB)*/
-                                    ? POSIX_MADV_WILLNEED
-                                    : POSIX_MADV_RANDOM));
+    if (st.st_size > USHRT_MAX) /*(skip extra syscall overhead for small mcdb)*/
+        posix_madvise(x, st.st_size, POSIX_MADV_RANDOM);
     map->ptr   = (unsigned char *)x;
     map->size  = st.st_size;
     map->mtime = st.st_mtime;
