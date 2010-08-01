@@ -147,7 +147,8 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     x = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (x == MAP_FAILED) return false;
     if (st.st_size > USHRT_MAX) /*(skip extra syscall overhead for small mcdb)*/
-        posix_madvise(x, st.st_size, POSIX_MADV_RANDOM);
+        posix_madvise(((char *)x)+USHRT_MAX, st.st_size-USHRT_MAX,
+                      POSIX_MADV_RANDOM);
     map->ptr   = (unsigned char *)x;
     map->size  = st.st_size;
     map->mtime = st.st_mtime;
