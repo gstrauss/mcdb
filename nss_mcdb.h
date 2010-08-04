@@ -19,7 +19,7 @@ typedef enum nss_status nss_status_t;
 
 /* enum nss_dbtype index must match path in nss_mcdb.c char *_nss_dbnames[] */
 enum nss_dbtype {
-    NSS_DBTYPE_ALIASES = 0,
+    NSS_DBTYPE_ALIASES = 0,  /* first enum element here must always be 0 */
     NSS_DBTYPE_ETHERS,
     NSS_DBTYPE_GROUP,
     NSS_DBTYPE_HOSTS,
@@ -30,7 +30,8 @@ enum nss_dbtype {
     NSS_DBTYPE_PUBLICKEY,
     NSS_DBTYPE_RPC,
     NSS_DBTYPE_SERVICES,
-    NSS_DBTYPE_SHADOW
+    NSS_DBTYPE_SHADOW,
+    NSS_DBTYPE_SENTINEL      /* sentinel must always be final enum element */
 };
 
 /* To maintain a consistent view of a database, set*ent() opens a session to
@@ -59,29 +60,33 @@ struct nss_mcdb_vinfo {
 
 
 nss_status_t
-nss_mcdb_setent(const enum nss_dbtype)
+nss_mcdb_setent(enum nss_dbtype)
   __attribute_nonnull__;
 
 nss_status_t
-nss_mcdb_endent(const enum nss_dbtype)
+nss_mcdb_endent(enum nss_dbtype)
   __attribute_nonnull__;
 
 nss_status_t
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
-nss_mcdb_getent(const enum nss_dbtype,
-                 const struct nss_mcdb_vinfo * const restrict)
+nss_mcdb_getent(enum nss_dbtype,
+                const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
 nss_status_t
-nss_mcdb_get_generic(const enum nss_dbtype,
-                     const struct nss_mcdb_vinfo * const restrict)
+nss_mcdb_get_generic(enum nss_dbtype,
+                     const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 nss_status_t
-nss_mcdb_buf_decode(struct mcdb * const restrict,
-                    const struct nss_mcdb_vinfo * const restrict)
+nss_mcdb_buf_decode(struct mcdb * restrict,
+                    const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+
+
+bool
+nss_mcdb_refresh_check(enum nss_dbtype);
 
 
 #endif

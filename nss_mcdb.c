@@ -299,3 +299,10 @@ nss_mcdb_buf_decode(struct mcdb * const restrict m,
     *v->errnop = errno = ERANGE;
     return NSS_STATUS_TRYAGAIN;
 }
+
+bool
+nss_mcdb_refresh_check(const enum nss_dbtype dbtype)
+{
+    return (0 <= dbtype && dbtype < NSS_DBTYPE_SENTINEL)
+        && mcdb_mmap_refresh_check(&_nss_mcdb_mmap_st[dbtype]);
+}

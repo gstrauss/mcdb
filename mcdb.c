@@ -209,7 +209,6 @@ bool
 mcdb_mmap_refresh_check(const struct mcdb_mmap * const restrict map)
 {
     struct stat st;
-/* GPS: should we keep check for ptr, or assume map is present? */
     return (map->ptr == NULL
             || ( (
                   #if defined(__linux) || defined(__sun)
