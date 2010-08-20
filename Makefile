@@ -1,6 +1,7 @@
 
 .PHONY: all
-all: mcdbctl nss_mcdbctl testzero libmcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
+all: mcdbctl nss_mcdbctl testzero \
+     libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
 
 CC=gcc
 CFLAGS+=-pipe -Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3 -g
@@ -23,9 +24,10 @@ libnss_mcdb.so.2: $(PIC_OBJS)
 libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o
 	$(AR) -r $@ $^
 
-libnss_mcdb_make.a: nss_mcdb_make.o \
-                    nss_mcdb_acct_make.o \
-                    nss_mcdb_netdb_make.o
+libnss_mcdb.a: nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
+	$(AR) -r $@ $^
+
+libnss_mcdb_make.a: nss_mcdb_make.o nss_mcdb_acct_make.o nss_mcdb_netdb_make.o
 	$(AR) -r $@ $^
 
 mcdbctl: mcdbctl.o libmcdb.a
@@ -78,6 +80,7 @@ endif
 .PHONY: clean
 clean:
 	! [ "$$(/usr/bin/id -u)" = "0" ]
-	$(RM) -r *.o libmcdb.a libnss_mcdb_make.a libnss_mcdb.so.2 lib64
+	$(RM) *.o libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
+	$(RM) -r lib64
 	$(RM) mcdbctl nss_mcdbctl testzero
 
