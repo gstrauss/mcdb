@@ -335,18 +335,7 @@ nss_mcdb_acct_passwd_decode(struct mcdb * const restrict m,
     pw->pw_shell  = buf+idx_pw_shell;
     if (dlen < v->bufsz) {
         memcpy(buf, dptr+NSS_PW_HDRSZ, dlen);
-        /* terminate strings; replace ':' separator in data with '\0' */
-        buf[idx_pw_passwd-1] = '\0';     /* terminate pw_name    */
-      #if defined(__sun)
-        buf[idx_pw_age-1]    = '\0';     /* terminate pw_passwd  */
-        buf[idx_pw_comment-1]= '\0';     /* terminate pw_age     */
-      #elif defined(__FreeBSD__)
-        buf[idx_pw_class-1]  = '\0';     /* terminate pw_passwd  */
-      #endif
-        buf[idx_pw_gecos-1]  = '\0';     /* terminate pw_(prev)  */
-        buf[idx_pw_dir-1]    = '\0';     /* terminate pw_gecos   */
-        buf[idx_pw_shell-1]  = '\0';     /* terminate pw_dir     */
-        buf[dlen]            = '\0';     /* terminate pw_shell   */
+        buf[dlen] = '\0';
         return NSS_STATUS_SUCCESS;
     }
     else {
@@ -376,21 +365,16 @@ nss_mcdb_acct_group_decode(struct mcdb * const restrict m,
     gr->gr_name  = buf;
     gr->gr_passwd= buf+idx_gr_passwd;
     /* fill buf, (char **) gr_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for ',' instead of precalculating array because names should
+     * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for ','
+     * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, gr_mem_num correct) */
     if (((char *)gr_mem)-buf+((gr_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_GR_HDRSZ, mcdb_datalen(m)-NSS_GR_HDRSZ);
-        /* terminate strings; replace ':' separator in data with '\0'. */
-        buf[idx_gr_passwd-1]  = '\0';        /* terminate gr_name   */
-        buf[idx_gr_mem_str-1] = '\0';        /* terminate gr_passwd */
-        buf[idx_gr_mem-1]     = '\0';        /* terminate final gr_mem string */
         gr_mem[0] = (buf += idx_gr_mem_str); /* begin of gr_mem strings */
         for (size_t i=1; i<gr_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*++buf != ',')
+            while (*++buf != '\0')
                 ;
-            *buf = '\0';
             gr_mem[i] = ++buf;
         }
         gr_mem[gr_mem_num] = NULL;         /* terminate (char **) gr_mem array*/
@@ -463,9 +447,7 @@ nss_mcdb_acct_spwd_decode(struct mcdb * const restrict m,
     sp->sp_pwdp   = buf+idx_sp_pwdp;
     if (dlen < v->bufsz) {
         memcpy(buf, dptr+NSS_SP_HDRSZ, dlen);
-        /* terminate strings; replace ':' separator in data with '\0' */
-        buf[idx_sp_pwdp-1] = '\0';     /* terminate sp_namp */
-        buf[dlen]          = '\0';     /* terminate sp_pwdp */
+        buf[dlen] = '\0';
         return NSS_STATUS_SUCCESS;
     }
     else {

@@ -606,22 +606,18 @@ nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
     he->h_addrtype = (int)         uint32_from_ascii8uphex(dptr+NSS_H_ADDRTYPE);
     he->h_length   = (int)         uint32_from_ascii8uphex(dptr+NSS_H_LENGTH);
     /* populate he string pointers */
-    he->h_name    = buf;
+    he->h_name     = buf;
     /* fill buf, (char **) he_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for ' ' instead of precalculating array because names should
+     * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for ' '
+     * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, he_mem_num correct) */
     if (((char *)he_mem)-buf+((he_mem_num+1+he_lst_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_HE_HDRSZ, mcdb_datalen(m)-NSS_HE_HDRSZ);
-        /* terminate strings; replace ' ' separator in data with '\0'. */
-        buf[idx_he_mem_str-1] = '\0';        /* terminate h_name */
-        buf[idx_he_lst_str-1] = '\0';        /* terminate final he_mem string */
         he_mem[0] = (buf += idx_he_mem_str); /* begin of he_mem strings */
         for (size_t i=1; i<he_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*++buf != ' ')
+            while (*++buf != '\0')
                 ;
-            *buf = '\0';
             he_mem[i] = ++buf;
         }
         he_mem[he_mem_num] = NULL;         /* terminate (char **) he_mem array*/
@@ -658,20 +654,16 @@ nss_mcdb_netdb_netent_decode(struct mcdb * const restrict m,
     /* populate ne string pointers */
     ne->n_name    = buf;
     /* fill buf, (char **) ne_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for ' ' instead of precalculating array because names should
+     * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for ' '
+     * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, ne_mem_num correct) */
     if (((char *)ne_mem)-buf+((ne_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_NE_HDRSZ, mcdb_datalen(m)-NSS_NE_HDRSZ);
-        /* terminate strings; replace ' ' separator in data with '\0'. */
-        buf[idx_ne_mem_str-1] = '\0';        /* terminate n_name */
-        buf[idx_ne_mem-1]     = '\0';        /* terminate final ne_mem string */
         ne_mem[0] = (buf += idx_ne_mem_str); /* begin of ne_mem strings */
         for (size_t i=1; i<ne_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*++buf != ' ')
+            while (*++buf != '\0')
                 ;
-            *buf = '\0';
             ne_mem[i] = ++buf;
         }
         ne_mem[ne_mem_num] = NULL;         /* terminate (char **) ne_mem array*/
@@ -702,20 +694,16 @@ nss_mcdb_netdb_protoent_decode(struct mcdb * const restrict m,
     /* populate pe string pointers */
     pe->p_name    = buf;
     /* fill buf, (char **) pe_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for ' ' instead of precalculating array because names should
+     * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for ' '
+     * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, pe_mem_num correct) */
     if (((char *)pe_mem)-buf+((pe_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_PE_HDRSZ, mcdb_datalen(m)-NSS_PE_HDRSZ);
-        /* terminate strings; replace ' ' separator in data with '\0'. */
-        buf[idx_pe_mem_str-1] = '\0';        /* terminate p_name */
-        buf[idx_pe_mem-1]     = '\0';        /* terminate final pe_mem string */
         pe_mem[0] = (buf += idx_pe_mem_str); /* begin of pe_mem strings */
         for (size_t i=1; i<pe_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*++buf != ' ')
+            while (*++buf != '\0')
                 ;
-            *buf = '\0';
             pe_mem[i] = ++buf;
         }
         pe_mem[pe_mem_num] = NULL;         /* terminate (char **) pe_mem array*/
@@ -746,20 +734,16 @@ nss_mcdb_netdb_rpcent_decode(struct mcdb * const restrict m,
     /* populate re string pointers */
     re->r_name    = buf;
     /* fill buf, (char **) re_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for ' ' instead of precalculating array because names should
+     * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for ' '
+     * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, re_mem_num correct) */
     if (((char *)re_mem)-buf+((re_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_RE_HDRSZ, mcdb_datalen(m)-NSS_RE_HDRSZ);
-        /* terminate strings; replace ' ' separator in data with '\0'. */
-        buf[idx_re_mem_str-1] = '\0';        /* terminate r_name */
-        buf[idx_re_mem-1]     = '\0';        /* terminate final re_mem string */
         re_mem[0] = (buf += idx_re_mem_str); /* begin of re_mem strings */
         for (size_t i=1; i<re_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*++buf != ' ')
+            while (*++buf != '\0')
                 ;
-            *buf = '\0';
             re_mem[i] = ++buf;
         }
         re_mem[re_mem_num] = NULL;         /* terminate (char **) re_mem array*/
@@ -784,10 +768,9 @@ nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
     /* (future: could possibly be further optimized for "tcp" and "udp"
      * (future: might add unique tag char db ents for tcp/udp by name/number) */
     if (*buf != '\0') {
-        const size_t protolen = strlen(buf);
+        const size_t protolen = 1 + strlen(buf);
         while (dptr[NSS_SE_HDRSZ] != *buf  /* e.g. "tcp" vs "udp" */
-               || memcmp(dptr+NSS_SE_HDRSZ, buf, protolen) != 0
-               || dptr[NSS_SE_HDRSZ+protolen] != ' ') {
+               || memcmp(dptr+NSS_SE_HDRSZ, buf, protolen) != 0) {
             if (mcdb_findtagnext(m, v->key, v->klen, v->tagc))
                 dptr = (char *)mcdb_dataptr(m);
             else {
@@ -810,21 +793,16 @@ nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
     se->s_proto   = buf;
     se->s_name    = buf+idx_s_name;
     /* fill buf, (char **) se_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for ' ' instead of precalculating array because names should
+     * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for ' '
+     * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, se_mem_num correct) */
     if (((char *)se_mem)-buf+((se_mem_num+1)<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_SE_HDRSZ, mcdb_datalen(m)-NSS_SE_HDRSZ);
-        /* terminate strings; replace ' ' separator in data with '\0'. */
-        buf[idx_s_name-1]     = '\0';        /* terminate s_proto */
-        buf[idx_se_mem_str-1] = '\0';        /* terminate s_name */
-        buf[idx_se_mem-1]     = '\0';        /* terminate final se_mem string */
         se_mem[0] = (buf += idx_se_mem_str); /* begin of se_mem strings */
         for (size_t i=1; i<se_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*++buf != ' ')
+            while (*++buf != '\0')
                 ;
-            *buf = '\0';
             se_mem[i] = ++buf;
         }
         se_mem[se_mem_num] = NULL;         /* terminate (char **) se_mem array*/

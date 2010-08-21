@@ -18,6 +18,7 @@ enum {
 #define _BSD_SOURCE
 #endif
 
+#include "nss_mcdb.h"
 #include "code_attributes.h"
 
 #include <aliases.h>        /* (struct aliasent) */

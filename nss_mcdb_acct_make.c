@@ -1,4 +1,3 @@
-/* memccpy() on Linux requires _XOPEN_SOURCE or _BSD_SOURCE or _SVID_SOURCE */
 /* strtoull() needs _XOPEN_SOURCE 600 on some platforms */
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
@@ -23,6 +22,8 @@
  * validate data sufficiently for successful serialize/deserialize into mcdb.
  *
  * input is database struct so that code is written to consumes what it produces
+ *
+ * (future: consider making *_datastr() routines 'static')
  */
 
 
@@ -282,34 +283,33 @@ size_t
 nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
 			 	  const struct passwd * const restrict pw)
 {
-    const size_t pw_name_len   = strlen(pw->pw_name);
-    const size_t pw_passwd_len = strlen(pw->pw_passwd);
+    const size_t pw_name_len   = 1 + strlen(pw->pw_name);
+    const size_t pw_passwd_len = 1 + strlen(pw->pw_passwd);
   #if defined(__sun)
-    const size_t pw_age_len    = strlen(pw->pw_age);
-    const size_t pw_comment_len= strlen(pw->pw_comment);
+    const size_t pw_age_len    = 1 + strlen(pw->pw_age);
+    const size_t pw_comment_len= 1 + strlen(pw->pw_comment);
   #elif defined(__FreeBSD__)
-    const size_t pw_class_len  = strlen(pw->pw_class);
+    const size_t pw_class_len  = 1 + strlen(pw->pw_class);
   #endif
-    const size_t pw_gecos_len  = strlen(pw->pw_gecos);
-    const size_t pw_dir_len    = strlen(pw->pw_dir);
-    const size_t pw_shell_len  = strlen(pw->pw_shell);
+    const size_t pw_gecos_len  = 1 + strlen(pw->pw_gecos);
+    const size_t pw_dir_len    = 1 + strlen(pw->pw_dir);
+    const size_t pw_shell_len  = 1 + strlen(pw->pw_shell);
     const uintptr_t pw_name_offset   = 0;
-    const uintptr_t pw_passwd_offset = pw_name_offset   + pw_name_len   + 1;
+    const uintptr_t pw_passwd_offset = pw_name_offset   + pw_name_len;
   #if defined(__sun)
-    const uintptr_t pw_age_offset    = pw_passwd_offset + pw_passwd_len + 1;
-    const uintptr_t pw_comment_offset= pw_age_offset    + pw_age_len    + 1;
-    const uintptr_t pw_gecos_offset  = pw_comment_offset+ pw_comment_len+ 1;
+    const uintptr_t pw_age_offset    = pw_passwd_offset + pw_passwd_len;
+    const uintptr_t pw_comment_offset= pw_age_offset    + pw_age_len;
+    const uintptr_t pw_gecos_offset  = pw_comment_offset+ pw_comment_len;
   #elif defined(__FreeBSD__)
-    const uintptr_t pw_class_offset  = pw_passwd_offset + pw_passwd_len + 1;
-    const uintptr_t pw_gecos_offset  = pw_class_offset  + pw_class_len  + 1;
+    const uintptr_t pw_class_offset  = pw_passwd_offset + pw_passwd_len;
+    const uintptr_t pw_gecos_offset  = pw_class_offset  + pw_class_len;
   #else
-    const uintptr_t pw_gecos_offset  = pw_passwd_offset + pw_passwd_len + 1;
+    const uintptr_t pw_gecos_offset  = pw_passwd_offset + pw_passwd_len;
   #endif
-    const uintptr_t pw_dir_offset    = pw_gecos_offset  + pw_gecos_len  + 1;
-    const uintptr_t pw_shell_offset  = pw_dir_offset    + pw_dir_len    + 1;
-    const uintptr_t pw_shell_end     = pw_shell_offset  + pw_shell_len;
-    /*(pw_shell_end < bufsz to leave +1 in buffer for final '\n' or '\0')*/
-    if (   __builtin_expect(NSS_PW_HDRSZ + pw_shell_end < bufsz, 1)
+    const uintptr_t pw_dir_offset    = pw_gecos_offset  + pw_gecos_len;
+    const uintptr_t pw_shell_offset  = pw_dir_offset    + pw_dir_len;
+    const size_t dlen = NSS_PW_HDRSZ + pw_shell_offset  + pw_shell_len;
+    if (   __builtin_expect(dlen             <= bufsz,     1)
 	&& __builtin_expect(pw_passwd_offset <= USHRT_MAX, 1)
       #if defined(__sun)
 	&& __builtin_expect(pw_age_offset    <= USHRT_MAX, 1)
@@ -338,7 +338,7 @@ nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
 	uint32_to_ascii8uphex((uint32_t)pw->pw_fields,    buf+NSS_PW_FIELDS);
 	uint16_to_ascii4uphex((uint32_t)pw_class_offset,  buf+NSS_PW_CLASS);
       #endif
-	/* copy strings into buffer */
+	/* copy strings into buffer, including string terminating '\0' */
 	buf += NSS_PW_HDRSZ;
 	memcpy(buf+pw_name_offset,   pw->pw_name,   pw_name_len);
 	memcpy(buf+pw_passwd_offset, pw->pw_passwd, pw_passwd_len);
@@ -351,19 +351,7 @@ nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
 	memcpy(buf+pw_gecos_offset,  pw->pw_gecos,  pw_gecos_len);
 	memcpy(buf+pw_dir_offset,    pw->pw_dir,    pw_dir_len);
 	memcpy(buf+pw_shell_offset,  pw->pw_shell,  pw_shell_len);
-	/* separate entries with ':' for readability */
-	buf[pw_passwd_offset-1]= ':';  /*(between pw_name and pw_passwd)*/
-      #if defined(__sun)
-	buf[pw_age_offset-1]   = ':';  /*(between pw_passwd and pw_age)*/
-	buf[pw_comment_offset-1]= ':'; /*(between pw_age and pw_comment)*/
-      #elif defined(__FreeBSD__)
-	buf[pw_class_offset-1] = ':';  /*(between pw_passwd and pw_class)*/
-      #endif
-	buf[pw_gecos_offset-1] = ':';  /*(between pw_passwd/prev and pw_gecos)*/
-	buf[pw_dir_offset-1]   = ':';  /*(between pw_gecos and pw_dir)*/
-	buf[pw_shell_offset-1] = ':';  /*(between pw_dir and pw_shell)*/
-	buf[pw_shell_end] = '\0';      /* end string section */
-	return NSS_PW_HDRSZ + pw_shell_end;
+	return dlen - 1; /* subtract final '\0' */
     }
     else {
 	errno = ERANGE;
@@ -376,11 +364,11 @@ size_t
 nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
 				 const struct group * const restrict gr)
 {
-    const size_t    gr_name_len      = strlen(gr->gr_name);
-    const size_t    gr_passwd_len    = strlen(gr->gr_passwd);
+    const size_t    gr_name_len      = 1 + strlen(gr->gr_name);
+    const size_t    gr_passwd_len    = 1 + strlen(gr->gr_passwd);
     const uintptr_t gr_name_offset   = 0;
-    const uintptr_t gr_passwd_offset = gr_name_offset   + gr_name_len   + 1;
-    const uintptr_t gr_mem_str_offt  = gr_passwd_offset + gr_passwd_len + 1;
+    const uintptr_t gr_passwd_offset = gr_name_offset   + gr_name_len;
+    const uintptr_t gr_mem_str_offt  = gr_passwd_offset + gr_passwd_len;
     char ** const restrict gr_mem = gr->gr_mem;
     const char * restrict str;
     size_t len;
@@ -388,18 +376,12 @@ nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
     size_t offset = NSS_GR_HDRSZ + gr_mem_str_offt;
     if (   __builtin_expect(gr_name_len   <= USHRT_MAX, 1)
 	&& __builtin_expect(gr_passwd_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset        < bufsz,      1)) {
+	&& __builtin_expect(offset        <  bufsz,     1)) {
 	while ((str = gr_mem[gr_mem_num]) != NULL
-	       && __builtin_expect((len = strlen(str)) < bufsz-offset, 1)) {
-	    if (__builtin_expect(memccpy(buf+offset,str,',',len) == NULL,1)) {
-		buf[(offset+=len)] = ',';
-		++offset;
-		++gr_mem_num;
-	    }
-	    else { /* bad group; comma-separated data may not contain commas */
-		errno = EINVAL;
-		return 0;
-	    }
+	       && __builtin_expect((len = 1+strlen(str)) <= bufsz-offset, 1)) {
+	    memcpy(buf+offset, str, len);
+	    offset += len;
+	    ++gr_mem_num;
 	} /* check for gr_mem[gr_mem_num] == NULL for sufficient buf space */
 	if (   __builtin_expect(gr_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(gr_mem[gr_mem_num] == NULL,  1)
@@ -415,14 +397,10 @@ nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
 	    uint16_to_ascii4uphex((uint32_t)gr_mem_str_offt,buf+NSS_GR_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)gr_mem_num,     buf+NSS_GR_MEM_NUM);
 	    uint32_to_ascii8uphex((uint32_t)gr->gr_gid,     buf+NSS_GR_GID);
-	    /* copy strings into buffer */
+	    /* copy strings into buffer, including string terminating '\0' */
 	    buf += NSS_GR_HDRSZ;
 	    memcpy(buf+gr_name_offset,   gr->gr_name,   gr_name_len);
 	    memcpy(buf+gr_passwd_offset, gr->gr_passwd, gr_passwd_len);
-	    /* separate entries with ':' for readability */
-	    buf[gr_passwd_offset-1] =':'; /*(between gr_name and gr_passwd)*/
-	    buf[gr_mem_str_offt-1]  =':'; /*(between gr_passwd and gr_mem str)*/
-	    buf[offset] = '\0';           /* end string section */
 	    return NSS_GR_HDRSZ + offset;
 	}
     }
@@ -436,13 +414,12 @@ size_t
 nss_mcdb_acct_make_spwd_datastr(char * restrict buf, const size_t bufsz,
 				const struct spwd * const restrict sp)
 {
-    const size_t sp_namp_len = strlen(sp->sp_namp);
-    const size_t sp_pwdp_len = strlen(sp->sp_pwdp);
+    const size_t sp_namp_len = 1 + strlen(sp->sp_namp);
+    const size_t sp_pwdp_len = 1 + strlen(sp->sp_pwdp);
     const uintptr_t sp_namp_offset = 0;
-    const uintptr_t sp_pwdp_offset = sp_namp_offset + sp_namp_len + 1;
-    const uintptr_t sp_pwdp_end    = sp_pwdp_offset + sp_pwdp_len;
-    /*(sp_pwdp_end < bufsz to leave +1 in buffer for final '\n' or '\0')*/
-    if (   __builtin_expect(sp_pwdp_end    <  bufsz,     1)
+    const uintptr_t sp_pwdp_offset = sp_namp_offset + sp_namp_len;
+    const uintptr_t dlen = NSS_SP_HDRSZ + sp_pwdp_offset + sp_pwdp_len;
+    if (   __builtin_expect(dlen           <= bufsz,     1)
 	&& __builtin_expect(sp_pwdp_offset <= USHRT_MAX, 1)) {
 	/* store string offsets into buffer */
 	uint16_to_ascii4uphex((uint32_t)sp_pwdp_offset, buf+NSS_SP_PWDP);
@@ -453,14 +430,11 @@ nss_mcdb_acct_make_spwd_datastr(char * restrict buf, const size_t bufsz,
 	uint32_to_ascii8uphex((uint32_t)sp->sp_inact,   buf+NSS_SP_INACT);
 	uint32_to_ascii8uphex((uint32_t)sp->sp_expire,  buf+NSS_SP_EXPIRE);
 	uint32_to_ascii8uphex((uint32_t)sp->sp_flag,    buf+NSS_SP_FLAG);
-	/* copy strings into buffer */
+	/* copy strings into buffer, including string terminating '\0' */
 	buf += NSS_SP_HDRSZ;
 	memcpy(buf+sp_namp_offset, sp->sp_namp, sp_namp_len);
 	memcpy(buf+sp_pwdp_offset, sp->sp_pwdp, sp_pwdp_len);
-	/* separate entries with ':' for readability */
-	buf[sp_pwdp_offset-1]  = ':';  /*(between sp_namp and sp_pwdp)*/
-	buf[sp_pwdp_end] = '\0';       /* end string section */
-	return NSS_SP_HDRSZ + sp_pwdp_end;
+	return dlen - 1; /* subtract final '\0' */
     }
     else {
 	errno = ERANGE;

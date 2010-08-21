@@ -1,7 +1,3 @@
-/* memccpy() on Linux requires _XOPEN_SOURCE or _BSD_SOURCE or _SVID_SOURCE */
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
-#endif
 /* _BSD_SOURCE or _SVID_SOURCE for struct rpcent on Linux */
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
@@ -20,7 +16,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>  /* inet_pton() ntohl() ntohs() htons() */
 
-/* (similar code block in other nss_mcdb_*_make.c, except token is ',') */
+/* (similar to code nss_mcdb_acct_make.c:nss_mcdb_acct_make_group_datastr()) */
 static size_t
 nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,
                              char ** const restrict list,
@@ -32,16 +28,10 @@ nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,
     const char * restrict str;
 
     while ((str = list[num]) != NULL
-	   && __builtin_expect( (len = strlen(str)) < bufsz-offset, 1)) {
-	if (__builtin_expect( memccpy(buf+offset,str,' ',len) == NULL, 1)) {
-	    buf[(offset+=len)] = ' ';
-	    ++offset;
-	    ++num;
-	}
-	else { /* token-separated data may not contain that token */
-	    errno = EINVAL;
-	    return (size_t)-1;
-	}
+	   && __builtin_expect( (len = 1 + strlen(str)) <= bufsz-offset, 1)) {
+	memcpy(buf+offset, str, len);
+	offset += len;
+	++num;
     }
 
     if (str == NULL) {
@@ -58,9 +48,9 @@ size_t
 nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct hostent * const restrict he)
 {
-    const size_t    he_name_len     = strlen(he->h_name);
+    const size_t    he_name_len     = 1 + strlen(he->h_name);
     const uintptr_t he_name_offset  = 0;
-    const uintptr_t he_mem_str_offt = he_name_offset + he_name_len + 1;
+    const uintptr_t he_mem_str_offt = he_name_offset + he_name_len;
     uintptr_t he_lst_str_offt;
     char ** const restrict he_lst   = he->h_addr_list;
     const size_t len                = (size_t)he->h_length;
@@ -68,7 +58,7 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
     size_t he_lst_num = 0;
     size_t offset = NSS_HE_HDRSZ + he_mem_str_offt;
     if (   __builtin_expect(he_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      < bufsz,      1)) {
+	&& __builtin_expect(offset      <  bufsz,     1)) {
 	he_mem_num =
           nss_mcdb_netdb_make_list2str(buf, bufsz, he->h_aliases, &offset);
 	if (__builtin_expect( he_mem_num == (size_t)-1, 0))
@@ -98,12 +88,9 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
 	    uint16_to_ascii4uphex((uint32_t)he_lst_str_offt,buf+NSS_HE_LST_STR);
 	    uint16_to_ascii4uphex((uint32_t)he_mem_num,     buf+NSS_HE_MEM_NUM);
 	    uint16_to_ascii4uphex((uint32_t)he_lst_num,     buf+NSS_HE_LST_NUM);
-	    /* copy strings into buffer */
+	    /* copy strings into buffer, including string terminating '\0' */
 	    buf += NSS_HE_HDRSZ;
 	    memcpy(buf+he_name_offset, he->h_name, he_name_len);
-	    /* separate entries with ' ' for readability */
-	    buf[he_mem_str_offt-1]  =' '; /*(between he_name and he_mem str)*/
-	    buf[offset] = '\0';           /* end string section */
 	    return NSS_HE_HDRSZ + offset;
 	}
     }
@@ -117,13 +104,13 @@ size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct netent * const restrict ne)
 {
-    const size_t    ne_name_len     = strlen(ne->n_name);
+    const size_t    ne_name_len     = 1 + strlen(ne->n_name);
     const uintptr_t ne_name_offset  = 0;
-    const uintptr_t ne_mem_str_offt = ne_name_offset + ne_name_len + 1;
+    const uintptr_t ne_mem_str_offt = ne_name_offset + ne_name_len;
     size_t ne_mem_num;
     size_t offset = NSS_NE_HDRSZ + ne_mem_str_offt;
     if (   __builtin_expect(ne_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      < bufsz,      1)) {
+	&& __builtin_expect(offset      <  bufsz,     1)) {
 	ne_mem_num =
           nss_mcdb_netdb_make_list2str(buf, bufsz, ne->n_aliases, &offset);
 	if (__builtin_expect( ne_mem_num == (size_t)-1, 0))
@@ -141,12 +128,9 @@ nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_NE_MEM);
 	    uint16_to_ascii4uphex((uint32_t)ne_mem_str_offt,buf+NSS_NE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)ne_mem_num,     buf+NSS_NE_MEM_NUM);
-	    /* copy strings into buffer */
+	    /* copy strings into buffer, including string terminating '\0' */
 	    buf += NSS_NE_HDRSZ;
 	    memcpy(buf+ne_name_offset, ne->n_name, ne_name_len);
-	    /* separate entries with ' ' for readability */
-	    buf[ne_mem_str_offt-1]  =' '; /*(between ne_name and ne_mem str)*/
-	    buf[offset] = '\0';           /* end string section */
 	    return NSS_NE_HDRSZ + offset;
 	}
     }
@@ -160,13 +144,13 @@ size_t
 nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 				     const struct protoent * const restrict pe)
 {
-    const size_t    pe_name_len     = strlen(pe->p_name);
+    const size_t    pe_name_len     = 1 + strlen(pe->p_name);
     const uintptr_t pe_name_offset  = 0;
-    const uintptr_t pe_mem_str_offt = pe_name_offset + pe_name_len + 1;
+    const uintptr_t pe_mem_str_offt = pe_name_offset + pe_name_len;
     size_t pe_mem_num;
     size_t offset = NSS_PE_HDRSZ + pe_mem_str_offt;
     if (   __builtin_expect(pe_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      < bufsz,      1)) {
+	&& __builtin_expect(offset      <  bufsz,     1)) {
 	pe_mem_num =
           nss_mcdb_netdb_make_list2str(buf, bufsz, pe->p_aliases, &offset);
 	if (__builtin_expect( pe_mem_num == (size_t)-1, 0))
@@ -183,12 +167,9 @@ nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_PE_MEM);
 	    uint16_to_ascii4uphex((uint32_t)pe_mem_str_offt,buf+NSS_PE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)pe_mem_num,     buf+NSS_PE_MEM_NUM);
-	    /* copy strings into buffer */
+	    /* copy strings into buffer, including string terminating '\0' */
 	    buf += NSS_PE_HDRSZ;
 	    memcpy(buf+pe_name_offset, pe->p_name, pe_name_len);
-	    /* separate entries with ' ' for readability */
-	    buf[pe_mem_str_offt-1]  =' '; /*(between pe_name and pe_mem str)*/
-	    buf[offset] = '\0';           /* end string section */
 	    return NSS_PE_HDRSZ + offset;
 	}
     }
@@ -203,13 +184,13 @@ nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
 				   const void * const restrict entp)
 {   /* (take void *entp arg to avoid need to set _BSD_SOURCE in header) */
     const struct rpcent * const restrict re = entp;
-    const size_t    re_name_len     = strlen(re->r_name);
+    const size_t    re_name_len     = 1 + strlen(re->r_name);
     const uintptr_t re_name_offset  = 0;
-    const uintptr_t re_mem_str_offt = re_name_offset + re_name_len + 1;
+    const uintptr_t re_mem_str_offt = re_name_offset + re_name_len;
     size_t re_mem_num;
     size_t offset = NSS_RE_HDRSZ + re_mem_str_offt;
     if (   __builtin_expect(re_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      < bufsz,      1)) {
+	&& __builtin_expect(offset      <  bufsz,     1)) {
 	re_mem_num =
           nss_mcdb_netdb_make_list2str(buf, bufsz, re->r_aliases, &offset);
 	if (__builtin_expect( re_mem_num == (size_t)-1, 0))
@@ -226,12 +207,9 @@ nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_RE_MEM);
 	    uint16_to_ascii4uphex((uint32_t)re_mem_str_offt,buf+NSS_RE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)re_mem_num,     buf+NSS_RE_MEM_NUM);
-	    /* copy strings into buffer */
+	    /* copy strings into buffer, including string terminating '\0' */
 	    buf += NSS_RE_HDRSZ;
 	    memcpy(buf+re_name_offset, re->r_name, re_name_len);
-	    /* separate entries with ' ' for readability */
-	    buf[re_mem_str_offt-1]  =' '; /*(between re_name and re_mem str)*/
-	    buf[offset] = '\0';           /* end string section */
 	    return NSS_RE_HDRSZ + offset;
 	}
     }
@@ -245,15 +223,15 @@ size_t
 nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct servent * const restrict se)
 {
-    const size_t    se_name_len     = strlen(se->s_name);
-    const size_t    se_proto_len    = strlen(se->s_proto);
+    const size_t    se_name_len     = 1 + strlen(se->s_name);
+    const size_t    se_proto_len    = 1 + strlen(se->s_proto);
     const uintptr_t se_proto_offset = 0; /*(proto before name for query usage)*/
-    const uintptr_t se_name_offset  = se_proto_offset + se_proto_len + 1;
-    const uintptr_t se_mem_str_offt = se_name_offset  + se_name_len  + 1;
+    const uintptr_t se_name_offset  = se_proto_offset + se_proto_len;
+    const uintptr_t se_mem_str_offt = se_name_offset  + se_name_len;
     size_t se_mem_num  = 0;
     size_t offset = NSS_SE_HDRSZ + se_mem_str_offt;
     if (   __builtin_expect(se_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      < bufsz,      1)) {
+	&& __builtin_expect(offset      <  bufsz,     1)) {
 	se_mem_num =
           nss_mcdb_netdb_make_list2str(buf, bufsz, se->s_aliases, &offset);
 	if (__builtin_expect( se_mem_num == (size_t)-1, 0))
@@ -271,14 +249,10 @@ nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_SE_MEM);
 	    uint16_to_ascii4uphex((uint32_t)se_mem_str_offt,buf+NSS_SE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)se_mem_num,     buf+NSS_SE_MEM_NUM);
-	    /* copy strings into buffer */
+	    /* copy strings into buffer, including string terminating '\0' */
 	    buf += NSS_SE_HDRSZ;
 	    memcpy(buf+se_name_offset,  se->s_name,  se_name_len);
 	    memcpy(buf+se_proto_offset, se->s_proto, se_proto_len);
-	    /* separate entries with ' ' for readability */
-	    buf[se_name_offset-1]   =' '; /*(between se_proto and se_name)*/
-	    buf[se_mem_str_offt-1]  =' '; /*(between se_name and se_mem str)*/
-	    buf[offset] = '\0';           /* end string section */
 	    return NSS_SE_HDRSZ + offset;
 	}
     }

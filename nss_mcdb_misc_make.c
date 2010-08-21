@@ -1,7 +1,3 @@
-/* memccpy() on Linux requires _XOPEN_SOURCE or _BSD_SOURCE or _SVID_SOURCE */
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
-#endif
 /* _BSD_SOURCE or _SVID_SOURCE for struct ether_addr on Linux */
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
@@ -22,31 +18,24 @@ size_t
 nss_mcdb_misc_make_aliasent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct aliasent * const restrict ae)
 {
-    const size_t    ae_name_len     = strlen(ae->alias_name);
+    const size_t    ae_name_len     = 1 + strlen(ae->alias_name);
     const uintptr_t ae_name_offset  = 0;
-    const uintptr_t ae_mem_str_offt = ae_name_offset + ae_name_len + 1;
+    const uintptr_t ae_mem_str_offt = ae_name_offset + ae_name_len;
     char ** restrict ae_mem         = ae->alias_members;
     size_t len;
     size_t ae_mem_num = ae->alias_members_len;
     size_t offset = NSS_AE_HDRSZ + ae_mem_str_offt;
     if (   __builtin_expect(ae_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      < bufsz,      1)) {
-	while (ae_mem_num--) {
-	    len = strlen(*ae_mem);
-	    if (__builtin_expect(len < bufsz-offset, 1)
-		&& __builtin_expect(memccpy(buf+offset,*ae_mem,',',len)==0, 1)){
-		buf[(offset+=len)] = ',';
-		++offset;
-		++ae_mem;
-	    }
-	    else if (len >= bufsz-offset) {
-		errno = ERANGE;
-		return 0;
-	    }
-	    else {/* bad aliasent; comma-separated data may not contain commas*/
-		errno = EINVAL;
-		return 0;
-	    }
+	&& __builtin_expect(offset      <  bufsz,     1)) {
+	while (ae_mem_num--
+	       && (__builtin_expect((len=1+strlen(*ae_mem))<=bufsz-offset, 1))){
+	    memcpy(buf+offset, *ae_mem, len);
+	    offset += len;
+	    ++ae_mem;
+	}
+	if (ae_mem_num != (size_t)-1) {
+	    errno = ERANGE;
+	    return 0;
 	}
 	ae_mem_num = ae->alias_members_len;
 	if (   __builtin_expect(ae_mem_num <= USHRT_MAX, 1)
@@ -61,13 +50,10 @@ nss_mcdb_misc_make_aliasent_datastr(char * restrict buf, const size_t bufsz,
 	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_AE_MEM);
 	    uint16_to_ascii4uphex((uint32_t)ae_mem_str_offt,buf+NSS_AE_MEM_STR);
 	    uint16_to_ascii4uphex((uint32_t)ae_mem_num,     buf+NSS_AE_MEM_NUM);
-	    /* copy strings into buffer */
+	    /* copy strings into buffer, including string terminating '\0' */
 	    buf += NSS_AE_HDRSZ;
 	    memcpy(buf+ae_name_offset, ae->alias_name, ae_name_len);
-	    /* separate entries with ' ' for readability */
-	    buf[ae_mem_str_offt-1]  =' '; /*(between ae_name and ae_mem str)*/
-	    buf[offset] = '\0';           /* end string section */
-	    return NSS_AE_HDRSZ + offset;
+	    return NSS_AE_HDRSZ + offset - 1; /* subtract final '\0' */
 	}
     }
 
@@ -82,9 +68,9 @@ nss_mcdb_misc_make_ether_addr_datastr(char * restrict buf, const size_t bufsz,
 				      const char * const restrict hostname)
 {   /* (take void *entp arg to avoid need to set _BSD_SOURCE in header) */
     const struct ether_addr * const restrict ea = entp;
-    const size_t ea_name_len = strlen(hostname);
+    const size_t ea_name_len = 1 + strlen(hostname);
     uint32_t u[2];
-    if (__builtin_expect(NSS_EA_HDRSZ + ea_name_len < bufsz, 1)) {
+    if (__builtin_expect(NSS_EA_HDRSZ + ea_name_len <= bufsz, 1)) {
 
 	/* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr)*/
 	/* (copy for alignment) */
@@ -93,9 +79,9 @@ nss_mcdb_misc_make_ether_addr_datastr(char * restrict buf, const size_t bufsz,
 	uint32_to_ascii8uphex(u[0], buf);
 	uint16_to_ascii4uphex(u[1], buf+8);
 
-	/* copy strings into buffer */
-	memcpy(buf+NSS_EA_HDRSZ,hostname,ea_name_len+1); /*+1 to term last str*/
-	return NSS_EA_HDRSZ + ea_name_len;
+	/* copy strings into buffer, including string terminating '\0' */
+	memcpy(buf+NSS_EA_HDRSZ, hostname, ea_name_len);
+	return NSS_EA_HDRSZ + ea_name_len - 1; /* subtract final '\0' */
     }
 
     errno = ERANGE;

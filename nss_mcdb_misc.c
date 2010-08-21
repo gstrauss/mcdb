@@ -190,20 +190,16 @@ nss_mcdb_misc_aliasent_decode(struct mcdb * const restrict m,
     /* populate ae string pointers */
     ae->alias_name        = buf;
     /* fill buf, (char **) ae_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for ',' instead of precalculating array because names should
+     * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for ','
+     * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, ae_mem_num correct) */
     if (((char *)ae_mem)-buf+(ae_mem_num<<3) <= v->bufsz) {
         memcpy(buf, dptr+NSS_AE_HDRSZ, mcdb_datalen(m)-NSS_AE_HDRSZ);
-        /* terminate strings; replace ':' separator in data with '\0'. */
-        buf[idx_ae_mem_str-1] = '\0';        /* terminate ae_name */
-        buf[idx_ae_mem-1]     = '\0';        /* terminate final ae_mem string */
         ae_mem[0] = (buf += idx_ae_mem_str); /* begin of ae_mem strings */
         for (size_t i=1; i<ae_mem_num; ++i) {/*(i=1; assigned first str above)*/
-            while (*++buf != ',')
+            while (*++buf != '\0')
                 ;
-            *buf = '\0';
             ae_mem[i] = ++buf;
         }
         return NSS_STATUS_SUCCESS;
@@ -237,7 +233,7 @@ nss_mcdb_misc_ether_addr_decode(struct mcdb * const restrict m,
     if (buf != NULL) {
         if (dlen < v->bufsz) {
             memcpy(buf, dptr+NSS_EA_HDRSZ, dlen);
-            buf[dlen] = '\0';              /* terminate hostname */
+            buf[dlen] = '\0';
         }
         else {
             *v->errnop = errno = ERANGE;
