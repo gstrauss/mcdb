@@ -150,8 +150,8 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     __builtin_prefetch((char *)x+960, 0, 1); /*(touch mem page w/ mcdb header)*/
   #endif
     if (st.st_size > USHRT_MAX) /*(skip extra syscall overhead for small mcdb)*/
-        posix_madvise(((char *)x)+USHRT_MAX, st.st_size-USHRT_MAX,
-                      POSIX_MADV_RANDOM);
+        posix_madvise(((char *)x), st.st_size, POSIX_MADV_RANDOM);
+	/*(addr (x) must be aligned on _SC_PAGESIZE for madvise portability)*/
     map->ptr   = (unsigned char *)x;
     map->size  = st.st_size;
     map->mtime = st.st_mtime;
