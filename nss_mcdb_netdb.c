@@ -747,8 +747,9 @@ nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
     size_t se_mem_num;
     union { uint32_t u[NSS_SE_HDRSZ>>2]; uint16_t h[NSS_SE_HDRSZ>>1]; } hdr;
 
-    /* match proto string (stored right after header), if not empty string */
-    /* (future: could possibly be further optimized for "tcp" and "udp"
+    /* match proto string (stored right after header), if not empty string
+     * (future: should s_proto match be case-insensitive (strcasecmp())?)
+     * (future: could possibly be further optimized for "tcp" "udp" "sctp"
      * (future: might add unique tag char db ents for tcp/udp by name/number) */
     if (*buf != '\0') {
         const size_t protolen = 1 + strlen(buf);
