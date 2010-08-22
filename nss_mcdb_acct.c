@@ -10,7 +10,8 @@
 #include <pwd.h>
 #include <grp.h>
 #include <shadow.h>
-#include <stdlib.h>  /* realloc */
+#include <stdlib.h>     /* realloc */
+#include <arpa/inet.h>  /* ntohl(), ntohs() */
 
 /*
  * man passwd(5) getpwnam getpwuid setpwent getpwent endpwent
@@ -86,16 +87,15 @@ _nss_mcdb_getpwuid_r(const uid_t uid,
                      char * const restrict buf, const size_t bufsz,
                      int * const restrict errnop)
 {
-    char hexstr[8];
+    const uint32_t n = htonl((uint32_t)uid);
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_passwd_decode,
                                       .vstruct = pwbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .key     = hexstr,
-                                      .klen    = sizeof(hexstr),
+                                      .key     = (const char *)&n,
+                                      .klen    = sizeof(uint32_t),
                                       .tagc    = (unsigned char)'x' };
-    uint32_to_ascii8uphex((uint32_t)uid, hexstr);
     return nss_mcdb_get_generic(NSS_DBTYPE_PASSWD, &v);
 }
 
@@ -136,16 +136,15 @@ _nss_mcdb_getgrgid_r(const gid_t gid,
                      char * const restrict buf, const size_t bufsz,
                      int * const restrict errnop)
 {
-    char hexstr[8];
+    const uint32_t n = htonl((uint32_t)gid);
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_group_decode,
                                       .vstruct = grbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .key     = hexstr,
-                                      .klen    = sizeof(hexstr),
+                                      .key     = (const char *)&n,
+                                      .klen    = sizeof(uint32_t),
                                       .tagc    = (unsigned char)'x' };
-    uint32_to_ascii8uphex((uint32_t)gid, hexstr);
     return nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &v);
 }
 
@@ -292,56 +291,46 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
  * difficult for human to read record dumped from database with mcdb tools --
  * store numbers in big-endian byte-order, instead of converting to ASCII hex
  * and back.  (Would need to copy hdr to aligned buf before casting to number.)
- * Also, store '\0' in data instead of replacing after memcpy() */
+ */
 
 
 static nss_status_t
 nss_mcdb_acct_passwd_decode(struct mcdb * const restrict m,
                             const struct nss_mcdb_vinfo * restrict v)
 {
-    const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    const size_t dlen = ((size_t)mcdb_datalen(m)) - NSS_PW_HDRSZ;
     struct passwd * const pw = (struct passwd *)v->vstruct;
     char * const buf = v->buf;
-    /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_pw_passwd =uint16_from_ascii4uphex(dptr+NSS_PW_PASSWD);
-    const uintptr_t idx_pw_gecos  =uint16_from_ascii4uphex(dptr+NSS_PW_GECOS);
-    const uintptr_t idx_pw_dir    =uint16_from_ascii4uphex(dptr+NSS_PW_DIR);
-    const uintptr_t idx_pw_shell  =uint16_from_ascii4uphex(dptr+NSS_PW_SHELL);
-  #if defined(__sun)
-    const uintptr_t idx_pw_age    =uint16_from_ascii4uphex(dptr+NSS_PW_AGE);
-    const uintptr_t idx_pw_comment=uint16_from_ascii4uphex(dptr+NSS_PW_COMMENT);
-  #elif defined(__FreeBSD__)
-    const uintptr_t idx_pw_class  =uint16_from_ascii4uphex(dptr+NSS_PW_CLASS);
-    pw->pw_change = ((time_t) uint32_from_ascii8uphex(dptr+NSS_PW_CHANGE))<<32
-                  | ((time_t) uint32_from_ascii8uphex(dptr+NSS_PW_CHANGE+8));
-    pw->pw_expire = ((time_t) uint32_from_ascii8uphex(dptr+NSS_PW_EXPIRE))<<32
-                  | ((time_t) uint32_from_ascii8uphex(dptr+NSS_PW_EXPIRE+8));
-    pw->pw_fields = (int)          uint32_from_ascii8uphex(dptr+NSS_PW_FIELDS);
-  #endif
-    pw->pw_uid    = (uid_t)        uint32_from_ascii8uphex(dptr+NSS_PW_UID);
-    pw->pw_gid    = (gid_t)        uint32_from_ascii8uphex(dptr+NSS_PW_GID);
-    /* populate pw string pointers */
-    pw->pw_name   = buf;
-    pw->pw_passwd = buf+idx_pw_passwd;
-  #if defined(__sun)
-    pw->pw_age    = buf+idx_pw_age;
-    pw->pw_comment= buf+idx_pw_comment;
-  #elif defined(__FreeBSD__)
-    pw->pw_class  = buf+idx_pw_class;
-  #endif
-    pw->pw_gecos  = buf+idx_pw_gecos;
-    pw->pw_dir    = buf+idx_pw_dir;
-    pw->pw_shell  = buf+idx_pw_shell;
+    union { uint32_t u[NSS_PW_HDRSZ>>2]; uint16_t h[NSS_PW_HDRSZ>>1]; } hdr;
+    const char * const restrict dptr = (char *)mcdb_dataptr(m);
+    const size_t dlen = ((size_t)mcdb_datalen(m)) - NSS_PW_HDRSZ;
     if (dlen < v->bufsz) {
         memcpy(buf, dptr+NSS_PW_HDRSZ, dlen);
         buf[dlen] = '\0';
-        return NSS_STATUS_SUCCESS;
+        memcpy(hdr.u, dptr, NSS_PW_HDRSZ);
     }
     else {
         *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
+    pw->pw_uid    = (uid_t) ntohl( hdr.u[NSS_PW_UID>>2] );
+    pw->pw_gid    = (gid_t) ntohl( hdr.u[NSS_PW_GID>>2] );
+    pw->pw_name   = buf;
+    pw->pw_passwd = buf + ntohs( hdr.h[NSS_PW_PASSWD>>1] );
+    pw->pw_gecos  = buf + ntohs( hdr.h[NSS_PW_GECOS>>1] );
+    pw->pw_dir    = buf + ntohs( hdr.h[NSS_PW_DIR>>1] );
+    pw->pw_shell  = buf + ntohs( hdr.h[NSS_PW_SHELL>>1] );
+  #if defined(__sun)
+    pw->pw_age    = buf + ntohs( hdr.h[NSS_PW_AGE>>1] );
+    pw->pw_comment= buf + ntohs( hdr.h[NSS_PW_COMMENT>>1] );
+  #elif defined(__FreeBSD__)
+    pw->pw_class  = buf + ntohs( hdr.h[NSS_PW_CLASS>>1] );
+    pw->pw_change = ((time_t) ntohl( hdr.u[NSS_PW_CHANGE>>2] ))<<32
+                  | ((time_t) ntohl( hdr.u[(NSS_PW_CHANGE>>2)+1] ));
+    pw->pw_expire = ((time_t) ntohl( hdr.u[NSS_PW_EXPIRE>>2] ))<<32
+                  | ((time_t) ntohl( hdr.u[(NSS_PW_EXPIRE>>2)+1] ));
+    pw->pw_fields = (int)     ntohl( hdr.u[NSS_PW_FIELDS>>2] );
+  #endif
+    return NSS_STATUS_SUCCESS;
 }
 
 
@@ -352,26 +341,24 @@ nss_mcdb_acct_group_decode(struct mcdb * const restrict m,
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     struct group * const gr = (struct group *)v->vstruct;
     char *buf = v->buf;
-    /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_gr_passwd =uint16_from_ascii4uphex(dptr+NSS_GR_PASSWD);
-    const uintptr_t idx_gr_mem_str=uint16_from_ascii4uphex(dptr+NSS_GR_MEM_STR);
-    const uintptr_t idx_gr_mem    =uint16_from_ascii4uphex(dptr+NSS_GR_MEM);
-    const size_t gr_mem_num       =uint16_from_ascii4uphex(dptr+NSS_GR_MEM_NUM);
-    char ** const restrict gr_mem =   /* align to 8-byte boundary for 64-bit */
-      (char **)(((uintptr_t)(buf+idx_gr_mem+0x7u)) & ~0x7u); /* 8-byte align */
-    gr->gr_mem   = gr_mem;
-    gr->gr_gid   = (gid_t)         uint32_from_ascii8uphex(dptr+NSS_GR_GID);
-    /* populate gr string pointers */
-    gr->gr_name  = buf;
-    gr->gr_passwd= buf+idx_gr_passwd;
+    size_t gr_mem_num;
+    union { uint32_t u[NSS_GR_HDRSZ>>2]; uint16_t h[NSS_GR_HDRSZ>>1]; } hdr;
+    memcpy(hdr.u, dptr, NSS_GR_HDRSZ);
+    gr->gr_name   = buf;
+    gr->gr_passwd = buf + ntohs( hdr.h[NSS_GR_PASSWD>>1] );
+    gr->gr_gid    = (gid_t) ntohl( hdr.u[NSS_GR_GID>>2] );
+    gr_mem_num    = (size_t)ntohs( hdr.h[NSS_GR_MEM_NUM>>1] );
+    gr->gr_mem    = /* align to 8-byte boundary for 64-bit */
+      (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_GR_MEM>>1])+0x7u)) & ~0x7u);
     /* fill buf, (char **) gr_mem (allow 8-byte ptrs), and terminate strings.
      * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, gr_mem_num correct) */
-    if (((char *)gr_mem)-buf+((gr_mem_num+1)<<3) <= v->bufsz) {
+    if (((char *)gr->gr_mem)-buf+((gr_mem_num+1)<<3) <= v->bufsz) {
+        char ** const restrict gr_mem = gr->gr_mem;
         memcpy(buf, dptr+NSS_GR_HDRSZ, mcdb_datalen(m)-NSS_GR_HDRSZ);
-        gr_mem[0] = (buf += idx_gr_mem_str); /* begin of gr_mem strings */
+        gr_mem[0] = (buf += ntohs(hdr.h[NSS_GR_MEM_STR>>1])); /*gr_mem strings*/
         for (size_t i=1; i<gr_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
                 ;
@@ -394,15 +381,17 @@ nss_mcdb_acct_grouplist_decode(struct mcdb * const restrict m,
     const char * restrict dptr = (char *)mcdb_dataptr(m);
     gid_t * const gidlist = (gid_t *)v->buf;
     const gid_t gid = *(gid_t *)v->vstruct;
-    /* parse fixed format record header */
-    gid_t n = 1 + (gid_t)uint32_from_ascii8uphex(dptr+NSS_GL_NGROUPS);
-    gid_t x;
-    /* populate gidlist if enough space, else count gids */
+    gid_t n, x;
+    union { uint32_t u[NSS_GL_HDRSZ>>2]; uint16_t h[NSS_GL_HDRSZ>>1]; } hdr;
+    memcpy(hdr.u, dptr, NSS_GL_HDRSZ);
     dptr += NSS_GL_HDRSZ;
+    n = 1 + (gid_t) ntohl( hdr.u[NSS_GL_NGROUPS>>2] );
+    /* populate gidlist if enough space, else count gids */
     if (__builtin_expect( n > v->bufsz, 0)) { /* not enough space */
         /* count num gids (as if enough space were available) */
-        for (x = 1; --n; dptr += 8) {
-            if (gid != (gid_t)uint32_from_ascii8uphex(dptr))
+        const uint32_t gidn = htonl((uint32_t)gid);
+        for (x = 1; --n; dptr += 4) { /*(compare network byte ordered gids)*/
+            if (gidn != ((dptr[0]<<24)|(dptr[1]<<16)|(dptr[2]<<8)|dptr[3]))
                 ++x;
         }
         if (__builtin_expect( x > v->bufsz, 1)) { /* not enough space */
@@ -412,11 +401,13 @@ nss_mcdb_acct_grouplist_decode(struct mcdb * const restrict m,
         }
         /*(x == v->bufsz; rare case: 1 gid more than space avail, but dup gid)*/
         n = 1+x;
-        dptr -= (x << 3);
+        dptr -= (x << 2);
     }
     gidlist[0] = gid;
-    for (x = 1; --n; dptr += 8) {
-        if (gid != (gidlist[x] = (gid_t)uint32_from_ascii8uphex(dptr)))
+    for (x = 1; --n; dptr += 4) {
+        gidlist[x] = (gid_t)
+                     ntohl((dptr[0]<<24)|(dptr[1]<<16)|(dptr[2]<<8)|dptr[3]);
+        if (gidlist[x] != gid)
             ++x;
     }
     *(gid_t *)v->vstruct = x;
@@ -432,26 +423,25 @@ nss_mcdb_acct_spwd_decode(struct mcdb * const restrict m,
     const size_t dlen = ((size_t)mcdb_datalen(m)) - NSS_SP_HDRSZ;
     struct spwd * const sp = (struct spwd *)v->vstruct;
     char * const buf = v->buf;
-    /* parse fixed format record header to get offsets into strings */
-    /* (cast to (int32_t) before casting to (long) to preserve -1) */
-    const uintptr_t idx_sp_pwdp =  uint16_from_ascii4uphex(dptr+NSS_SP_PWDP);
-    sp->sp_lstchg = (long)(int32_t)uint32_from_ascii8uphex(dptr+NSS_SP_LSTCHG);
-    sp->sp_min    = (long)(int32_t)uint32_from_ascii8uphex(dptr+NSS_SP_MIN);
-    sp->sp_max    = (long)(int32_t)uint32_from_ascii8uphex(dptr+NSS_SP_MAX);
-    sp->sp_warn   = (long)(int32_t)uint32_from_ascii8uphex(dptr+NSS_SP_WARN);
-    sp->sp_inact  = (long)(int32_t)uint32_from_ascii8uphex(dptr+NSS_SP_INACT);
-    sp->sp_expire = (long)(int32_t)uint32_from_ascii8uphex(dptr+NSS_SP_EXPIRE);
-    sp->sp_flag   =                uint32_from_ascii8uphex(dptr+NSS_SP_FLAG);
-    /* populate sp string pointers */
-    sp->sp_namp   = buf;
-    sp->sp_pwdp   = buf+idx_sp_pwdp;
+    union { uint32_t u[NSS_SP_HDRSZ>>2]; uint16_t h[NSS_SP_HDRSZ>>1]; } hdr;
     if (dlen < v->bufsz) {
         memcpy(buf, dptr+NSS_SP_HDRSZ, dlen);
         buf[dlen] = '\0';
-        return NSS_STATUS_SUCCESS;
+        memcpy(hdr.u, dptr, NSS_SP_HDRSZ);
     }
     else {
         *v->errnop = errno = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
+    /* (cast to (int32_t) before casting to (long) to preserve -1) */
+    sp->sp_lstchg = (long)(int32_t)ntohl( hdr.u[NSS_SP_LSTCHG>>2] );
+    sp->sp_min    = (long)(int32_t)ntohl( hdr.u[NSS_SP_MIN>>2] );
+    sp->sp_max    = (long)(int32_t)ntohl( hdr.u[NSS_SP_MAX>>2] );
+    sp->sp_warn   = (long)(int32_t)ntohl( hdr.u[NSS_SP_WARN>>2] );
+    sp->sp_inact  = (long)(int32_t)ntohl( hdr.u[NSS_SP_INACT>>2] );
+    sp->sp_expire = (long)(int32_t)ntohl( hdr.u[NSS_SP_EXPIRE>>2] );
+    sp->sp_flag   =                ntohl( hdr.u[NSS_SP_FLAG>>2] );
+    sp->sp_namp   = buf;
+    sp->sp_pwdp   = buf + ntohs( hdr.h[NSS_SP_PWDP>>1] );
+    return NSS_STATUS_SUCCESS;
 }

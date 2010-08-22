@@ -19,23 +19,23 @@
 /* (similar to code nss_mcdb_acct_make.c:nss_mcdb_acct_make_group_datastr()) */
 static size_t
 nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,
-                             char ** const restrict list,
-                             size_t * const restrict offsetp)
+                             char * const * const restrict list,
+                             size_t * const restrict dlenp)
 {
-    size_t offset = *offsetp;
+    size_t dlen = *dlenp;
     size_t len;
     size_t num = 0;
     const char * restrict str;
 
     while ((str = list[num]) != NULL
-	   && __builtin_expect( (len = 1 + strlen(str)) <= bufsz-offset, 1)) {
-	memcpy(buf+offset, str, len);
-	offset += len;
+	   && __builtin_expect( (len = 1 + strlen(str)) <= bufsz-dlen, 1)) {
+	memcpy(buf+dlen, str, len);
+	dlen += len;
 	++num;
     }
 
     if (str == NULL) {
-	*offsetp = offset;
+	*dlenp = dlen;
 	return num;
     }
     else {
@@ -48,50 +48,49 @@ size_t
 nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct hostent * const restrict he)
 {
-    const size_t    he_name_len     = 1 + strlen(he->h_name);
-    const uintptr_t he_name_offset  = 0;
-    const uintptr_t he_mem_str_offt = he_name_offset + he_name_len;
-    uintptr_t he_lst_str_offt;
-    char ** const restrict he_lst   = he->h_addr_list;
-    const size_t len                = (size_t)he->h_length;
+    const size_t he_name_len       = 1 + strlen(he->h_name);
+    const size_t he_mem_str_offset = he_name_len;
+    size_t he_lst_str_offset;
+    char ** const restrict he_lst  = he->h_addr_list;
+    const size_t len               = (size_t)he->h_length;
     size_t he_mem_num;
     size_t he_lst_num = 0;
-    size_t offset = NSS_HE_HDRSZ + he_mem_str_offt;
+    size_t dlen = NSS_HE_HDRSZ + he_mem_str_offset;
+    union { uint32_t u[NSS_HE_HDRSZ>>2]; uint16_t h[NSS_HE_HDRSZ>>1]; } hdr;
     if (   __builtin_expect(he_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      <  bufsz,     1)) {
-	he_mem_num =
-          nss_mcdb_netdb_make_list2str(buf, bufsz, he->h_aliases, &offset);
+	&& __builtin_expect(dlen        <  bufsz,     1)) {
+	he_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,he->h_aliases,&dlen);
 	if (__builtin_expect( he_mem_num == (size_t)-1, 0))
 	    return 0;
-	he_lst_str_offt = offset - NSS_HE_HDRSZ;
+	he_lst_str_offset = dlen - NSS_HE_HDRSZ;
 	while (he_lst[he_lst_num] != NULL
-	       && __builtin_expect(len < bufsz-offset, 1)) {
-	    memcpy(buf+offset, he_lst[he_lst_num], len); /*binary address*/
-	    offset += len;
+	       && __builtin_expect(len < bufsz-dlen, 1)) {
+	    memcpy(buf+dlen, he_lst[he_lst_num], len); /*binary address*/
+	    dlen += len;
 	    ++he_lst_num;
 	} /* check for he_lst[he_lst_num] == NULL for sufficient buf space */
 	if (   __builtin_expect(he_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect(he_lst_num <= USHRT_MAX, 1)
 	    && __builtin_expect(he_lst[he_lst_num] == NULL,  1)
 	    && __builtin_expect(((he_mem_num+he_lst_num)<<3)+8u+8u+7u
-                                <= bufsz-offset, 1)) {
+                                <= bufsz-dlen, 1)) {
 	    /* verify space in string for (2) 8-aligned char ** array + NULL
 	     * (not strictly necessary, but best to catch excessively long
 	     *  entries at cdb create time rather than in query at runtime) */
 
-	    uint32_to_ascii8uphex((uint32_t)he->h_addrtype, buf+NSS_H_ADDRTYPE);
-	    uint32_to_ascii8uphex((uint32_t)he->h_length,   buf+NSS_H_LENGTH);
-	    /* store string offsets into buffer */
-	    offset -= NSS_HE_HDRSZ;
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_HE_MEM);
-	    uint16_to_ascii4uphex((uint32_t)he_mem_str_offt,buf+NSS_HE_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)he_lst_str_offt,buf+NSS_HE_LST_STR);
-	    uint16_to_ascii4uphex((uint32_t)he_mem_num,     buf+NSS_HE_MEM_NUM);
-	    uint16_to_ascii4uphex((uint32_t)he_lst_num,     buf+NSS_HE_LST_NUM);
+	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
-	    buf += NSS_HE_HDRSZ;
-	    memcpy(buf+he_name_offset, he->h_name, he_name_len);
-	    return NSS_HE_HDRSZ + offset;
+	    hdr.u[NSS_H_ADDRTYPE>>2]  = htonl((uint32_t) he->h_addrtype);
+	    hdr.u[NSS_H_LENGTH>>2]    = htonl((uint32_t) he->h_length);
+	    hdr.h[NSS_HE_MEM>>1]      = htons((uint16_t)(dlen - NSS_HE_HDRSZ));
+	    hdr.h[NSS_HE_MEM_STR>>1]  = htons((uint16_t) he_mem_str_offset);
+	    hdr.h[NSS_HE_LST_STR>>1]  = htons((uint16_t) he_lst_str_offset);
+	    hdr.h[NSS_HE_MEM_NUM>>1]  = htons((uint16_t) he_mem_num);
+	    hdr.h[NSS_HE_LST_NUM>>1]  = htons((uint16_t) he_lst_num);
+	    hdr.h[(NSS_HE_HDRSZ>>1)-1]= 0;/*(clear last 2 bytes (consistency))*/
+	    memcpy(buf,              hdr.u,      NSS_HE_HDRSZ);
+	    memcpy(buf+NSS_HE_HDRSZ, he->h_name, he_name_len);
+	    return dlen;
 	}
     }
 
@@ -104,34 +103,33 @@ size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct netent * const restrict ne)
 {
-    const size_t    ne_name_len     = 1 + strlen(ne->n_name);
-    const uintptr_t ne_name_offset  = 0;
-    const uintptr_t ne_mem_str_offt = ne_name_offset + ne_name_len;
+    const size_t    ne_name_len       = 1 + strlen(ne->n_name);
+    const uintptr_t ne_mem_str_offset = ne_name_len;
     size_t ne_mem_num;
-    size_t offset = NSS_NE_HDRSZ + ne_mem_str_offt;
+    size_t dlen = NSS_NE_HDRSZ + ne_mem_str_offset;
+    union { uint32_t u[NSS_NE_HDRSZ>>2]; uint16_t h[NSS_NE_HDRSZ>>1]; } hdr;
     if (   __builtin_expect(ne_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      <  bufsz,     1)) {
-	ne_mem_num =
-          nss_mcdb_netdb_make_list2str(buf, bufsz, ne->n_aliases, &offset);
+	&& __builtin_expect(dlen        <  bufsz,     1)) {
+	ne_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,ne->n_aliases,&dlen);
 	if (__builtin_expect( ne_mem_num == (size_t)-1, 0))
 	    return 0;
 	if (   __builtin_expect(ne_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect((ne_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
+	    && __builtin_expect((ne_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** ne_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
 	     *  entries at cdb create time rather than in query at runtime) */
 
-	    uint32_to_ascii8uphex((uint32_t)ne->n_addrtype, buf+NSS_N_ADDRTYPE);
-	    uint32_to_ascii8uphex((uint32_t)ne->n_net,      buf+NSS_N_NET);
-	    /* store string offsets into buffer */
-	    offset -= NSS_NE_HDRSZ;
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_NE_MEM);
-	    uint16_to_ascii4uphex((uint32_t)ne_mem_str_offt,buf+NSS_NE_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)ne_mem_num,     buf+NSS_NE_MEM_NUM);
+	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
-	    buf += NSS_NE_HDRSZ;
-	    memcpy(buf+ne_name_offset, ne->n_name, ne_name_len);
-	    return NSS_NE_HDRSZ + offset;
+	    hdr.u[NSS_N_ADDRTYPE>>2]  = htonl((uint32_t) ne->n_addrtype);
+	    hdr.u[NSS_N_NET>>2]       = htonl((uint32_t) ne->n_net);
+	    hdr.h[NSS_NE_MEM>>1]      = htons((uint16_t)(dlen - NSS_NE_HDRSZ));
+	    hdr.h[NSS_NE_MEM_STR>>1]  = htons((uint16_t) ne_mem_str_offset);
+	    hdr.h[NSS_NE_MEM_NUM>>1]  = htons((uint16_t) ne_mem_num);
+	    hdr.h[(NSS_NE_HDRSZ>>1)-1]= 0;/*(clear last 2 bytes (consistency))*/
+	    memcpy(buf,              hdr.u,      NSS_NE_HDRSZ);
+	    memcpy(buf+NSS_NE_HDRSZ, ne->n_name, ne_name_len);
+	    return dlen;
 	}
     }
 
@@ -144,33 +142,32 @@ size_t
 nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 				     const struct protoent * const restrict pe)
 {
-    const size_t    pe_name_len     = 1 + strlen(pe->p_name);
-    const uintptr_t pe_name_offset  = 0;
-    const uintptr_t pe_mem_str_offt = pe_name_offset + pe_name_len;
+    const size_t    pe_name_len       = 1 + strlen(pe->p_name);
+    const uintptr_t pe_mem_str_offset = pe_name_len;
     size_t pe_mem_num;
-    size_t offset = NSS_PE_HDRSZ + pe_mem_str_offt;
+    size_t dlen = NSS_PE_HDRSZ + pe_mem_str_offset;
+    union { uint32_t u[NSS_PE_HDRSZ>>2]; uint16_t h[NSS_PE_HDRSZ>>1]; } hdr;
     if (   __builtin_expect(pe_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      <  bufsz,     1)) {
-	pe_mem_num =
-          nss_mcdb_netdb_make_list2str(buf, bufsz, pe->p_aliases, &offset);
+	&& __builtin_expect(dlen        <  bufsz,     1)) {
+	pe_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,pe->p_aliases,&dlen);
 	if (__builtin_expect( pe_mem_num == (size_t)-1, 0))
 	    return 0;
 	if (   __builtin_expect(pe_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect((pe_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
+	    && __builtin_expect((pe_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** pe_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
 	     *  entries at cdb create time rather than in query at runtime) */
 
-	    uint32_to_ascii8uphex((uint32_t)pe->p_proto,    buf+NSS_P_PROTO);
-	    /* store string offsets into buffer */
-	    offset -= NSS_PE_HDRSZ;
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_PE_MEM);
-	    uint16_to_ascii4uphex((uint32_t)pe_mem_str_offt,buf+NSS_PE_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)pe_mem_num,     buf+NSS_PE_MEM_NUM);
+	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
-	    buf += NSS_PE_HDRSZ;
-	    memcpy(buf+pe_name_offset, pe->p_name, pe_name_len);
-	    return NSS_PE_HDRSZ + offset;
+	    hdr.u[NSS_P_PROTO>>2]     = htonl((uint32_t) pe->p_proto);
+	    hdr.h[NSS_PE_MEM>>1]      = htons((uint16_t)(dlen - NSS_PE_HDRSZ));
+	    hdr.h[NSS_PE_MEM_STR>>1]  = htons((uint16_t) pe_mem_str_offset);
+	    hdr.h[NSS_PE_MEM_NUM>>1]  = htons((uint16_t) pe_mem_num);
+	    hdr.h[(NSS_PE_HDRSZ>>1)-1]= 0;/*(clear last 2 bytes (consistency))*/
+	    memcpy(buf,              hdr.u,      NSS_PE_HDRSZ);
+	    memcpy(buf+NSS_PE_HDRSZ, pe->p_name, pe_name_len);
+	    return dlen;
 	}
     }
 
@@ -184,33 +181,32 @@ nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
 				   const void * const restrict entp)
 {   /* (take void *entp arg to avoid need to set _BSD_SOURCE in header) */
     const struct rpcent * const restrict re = entp;
-    const size_t    re_name_len     = 1 + strlen(re->r_name);
-    const uintptr_t re_name_offset  = 0;
-    const uintptr_t re_mem_str_offt = re_name_offset + re_name_len;
+    const size_t    re_name_len       = 1 + strlen(re->r_name);
+    const uintptr_t re_mem_str_offset = re_name_len;
     size_t re_mem_num;
-    size_t offset = NSS_RE_HDRSZ + re_mem_str_offt;
+    size_t dlen = NSS_RE_HDRSZ + re_mem_str_offset;
+    union { uint32_t u[NSS_RE_HDRSZ>>2]; uint16_t h[NSS_RE_HDRSZ>>1]; } hdr;
     if (   __builtin_expect(re_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      <  bufsz,     1)) {
-	re_mem_num =
-          nss_mcdb_netdb_make_list2str(buf, bufsz, re->r_aliases, &offset);
+	&& __builtin_expect(dlen        <  bufsz,     1)) {
+	re_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,re->r_aliases,&dlen);
 	if (__builtin_expect( re_mem_num == (size_t)-1, 0))
 	    return 0;
 	if (   __builtin_expect(re_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect((re_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
+	    && __builtin_expect((re_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** re_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
 	     *  entries at cdb create time rather than in query at runtime) */
 
-	    uint32_to_ascii8uphex((uint32_t)re->r_number,   buf+NSS_R_NUMBER);
-	    /* store string offsets into buffer */
-	    offset -= NSS_RE_HDRSZ;
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_RE_MEM);
-	    uint16_to_ascii4uphex((uint32_t)re_mem_str_offt,buf+NSS_RE_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)re_mem_num,     buf+NSS_RE_MEM_NUM);
+	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
-	    buf += NSS_RE_HDRSZ;
-	    memcpy(buf+re_name_offset, re->r_name, re_name_len);
-	    return NSS_RE_HDRSZ + offset;
+	    hdr.u[NSS_R_NUMBER>>2]    = htonl((uint32_t) re->r_number);
+	    hdr.h[NSS_RE_MEM>>1]      = htons((uint16_t)(dlen - NSS_RE_HDRSZ));
+	    hdr.h[NSS_RE_MEM_STR>>1]  = htons((uint16_t) re_mem_str_offset);
+	    hdr.h[NSS_RE_MEM_NUM>>1]  = htons((uint16_t) re_mem_num);
+	    hdr.h[(NSS_RE_HDRSZ>>1)-1]= 0;/*(clear last 2 bytes (consistency))*/
+	    memcpy(buf,              hdr.u,      NSS_RE_HDRSZ);
+	    memcpy(buf+NSS_RE_HDRSZ, re->r_name, re_name_len);
+	    return dlen;
 	}
     }
 
@@ -223,37 +219,36 @@ size_t
 nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct servent * const restrict se)
 {
-    const size_t    se_name_len     = 1 + strlen(se->s_name);
-    const size_t    se_proto_len    = 1 + strlen(se->s_proto);
-    const uintptr_t se_proto_offset = 0; /*(proto before name for query usage)*/
-    const uintptr_t se_name_offset  = se_proto_offset + se_proto_len;
-    const uintptr_t se_mem_str_offt = se_name_offset  + se_name_len;
-    size_t se_mem_num  = 0;
-    size_t offset = NSS_SE_HDRSZ + se_mem_str_offt;
+    /*(proto is first element instead of name for use by query code)*/
+    const size_t    se_name_len       = 1 + strlen(se->s_name);
+    const size_t    se_proto_len      = 1 + strlen(se->s_proto);
+    const uintptr_t se_name_offset    = se_proto_len;
+    const uintptr_t se_mem_str_offset = se_name_offset + se_name_len;
+    size_t se_mem_num;
+    size_t dlen = NSS_SE_HDRSZ + se_mem_str_offset;
+    union { uint32_t u[NSS_SE_HDRSZ>>2]; uint16_t h[NSS_SE_HDRSZ>>1]; } hdr;
     if (   __builtin_expect(se_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      <  bufsz,     1)) {
-	se_mem_num =
-          nss_mcdb_netdb_make_list2str(buf, bufsz, se->s_aliases, &offset);
+	&& __builtin_expect(dlen        <  bufsz,     1)) {
+	se_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,se->s_aliases,&dlen);
 	if (__builtin_expect( se_mem_num == (size_t)-1, 0))
 	    return 0;
 	if (   __builtin_expect(se_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect((se_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
+	    && __builtin_expect((se_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** se_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
 	     *  entries at cdb create time rather than in query at runtime) */
 
-	    uint32_to_ascii8uphex((uint32_t)se->s_port,     buf+NSS_S_PORT);
-	    /* store string offsets into buffer */
-	    offset -= NSS_SE_HDRSZ;
-	    uint16_to_ascii4uphex((uint32_t)se_name_offset, buf+NSS_S_NAME);
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_SE_MEM);
-	    uint16_to_ascii4uphex((uint32_t)se_mem_str_offt,buf+NSS_SE_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)se_mem_num,     buf+NSS_SE_MEM_NUM);
+	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
-	    buf += NSS_SE_HDRSZ;
+	    hdr.u[NSS_S_PORT>>2]      = htonl((uint32_t) se->s_port);
+	    hdr.h[NSS_S_NAME>>1]      = htons((uint16_t) se_name_offset);
+	    hdr.h[NSS_SE_MEM>>1]      = htons((uint16_t)(dlen - NSS_SE_HDRSZ));
+	    hdr.h[NSS_SE_MEM_STR>>1]  = htons((uint16_t) se_mem_str_offset);
+	    hdr.h[NSS_SE_MEM_NUM>>1]  = htons((uint16_t) se_mem_num);
+	    memcpy(buf,                 hdr.u,       NSS_SE_HDRSZ);
+	    memcpy((buf+=NSS_SE_HDRSZ), se->s_proto, se_proto_len);
 	    memcpy(buf+se_name_offset,  se->s_name,  se_name_len);
-	    memcpy(buf+se_proto_offset, se->s_proto, se_proto_len);
-	    return NSS_SE_HDRSZ + offset;
+	    return dlen;
 	}
     }
 
@@ -311,7 +306,7 @@ nss_mcdb_netdb_make_netent_encode(
 {
     const struct netent * const restrict ne = entp;
     uintptr_t i;
-    char hexstr[16];
+    uint32_t n[2];
 
     w->dlen = nss_mcdb_netdb_make_netent_datastr(w->data, w->datasz, ne);
     if (__builtin_expect( w->dlen == 0, 0))
@@ -336,10 +331,10 @@ nss_mcdb_netdb_make_netent_encode(
     }
 
     w->tagc = 'x';
-    w->klen = sizeof(hexstr);
-    w->key  = hexstr;
-    uint32_to_ascii8uphex((uint32_t)ne->n_net, hexstr);
-    uint32_to_ascii8uphex((uint32_t)ne->n_addrtype, hexstr+8);
+    w->klen = sizeof(n);
+    w->key  = (const char *)n;
+    n[0] = htonl((uint32_t) ne->n_net);
+    n[1] = htonl((uint32_t) ne->n_addrtype);
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
@@ -354,7 +349,7 @@ nss_mcdb_netdb_make_protoent_encode(
 {
     const struct protoent * const restrict pe = entp;
     uintptr_t i;
-    char hexstr[8];
+    const uint32_t n = htonl((uint32_t) pe->p_proto);
 
     w->dlen = nss_mcdb_netdb_make_protoent_datastr(w->data, w->datasz, pe);
     if (__builtin_expect( w->dlen == 0, 0))
@@ -379,9 +374,8 @@ nss_mcdb_netdb_make_protoent_encode(
     }
 
     w->tagc = 'x';
-    w->klen = sizeof(hexstr);
-    w->key  = hexstr;
-    uint32_to_ascii8uphex((uint32_t)pe->p_proto, hexstr);
+    w->klen = sizeof(uint32_t);
+    w->key  = (const char *)&n;
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
@@ -396,7 +390,7 @@ nss_mcdb_netdb_make_rpcent_encode(
 {
     const struct rpcent * const restrict re = entp;
     uintptr_t i;
-    char hexstr[8];
+    const uint32_t n = htonl((uint32_t) re->r_number);
 
     w->dlen = nss_mcdb_netdb_make_rpcent_datastr(w->data, w->datasz, re);
     if (__builtin_expect( w->dlen == 0, 0))
@@ -421,9 +415,8 @@ nss_mcdb_netdb_make_rpcent_encode(
     }
 
     w->tagc = 'x';
-    w->klen = sizeof(hexstr);
-    w->key  = hexstr;
-    uint32_to_ascii8uphex((uint32_t)re->r_number, hexstr);
+    w->klen = sizeof(uint32_t);
+    w->key  = (const char *)&n;
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 
@@ -438,8 +431,7 @@ nss_mcdb_netdb_make_servent_encode(
 {
     const struct servent * const restrict se = entp;
     uintptr_t i;
-    uint32_t u;
-    char hexstr[8];
+    const uint32_t n = htonl((uint32_t) se->s_port);
 
     w->dlen = nss_mcdb_netdb_make_servent_datastr(w->data, w->datasz, se);
     if (__builtin_expect( w->dlen == 0, 0))
@@ -464,10 +456,8 @@ nss_mcdb_netdb_make_servent_encode(
     }
 
     w->tagc = 'x';
-    w->klen = sizeof(hexstr);
-    w->key  = hexstr;
-    u = (uint32_t)ntohs((uint16_t)se->s_port);
-    uint32_to_ascii8uphex(u, hexstr);
+    w->klen = sizeof(uint32_t);
+    w->key  = (const char *)&n;
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
 

@@ -4,13 +4,13 @@
 enum {
   NSS_AE_LOCAL   =  0,
   NSS_AE_MEM_STR =  4,
-  NSS_AE_MEM     =  8,
-  NSS_AE_MEM_NUM = 12,
-  NSS_AE_HDRSZ   = 20
+  NSS_AE_MEM     =  6,
+  NSS_AE_MEM_NUM =  8,
+  NSS_AE_HDRSZ   = 12   /*(must be multiple of 4; round up)*/
 };
 
 enum {
-  NSS_EA_HDRSZ   = 12
+  NSS_EA_HDRSZ   =  6
 };
 
 /* _BSD_SOURCE or _SVID_SOURCE for struct ether_addr on Linux */

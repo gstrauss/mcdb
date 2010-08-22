@@ -178,25 +178,23 @@ nss_mcdb_misc_aliasent_decode(struct mcdb * const restrict m,
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     struct aliasent * const ae = (struct aliasent *)v->vstruct;
     char *buf = v->buf;
-    /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_ae_mem_str=uint16_from_ascii4uphex(dptr+NSS_AE_MEM_STR);
-    const uintptr_t idx_ae_mem    =uint16_from_ascii4uphex(dptr+NSS_AE_MEM);
-    const size_t ae_mem_num       =uint16_from_ascii4uphex(dptr+NSS_AE_MEM_NUM);
-    char ** const restrict ae_mem =   /* align to 8-byte boundary for 64-bit */
-      (char **)(((uintptr_t)(buf+idx_ae_mem+0x7u)) & ~0x7u); /* 8-byte align */
-    ae->alias_members_len = ae_mem_num;
-    ae->alias_members     = ae_mem;
-    ae->alias_local               =uint32_from_ascii8uphex(dptr+NSS_AE_LOCAL);
-    /* populate ae string pointers */
+    size_t ae_mem_num;
+    union { uint32_t u[NSS_AE_HDRSZ>>2]; uint16_t h[NSS_AE_HDRSZ>>1]; } hdr;
+    memcpy(hdr.u, dptr, NSS_AE_HDRSZ);
     ae->alias_name        = buf;
+    ae->alias_local       = (int)ntohl( hdr.u[NSS_AE_LOCAL>>2] );
+    ae->alias_members_len = ae_mem_num =(size_t)ntohs(hdr.h[NSS_AE_MEM_NUM>>1]);
+    ae->alias_members     = /* align to 8-byte boundary for 64-bit */
+      (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_AE_MEM>>1])+0x7u)) & ~0x7u);
     /* fill buf, (char **) ae_mem (allow 8-byte ptrs), and terminate strings.
      * scan for '\0' instead of precalculating array because names should
      * be short and adding an extra 4 chars per name to store size takes
      * more space and might take just as long to parse as scan for '\0'
      * (assume data consistent, ae_mem_num correct) */
-    if (((char *)ae_mem)-buf+(ae_mem_num<<3) <= v->bufsz) {
+    if (((char *)ae->alias_members)-buf+(ae_mem_num<<3) <= v->bufsz) {
+        char ** const restrict ae_mem = ae->alias_members;
         memcpy(buf, dptr+NSS_AE_HDRSZ, mcdb_datalen(m)-NSS_AE_HDRSZ);
-        ae_mem[0] = (buf += idx_ae_mem_str); /* begin of ae_mem strings */
+        ae_mem[0] = (buf += ntohs(hdr.h[NSS_AE_MEM_STR>>1])); /*ae_mem strings*/
         for (size_t i=1; i<ae_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
                 ;
@@ -220,15 +218,8 @@ nss_mcdb_misc_ether_addr_decode(struct mcdb * const restrict m,
     struct ether_addr * const ether_addr = (struct ether_addr *)v->vstruct;
     char * const buf = v->buf;
 
-    if (ether_addr != NULL) {
-        /* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr)*/
-        ether_addr->ether_addr_octet[0] = (uxton(dptr[0]) <<4)| uxton(dptr[1]);
-        ether_addr->ether_addr_octet[1] = (uxton(dptr[2]) <<4)| uxton(dptr[3]);
-        ether_addr->ether_addr_octet[2] = (uxton(dptr[4]) <<4)| uxton(dptr[5]);
-        ether_addr->ether_addr_octet[3] = (uxton(dptr[6]) <<4)| uxton(dptr[7]);
-        ether_addr->ether_addr_octet[4] = (uxton(dptr[8]) <<4)| uxton(dptr[9]);
-        ether_addr->ether_addr_octet[5] = (uxton(dptr[10])<<4)| uxton(dptr[11]);
-    }
+    if (ether_addr != NULL) /* (48-bit ether_addr == 6 bytes == NSS_EA_HDRSZ) */
+	memcpy(&ether_addr->ether_addr_octet[0], dptr, 6);
 
     if (buf != NULL) {
         if (dlen < v->bufsz) {

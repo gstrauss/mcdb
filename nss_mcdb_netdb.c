@@ -14,7 +14,7 @@
 
 #include <netdb.h>
 #include <sys/socket.h>    /* AF_INET */
-#include <arpa/inet.h>     /* inet_pton() */
+#include <arpa/inet.h>     /* inet_pton() ntohl() ntohs() */
 
 /*
  * man hosts         (Internet RFC 952)
@@ -291,18 +291,18 @@ _nss_mcdb_getnetbyaddr_r(const uint32_t net, const int type,
                          int * const restrict errnop,
                          int * const restrict h_errnop)
 {
-    char hexstr[16];
+    uint32_t n[2];
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_netent_decode,
                                       .vstruct = netbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .key     = hexstr,
-                                      .klen    = sizeof(hexstr),
+                                      .key     = (const char *)n,
+                                      .klen    = sizeof(n),
                                       .tagc    = (unsigned char)'x' };
     nss_status_t status;
-    uint32_to_ascii8uphex(net, hexstr);
-    uint32_to_ascii8uphex((uint32_t)type, hexstr+8);
+    n[0] = htonl(net);
+    n[1] = htonl((uint32_t)type);
     status = nss_mcdb_get_generic(NSS_DBTYPE_NETWORKS, &v);
     return (status == NSS_STATUS_SUCCESS)
       ? NSS_STATUS_SUCCESS
@@ -346,16 +346,15 @@ _nss_mcdb_getprotobynumber_r(const int proto,
                              char * const restrict buf, const size_t bufsz,
                              int * const restrict errnop)
 {
-    char hexstr[8];
+    const uint32_t n = htonl((uint32_t) proto);
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_protoent_decode,
                                       .vstruct = protobuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .key     = hexstr,
-                                      .klen    = sizeof(hexstr),
+                                      .key     = (const char *)&n,
+                                      .klen    = sizeof(uint32_t),
                                       .tagc    = (unsigned char)'x' };
-    uint32_to_ascii8uphex((uint32_t)proto, hexstr);
     return nss_mcdb_get_generic(NSS_DBTYPE_PROTOCOLS, &v);
 }
 
@@ -396,16 +395,15 @@ _nss_mcdb_getrpcbynumber_r(const int number,
                            char * const restrict buf, const size_t bufsz,
                            int * const restrict errnop)
 {
-    char hexstr[8];
+    const uint32_t n = htonl((uint32_t) number);
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_rpcent_decode,
                                       .vstruct = rpcbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .key     = hexstr,
-                                      .klen    = sizeof(hexstr),
+                                      .key     = (const char *)&n,
+                                      .klen    = sizeof(uint32_t),
                                       .tagc    = (unsigned char)'x' };
-    uint32_to_ascii8uphex((uint32_t)number, hexstr);
     return nss_mcdb_get_generic(NSS_DBTYPE_RPC, &v);
 }
 
@@ -465,14 +463,14 @@ _nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
                           char * const restrict buf, const size_t bufsz,
                           int * const restrict errnop)
 {
-    char hexstr[8];
+    const uint32_t n = htonl((uint32_t) port);
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_servent_decode,
                                       .vstruct = servbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .key     = hexstr,
-                                      .klen    = sizeof(hexstr),
+                                      .key     = (const char *)&n,
+                                      .klen    = sizeof(uint32_t),
                                       .tagc    = (unsigned char)'x' };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
     if (bufsz > plen) {
@@ -480,7 +478,6 @@ _nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
         *buf = '\0';
         if (plen)
             memcpy(buf, proto, plen+1);
-        uint32_to_ascii8uphex((uint32_t)port, hexstr);
         return nss_mcdb_get_generic(NSS_DBTYPE_SERVICES, &v);
     }
     else {
@@ -516,7 +513,7 @@ nss_mcdb_netdb_gethost_query(const uint32_t type,
         buf[0] = (type              ) >> 24;
         buf[1] = (type & 0x00FF0000u) >> 16;
         buf[2] = (type & 0x0000FF00u) >>  8;
-        buf[3] = (type & 0x000000FFu);
+        buf[3] = (type & 0x000000FFu);  /* network byte order; big-endian */
         status = nss_mcdb_get_generic(NSS_DBTYPE_HOSTS, v);
     }
     else {
@@ -568,8 +565,14 @@ nss_mcdb_netdb_gethost_filladdr(const void * const restrict addr,
 
 /* Deserializing netdb entries shares much similar code -- some duplicated --
  * but each entry differs slightly so that factoring to common routine would
- * result in excess work.  Therefore, common template was copied and modified */
-
+ * result in excess work.  Therefore, common template was copied and modified.
+ *
+ * The fixed format record header is parsed for numerical data and str offsets.
+ * The buf is filled with str data.  For alias string lists, scan for '\0'
+ * instead of precalculating array because names should be short and adding an
+ * extra 2 bytes per name to store size takes more space and might not result
+ * in any gain.
+ */
 
 static nss_status_t
 nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
@@ -578,13 +581,19 @@ nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
     const char * restrict dptr = (char *)mcdb_dataptr(m);
     struct hostent * const he = (struct hostent *)v->vstruct;
     char *buf = v->buf;
+    size_t he_mem_num;
+    size_t he_lst_num;
+    union { uint32_t u[NSS_HE_HDRSZ>>2]; uint16_t h[NSS_HE_HDRSZ>>1]; } hdr;
     const uint32_t type = (buf[0]<<24) | (buf[1]<<16) | (buf[2]<<8) | buf[3];
 
     /* match type (e.g. AF_INET, AF_INET6), if not zero (AF_UNSPEC) */
     if (type != 0) {
-        while (type != uint32_from_ascii8uphex(dptr+NSS_H_ADDRTYPE)) {
-            if (mcdb_findtagnext(m, v->key, v->klen, v->tagc))
+        const char *atyp = dptr+NSS_H_ADDRTYPE; /*netwk byte order; big-endian*/
+        while (type != ((atyp[0]<<24)|(atyp[1]<<16)|(atyp[2]<<8)|atyp[3])) {
+            if (mcdb_findtagnext(m, v->key, v->klen, v->tagc)) {
                 dptr = (char *)mcdb_dataptr(m);
+                atyp = dptr+NSS_H_ADDRTYPE;
+            }
             else {
                 *v->errnop = errno = ENOENT;
                 return NSS_STATUS_NOTFOUND;
@@ -592,36 +601,26 @@ nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
         }
     }
 
-    /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_he_mem_str=uint16_from_ascii4uphex(dptr+NSS_HE_MEM_STR);
-    const uintptr_t idx_he_lst_str=uint16_from_ascii4uphex(dptr+NSS_HE_LST_STR);
-    const uintptr_t idx_he_mem    =uint16_from_ascii4uphex(dptr+NSS_HE_MEM);
-    const size_t he_mem_num       =uint16_from_ascii4uphex(dptr+NSS_HE_MEM_NUM);
-    const size_t he_lst_num       =uint16_from_ascii4uphex(dptr+NSS_HE_LST_NUM);
-    char ** const restrict he_mem =   /* align to 8-byte boundary for 64-bit */
-      (char **)(((uintptr_t)(buf+idx_he_mem+0x7u)) & ~0x7u); /* 8-byte align */
-    char ** const restrict he_lst = he_mem + he_mem_num + 1; /* 8-byte align */
-    he->h_aliases  = he_mem;
-    he->h_addr_list= he_lst;
-    he->h_addrtype = (int)         uint32_from_ascii8uphex(dptr+NSS_H_ADDRTYPE);
-    he->h_length   = (int)         uint32_from_ascii8uphex(dptr+NSS_H_LENGTH);
-    /* populate he string pointers */
+    memcpy(hdr.u, dptr, NSS_HE_HDRSZ);  /*(copy header for num data alignment)*/
+    he->h_addrtype = (int)    ntohl( hdr.u[NSS_H_ADDRTYPE>>2] );
+    he->h_length   = (int)    ntohl( hdr.u[NSS_H_LENGTH>>2] );
+    he_mem_num     = (size_t) ntohs( hdr.h[NSS_HE_MEM_NUM>>1] );
+    he_lst_num     = (size_t) ntohs( hdr.h[NSS_HE_LST_NUM>>1] );
     he->h_name     = buf;
-    /* fill buf, (char **) he_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for '\0' instead of precalculating array because names should
-     * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for '\0'
-     * (assume data consistent, he_mem_num correct) */
-    if (((char *)he_mem)-buf+((he_mem_num+1+he_lst_num+1)<<3) <= v->bufsz) {
+    he->h_aliases  = /* align to 8-byte boundary for 64-bit */
+      (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_HE_MEM>>1])+0x7u)) & ~0x7u);
+    if (((char *)he->h_aliases)-buf+((he_mem_num+1+he_lst_num+1)<<3)<=v->bufsz){
+        char ** const restrict he_mem = he->h_aliases;    /* 8-byte aligned */
+        char ** const restrict he_lst = he->h_addr_list = he_mem+he_mem_num+1;
         memcpy(buf, dptr+NSS_HE_HDRSZ, mcdb_datalen(m)-NSS_HE_HDRSZ);
-        he_mem[0] = (buf += idx_he_mem_str); /* begin of he_mem strings */
+        he_mem[0] = (buf += ntohs(hdr.h[NSS_HE_MEM_STR>>1])); /*he_mem strings*/
         for (size_t i=1; i<he_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
                 ;
             he_mem[i] = ++buf;
         }
         he_mem[he_mem_num] = NULL;         /* terminate (char **) he_mem array*/
-        he_lst[0] = buf = v->buf+idx_he_lst_str; /*begin of he_lst strings*/
+        he_lst[0] = buf = v->buf+ntohs(hdr.h[NSS_HE_LST_STR>>1]);/*he_lst str*/
         for (size_t i=1; i<he_lst_num; ++i) {/*(i=1; assigned first str above)*/
             he_lst[i] = (buf += he->h_length);
         }
@@ -641,26 +640,20 @@ nss_mcdb_netdb_netent_decode(struct mcdb * const restrict m,
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     struct netent * const ne = (struct netent *)v->vstruct;
-    char *buf = v->buf;
-    /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_ne_mem_str=uint16_from_ascii4uphex(dptr+NSS_NE_MEM_STR);
-    const uintptr_t idx_ne_mem    =uint16_from_ascii4uphex(dptr+NSS_NE_MEM);
-    const size_t ne_mem_num       =uint16_from_ascii4uphex(dptr+NSS_NE_MEM_NUM);
-    char ** const restrict ne_mem =   /* align to 8-byte boundary for 64-bit */
-      (char **)(((uintptr_t)(buf+idx_ne_mem+0x7u)) & ~0x7u); /* 8-byte align */
-    ne->n_aliases = ne_mem;
-    ne->n_addrtype= (int)          uint32_from_ascii8uphex(dptr+NSS_N_ADDRTYPE);
-    ne->n_net     =                uint32_from_ascii8uphex(dptr+NSS_N_NET);
-    /* populate ne string pointers */
-    ne->n_name    = buf;
-    /* fill buf, (char **) ne_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for '\0' instead of precalculating array because names should
-     * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for '\0'
-     * (assume data consistent, ne_mem_num correct) */
-    if (((char *)ne_mem)-buf+((ne_mem_num+1)<<3) <= v->bufsz) {
+    char *buf;
+    size_t ne_mem_num;
+    union { uint32_t u[NSS_NE_HDRSZ>>2]; uint16_t h[NSS_NE_HDRSZ>>1]; } hdr;
+    memcpy(hdr.u, dptr, NSS_NE_HDRSZ);  /*(copy header for num data alignment)*/
+    ne->n_addrtype = (int)    ntohl( hdr.u[NSS_N_ADDRTYPE>>2] );
+    ne->n_net      =          ntohl( hdr.u[NSS_N_NET>>2] );
+    ne_mem_num     = (size_t) ntohs( hdr.h[NSS_NE_MEM_NUM>>1] );
+    ne->n_name     = buf = v->buf;
+    ne->n_aliases  = /* align to 8-byte boundary for 64-bit */
+      (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_NE_MEM>>1])+0x7u)) & ~0x7u);
+    if (((char *)ne->n_aliases)-buf+((ne_mem_num+1)<<3) <= v->bufsz) {
+        char ** const restrict ne_mem = ne->n_aliases;
         memcpy(buf, dptr+NSS_NE_HDRSZ, mcdb_datalen(m)-NSS_NE_HDRSZ);
-        ne_mem[0] = (buf += idx_ne_mem_str); /* begin of ne_mem strings */
+        ne_mem[0] = (buf += ntohs(hdr.h[NSS_NE_MEM_STR>>1])); /*ne_mem strings*/
         for (size_t i=1; i<ne_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
                 ;
@@ -682,25 +675,19 @@ nss_mcdb_netdb_protoent_decode(struct mcdb * const restrict m,
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     struct protoent * const pe = (struct protoent *)v->vstruct;
-    char *buf = v->buf;
-    /* parse fixed format pecord header to get offsets into strings */
-    const uintptr_t idx_pe_mem_str=uint16_from_ascii4uphex(dptr+NSS_PE_MEM_STR);
-    const uintptr_t idx_pe_mem    =uint16_from_ascii4uphex(dptr+NSS_PE_MEM);
-    const size_t pe_mem_num       =uint16_from_ascii4uphex(dptr+NSS_PE_MEM_NUM);
-    char ** const restrict pe_mem =   /* align to 8-byte boundary for 64-bit */
-      (char **)(((uintptr_t)(buf+idx_pe_mem+0x7u)) & ~0x7u); /* 8-byte align */
-    pe->p_aliases = pe_mem;
-    pe->p_proto   =                uint32_from_ascii8uphex(dptr+NSS_P_PROTO);
-    /* populate pe string pointers */
-    pe->p_name    = buf;
-    /* fill buf, (char **) pe_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for '\0' instead of precalculating array because names should
-     * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for '\0'
-     * (assume data consistent, pe_mem_num correct) */
-    if (((char *)pe_mem)-buf+((pe_mem_num+1)<<3) <= v->bufsz) {
+    char *buf;
+    size_t pe_mem_num;
+    union { uint32_t u[NSS_PE_HDRSZ>>2]; uint16_t h[NSS_PE_HDRSZ>>1]; } hdr;
+    memcpy(hdr.u, dptr, NSS_PE_HDRSZ);  /*(copy header for num data alignment)*/
+    pe->p_proto   =          ntohl( hdr.u[NSS_P_PROTO>>2] );
+    pe_mem_num    = (size_t) ntohs( hdr.h[NSS_PE_MEM_NUM>>1] );
+    pe->p_name    = buf = v->buf;
+    pe->p_aliases = /* align to 8-byte boundary for 64-bit */
+      (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_PE_MEM>>1])+0x7u)) & ~0x7u);
+    if (((char *)pe->p_aliases)-buf+((pe_mem_num+1)<<3) <= v->bufsz) {
+        char ** const restrict pe_mem = pe->p_aliases;
         memcpy(buf, dptr+NSS_PE_HDRSZ, mcdb_datalen(m)-NSS_PE_HDRSZ);
-        pe_mem[0] = (buf += idx_pe_mem_str); /* begin of pe_mem strings */
+        pe_mem[0] = (buf += ntohs(hdr.h[NSS_PE_MEM_STR>>1])); /*pe_mem strings*/
         for (size_t i=1; i<pe_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
                 ;
@@ -722,25 +709,19 @@ nss_mcdb_netdb_rpcent_decode(struct mcdb * const restrict m,
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
     struct rpcent * const re = (struct rpcent *)v->vstruct;
-    char *buf = v->buf;
-    /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_re_mem_str=uint16_from_ascii4uphex(dptr+NSS_RE_MEM_STR);
-    const uintptr_t idx_re_mem    =uint16_from_ascii4uphex(dptr+NSS_RE_MEM);
-    const size_t re_mem_num       =uint16_from_ascii4uphex(dptr+NSS_RE_MEM_NUM);
-    char ** const restrict re_mem =   /* align to 8-byte boundary for 64-bit */
-      (char **)(((uintptr_t)(buf+idx_re_mem+0x7u)) & ~0x7u); /* 8-byte align */
-    re->r_aliases = re_mem;
-    re->r_number  =                uint32_from_ascii8uphex(dptr+NSS_R_NUMBER);
-    /* populate re string pointers */
-    re->r_name    = buf;
-    /* fill buf, (char **) re_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for '\0' instead of precalculating array because names should
-     * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for '\0'
-     * (assume data consistent, re_mem_num correct) */
-    if (((char *)re_mem)-buf+((re_mem_num+1)<<3) <= v->bufsz) {
+    char *buf;
+    size_t re_mem_num;
+    union { uint32_t u[NSS_RE_HDRSZ>>2]; uint16_t h[NSS_RE_HDRSZ>>1]; } hdr;
+    memcpy(hdr.u, dptr, NSS_RE_HDRSZ);  /*(copy header for num data alignment)*/
+    re->r_number  =          ntohl( hdr.u[NSS_R_NUMBER>>2] );
+    re_mem_num    = (size_t) ntohs( hdr.h[NSS_RE_MEM_NUM>>1] );
+    re->r_name    = buf = v->buf;
+    re->r_aliases = /* align to 8-byte boundary for 64-bit */
+      (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_RE_MEM>>1])+0x7u)) & ~0x7u);
+    if (((char *)re->r_aliases)-buf+((re_mem_num+1)<<3) <= v->bufsz) {
+        char ** const restrict re_mem = re->r_aliases;
         memcpy(buf, dptr+NSS_RE_HDRSZ, mcdb_datalen(m)-NSS_RE_HDRSZ);
-        re_mem[0] = (buf += idx_re_mem_str); /* begin of re_mem strings */
+        re_mem[0] = (buf += ntohs(hdr.h[NSS_RE_MEM_STR>>1])); /*re_mem strings*/
         for (size_t i=1; i<re_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
                 ;
@@ -763,13 +744,15 @@ nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
     const char * restrict dptr = (char *)mcdb_dataptr(m);
     struct servent * const se = (struct servent *)v->vstruct;
     char *buf = v->buf; /* contains proto string to match (if not "") */
+    size_t se_mem_num;
+    union { uint32_t u[NSS_SE_HDRSZ>>2]; uint16_t h[NSS_SE_HDRSZ>>1]; } hdr;
 
     /* match proto string (stored right after header), if not empty string */
     /* (future: could possibly be further optimized for "tcp" and "udp"
      * (future: might add unique tag char db ents for tcp/udp by name/number) */
     if (*buf != '\0') {
         const size_t protolen = 1 + strlen(buf);
-        while (dptr[NSS_SE_HDRSZ] != *buf  /* e.g. "tcp" vs "udp" */
+        while (dptr[NSS_SE_HDRSZ] != *buf  /* s_proto  e.g. "tcp" vs "udp" */
                || memcmp(dptr+NSS_SE_HDRSZ, buf, protolen) != 0) {
             if (mcdb_findtagnext(m, v->key, v->klen, v->tagc))
                 dptr = (char *)mcdb_dataptr(m);
@@ -780,26 +763,17 @@ nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
         }
     }
 
-    /* parse fixed format record header to get offsets into strings */
-    const uintptr_t idx_s_name    =uint16_from_ascii4uphex(dptr+NSS_S_NAME);
-    const uintptr_t idx_se_mem_str=uint16_from_ascii4uphex(dptr+NSS_SE_MEM_STR);
-    const uintptr_t idx_se_mem    =uint16_from_ascii4uphex(dptr+NSS_SE_MEM);
-    const size_t se_mem_num       =uint16_from_ascii4uphex(dptr+NSS_SE_MEM_NUM);
-    char ** const restrict se_mem =   /* align to 8-byte boundary for 64-bit */
-      (char **)(((uintptr_t)(buf+idx_se_mem+0x7u)) & ~0x7u); /* 8-byte align */
-    se->s_aliases = se_mem;
-    se->s_port    =                uint32_from_ascii8uphex(dptr+NSS_S_PORT);
-    /* populate se string pointers */
+    memcpy(hdr.u, dptr, NSS_SE_HDRSZ);  /*(copy header for num data alignment)*/
+    se->s_port    =          ntohl( hdr.u[NSS_S_PORT>>2] );
+    se_mem_num    = (size_t) ntohs( hdr.h[NSS_SE_MEM_NUM>>1] );
     se->s_proto   = buf;
-    se->s_name    = buf+idx_s_name;
-    /* fill buf, (char **) se_mem (allow 8-byte ptrs), and terminate strings.
-     * scan for '\0' instead of precalculating array because names should
-     * be short and adding an extra 4 chars per name to store size takes
-     * more space and might take just as long to parse as scan for '\0'
-     * (assume data consistent, se_mem_num correct) */
-    if (((char *)se_mem)-buf+((se_mem_num+1)<<3) <= v->bufsz) {
+    se->s_name    = buf + ntohs(hdr.h[NSS_S_NAME>>1]);
+    se->s_aliases = /* align to 8-byte boundary for 64-bit */
+      (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_SE_MEM>>1])+0x7u)) & ~0x7u);
+    if (((char *)se->s_aliases)-buf+((se_mem_num+1)<<3) <= v->bufsz) {
+        char ** const restrict se_mem = se->s_aliases;
         memcpy(buf, dptr+NSS_SE_HDRSZ, mcdb_datalen(m)-NSS_SE_HDRSZ);
-        se_mem[0] = (buf += idx_se_mem_str); /* begin of se_mem strings */
+        se_mem[0] = (buf += ntohs(hdr.h[NSS_SE_MEM_STR>>1])); /*se_mem strings*/
         for (size_t i=1; i<se_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
                 ;

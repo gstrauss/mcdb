@@ -11,50 +11,50 @@
 
 enum {
   NSS_PW_PASSWD  =  0,
-  NSS_PW_GECOS   =  4,
-  NSS_PW_DIR     =  8,
-  NSS_PW_SHELL   = 12,
-  NSS_PW_UID     = 16,
-  NSS_PW_GID     = 24,
+  NSS_PW_GECOS   =  2,
+  NSS_PW_DIR     =  4,
+  NSS_PW_SHELL   =  6,
+  NSS_PW_UID     =  8,
+  NSS_PW_GID     = 12,
  #if defined(__sun)
-  NSS_PW_AGE     = 32,
-  NSS_PW_COMMENT = 36,
-  NSS_PW_HDRSZ   = 40
+  NSS_PW_AGE     = 16,
+  NSS_PW_COMMENT = 18,
+  NSS_PW_HDRSZ   = 20   /*(must be multiple of 4)*/
  #elif defined(__FreeBSD__)
-  NSS_PW_CHANGE  = 32,
-  NSS_PW_EXPIRE  = 48,
-  NSS_PW_FIELDS  = 64,
-  NSS_PW_CLASS   = 72,
-  NSS_PW_HDRSZ   = 76
+  NSS_PW_CHANGE  = 16,
+  NSS_PW_EXPIRE  = 24,
+  NSS_PW_FIELDS  = 32,
+  NSS_PW_CLASS   = 36,
+  NSS_PW_HDRSZ   = 40   /*(must be multiple of 4; round up)*/
  #else
-  NSS_PW_HDRSZ   = 32
+  NSS_PW_HDRSZ   = 16   /*(must be multiple of 4)*/
  #endif
 };
 
 enum {
   NSS_GR_PASSWD  =  0,
-  NSS_GR_MEM_STR =  4,
-  NSS_GR_MEM     =  8,
-  NSS_GR_MEM_NUM = 12,
-  NSS_GR_GID     = 16,
-  NSS_GR_HDRSZ   = 24
+  NSS_GR_MEM_STR =  2,
+  NSS_GR_MEM     =  4,
+  NSS_GR_MEM_NUM =  6,
+  NSS_GR_GID     =  8,
+  NSS_GR_HDRSZ   = 12   /*(must be multiple of 4)*/
 };
 
 enum {
   NSS_GL_NGROUPS =  0,
-  NSS_GL_HDRSZ   =  8
+  NSS_GL_HDRSZ   =  4   /*(must be multiple of 4)*/
 };
 
 enum {
   NSS_SP_LSTCHG  =  0,
-  NSS_SP_MIN     =  8,
-  NSS_SP_MAX     = 16,
-  NSS_SP_WARN    = 24,
-  NSS_SP_INACT   = 32,
-  NSS_SP_EXPIRE  = 40,
-  NSS_SP_FLAG    = 48,
-  NSS_SP_PWDP    = 56,
-  NSS_SP_HDRSZ   = 60
+  NSS_SP_MIN     =  4,
+  NSS_SP_MAX     =  8,
+  NSS_SP_WARN    = 12,
+  NSS_SP_INACT   = 16,
+  NSS_SP_EXPIRE  = 20,
+  NSS_SP_FLAG    = 24,
+  NSS_SP_PWDP    = 28,
+  NSS_SP_HDRSZ   = 32   /*(must be multiple of 4; round up)*/
 };
 
 /* ngroups_max reasonable value used in sizing some data structures

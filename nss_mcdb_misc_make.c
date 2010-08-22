@@ -13,24 +13,25 @@
 #include <string.h>
 #include <aliases.h>
 #include <netinet/ether.h>
+#include <arpa/inet.h>  /* htonl(), htons() */
 
 size_t
 nss_mcdb_misc_make_aliasent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct aliasent * const restrict ae)
 {
-    const size_t    ae_name_len     = 1 + strlen(ae->alias_name);
-    const uintptr_t ae_name_offset  = 0;
-    const uintptr_t ae_mem_str_offt = ae_name_offset + ae_name_len;
-    char ** restrict ae_mem         = ae->alias_members;
+    const size_t    ae_name_len       = 1 + strlen(ae->alias_name);
+    const uintptr_t ae_mem_str_offset = ae_name_len;
+    char ** restrict ae_mem           = ae->alias_members;
     size_t len;
     size_t ae_mem_num = ae->alias_members_len;
-    size_t offset = NSS_AE_HDRSZ + ae_mem_str_offt;
+    size_t dlen = NSS_AE_HDRSZ + ae_mem_str_offset;
+    union { uint32_t u[NSS_AE_HDRSZ>>2]; uint16_t h[NSS_AE_HDRSZ>>1]; } hdr;
     if (   __builtin_expect(ae_name_len <= USHRT_MAX, 1)
-	&& __builtin_expect(offset      <  bufsz,     1)) {
+	&& __builtin_expect(dlen        <  bufsz,     1)) {
 	while (ae_mem_num--
-	       && (__builtin_expect((len=1+strlen(*ae_mem))<=bufsz-offset, 1))){
-	    memcpy(buf+offset, *ae_mem, len);
-	    offset += len;
+	       && (__builtin_expect((len=1+strlen(*ae_mem))<=bufsz-dlen, 1))){
+	    memcpy(buf+dlen, *ae_mem, len);
+	    dlen += len;
 	    ++ae_mem;
 	}
 	if (ae_mem_num != (size_t)-1) {
@@ -39,21 +40,21 @@ nss_mcdb_misc_make_aliasent_datastr(char * restrict buf, const size_t bufsz,
 	}
 	ae_mem_num = ae->alias_members_len;
 	if (   __builtin_expect(ae_mem_num <= USHRT_MAX, 1)
-	    && __builtin_expect((ae_mem_num<<3)+8u+7u <= bufsz-offset, 1)) {
+	    && __builtin_expect((ae_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** ae_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
 	     *  entries at cdb create time rather than in query at runtime) */
 
-	    uint32_to_ascii8uphex((uint32_t)ae->alias_local,buf+NSS_AE_LOCAL);
-	    /* store string offsets into buffer */
-	    offset -= NSS_AE_HDRSZ;
-	    uint16_to_ascii4uphex((uint32_t)offset,         buf+NSS_AE_MEM);
-	    uint16_to_ascii4uphex((uint32_t)ae_mem_str_offt,buf+NSS_AE_MEM_STR);
-	    uint16_to_ascii4uphex((uint32_t)ae_mem_num,     buf+NSS_AE_MEM_NUM);
+	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
-	    buf += NSS_AE_HDRSZ;
-	    memcpy(buf+ae_name_offset, ae->alias_name, ae_name_len);
-	    return NSS_AE_HDRSZ + offset - 1; /* subtract final '\0' */
+	    hdr.u[NSS_AE_LOCAL>>2]    = htonl((uint32_t) ae->alias_local);
+	    hdr.h[NSS_AE_MEM>>1]      = htons((uint16_t) dlen - NSS_AE_HDRSZ);
+	    hdr.h[NSS_AE_MEM_STR>>1]  = htons((uint16_t) ae_mem_str_offset);
+	    hdr.h[NSS_AE_MEM_NUM>>1]  = htons((uint16_t) ae_mem_num);
+	    hdr.h[(NSS_AE_HDRSZ>>1)-1]= 0;/*(clear last 2 bytes (consistency))*/
+	    memcpy(buf,              hdr.u,          NSS_AE_HDRSZ);
+	    memcpy(buf+NSS_AE_HDRSZ, ae->alias_name, ae_name_len);
+	    return dlen - 1; /* subtract final '\0' */
 	}
     }
 
@@ -69,17 +70,10 @@ nss_mcdb_misc_make_ether_addr_datastr(char * restrict buf, const size_t bufsz,
 {   /* (take void *entp arg to avoid need to set _BSD_SOURCE in header) */
     const struct ether_addr * const restrict ea = entp;
     const size_t ea_name_len = 1 + strlen(hostname);
-    uint32_t u[2];
     if (__builtin_expect(NSS_EA_HDRSZ + ea_name_len <= bufsz, 1)) {
-
-	/* (12 hex chars, each encoding (1) 4-bit nibble == 48-bit ether_addr)*/
-	/* (copy for alignment) */
-	memcpy(u, &ea->ether_addr_octet[0], 4);
-	u[1] = (ea->ether_addr_octet[4]<<8) | ea->ether_addr_octet[5];
-	uint32_to_ascii8uphex(u[0], buf);
-	uint16_to_ascii4uphex(u[1], buf+8);
-
+	/* (48-bit ether_addr == 6 bytes == NSS_EA_HDRSZ) */
 	/* copy strings into buffer, including string terminating '\0' */
+	memcpy(buf, &ea->ether_addr_octet[0], 6);
 	memcpy(buf+NSS_EA_HDRSZ, hostname, ea_name_len);
 	return NSS_EA_HDRSZ + ea_name_len - 1; /* subtract final '\0' */
     }
