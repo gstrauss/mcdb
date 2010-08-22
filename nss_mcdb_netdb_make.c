@@ -240,7 +240,7 @@ nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
-	    hdr.u[NSS_S_PORT>>2]      = htonl((uint32_t) se->s_port);
+	    hdr.u[NSS_S_PORT>>2]      = (uint32_t) se->s_port;/*net byte order*/
 	    hdr.h[NSS_S_NAME>>1]      = htons((uint16_t) se_name_offset);
 	    hdr.h[NSS_SE_MEM>>1]      = htons((uint16_t)(dlen - NSS_SE_HDRSZ));
 	    hdr.h[NSS_SE_MEM_STR>>1]  = htons((uint16_t) se_mem_str_offset);
@@ -431,7 +431,7 @@ nss_mcdb_netdb_make_servent_encode(
 {
     const struct servent * const restrict se = entp;
     uintptr_t i;
-    const uint32_t n = htonl((uint32_t) se->s_port);
+    const uint32_t n = (uint32_t) se->s_port;/*(already in network btye order)*/
 
     w->dlen = nss_mcdb_netdb_make_servent_datastr(w->data, w->datasz, se);
     if (__builtin_expect( w->dlen == 0, 0))
@@ -861,7 +861,7 @@ nss_mcdb_netdb_make_services_parse(
         n = strtol(b, &e, 10);
         if (*e != '/' || n < 0 || n == LONG_MAX || n >= INT_MAX)
             return false;               /* error: invalid number */
-        se.s_port = (int)htons((uint16_t)n); /* port short network byte order */
+        se.s_port = (int)htonl((uint32_t)n); /* store in network byte order */
         if (e+1 == p)
             return false;               /* error: empty proto string */
         se.s_proto = e+1;

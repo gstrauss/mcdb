@@ -463,14 +463,14 @@ _nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
                           char * const restrict buf, const size_t bufsz,
                           int * const restrict errnop)
 {
-    const uint32_t n = htonl((uint32_t) port);
+    /*(port argument is given in network byte order)*/
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_servent_decode,
                                       .vstruct = servbuf,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .key     = (const char *)&n,
-                                      .klen    = sizeof(uint32_t),
+                                      .key     = (const char *)&port,
+                                      .klen    = sizeof(int),
                                       .tagc    = (unsigned char)'x' };
     const size_t plen = proto != NULL ? strlen(proto) : 0;
     if (bufsz > plen) {
@@ -764,7 +764,7 @@ nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
     }
 
     memcpy(hdr.u, dptr, NSS_SE_HDRSZ);  /*(copy header for num data alignment)*/
-    se->s_port    =          ntohl( hdr.u[NSS_S_PORT>>2] );
+    se->s_port    =                 hdr.u[NSS_S_PORT>>2]; /*network byte order*/
     se_mem_num    = (size_t) ntohs( hdr.h[NSS_SE_MEM_NUM>>1] );
     se->s_proto   = buf;
     se->s_name    = buf + ntohs(hdr.h[NSS_S_NAME>>1]);

@@ -287,13 +287,6 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
 }
 
 
-/* Consider: for last few ounces of performance -- at the cost of making it
- * difficult for human to read record dumped from database with mcdb tools --
- * store numbers in big-endian byte-order, instead of converting to ASCII hex
- * and back.  (Would need to copy hdr to aligned buf before casting to number.)
- */
-
-
 static nss_status_t
 nss_mcdb_acct_passwd_decode(struct mcdb * const restrict m,
                             const struct nss_mcdb_vinfo * restrict v)
