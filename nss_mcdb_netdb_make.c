@@ -858,10 +858,10 @@ nss_mcdb_netdb_make_services_parse(
         if ((c = *p) == '\0' || *b == '#' || *b == '\n')/* error: invalid line*/
             return false;
         *p = '\0';
-        n = strtol(b, &e, 10);
-        if (*e != '/' || n < 0 || n == LONG_MAX || n >= INT_MAX)
+        n = strtol(b, &e, 10);          /* <netinet/in.h> in_port_t uint16_t */
+        if (*e != '/' || n < 0 || n == LONG_MAX || n > USHRT_MAX)
             return false;               /* error: invalid number */
-        se.s_port = (int)htonl((uint32_t)n); /* store in network byte order */
+        se.s_port = (int)htons((uint16_t)n); /* store in network byte order */
         if (e+1 == p)
             return false;               /* error: empty proto string */
         se.s_proto = e+1;

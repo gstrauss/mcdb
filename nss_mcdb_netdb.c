@@ -463,7 +463,7 @@ _nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
                           char * const restrict buf, const size_t bufsz,
                           int * const restrict errnop)
 {
-    /*(port argument is given in network byte order)*/
+    /*(port argument is given in network byte order (e.g. via htons()))*/
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_netdb_servent_decode,
                                       .vstruct = servbuf,
                                       .buf     = buf,

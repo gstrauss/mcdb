@@ -259,8 +259,8 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
                  const char * const fname,
                  void * (*fn_malloc)(size_t), void (*fn_free)(void *))
 {
-    const size_t flen = strlen(fname);
     char *fbuf;
+    size_t flen;
 
     if (fn_malloc == NULL)
         return NULL;
@@ -271,6 +271,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
     map->fn_malloc = fn_malloc;
     map->fn_free   = fn_free;
     map->dfd       = -1;
+    flen           = strlen(fname);
 
   #if defined(__linux) || defined(__sun)
     if (dname != NULL) {
