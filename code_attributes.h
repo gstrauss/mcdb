@@ -96,6 +96,15 @@
 #endif
 
 #if defined(__GNUC__) && __GNUC_PREREQ(4,3)
+#ifndef __attribute_hot__
+#define __attribute_hot__  __attribute__((hot))
+#endif
+#endif
+#ifndef __attribute_hot__
+#define __attribute_hot__
+#endif
+
+#if defined(__GNUC__) && __GNUC_PREREQ(4,3)
 #ifndef __attribute_cold__
 #define __attribute_cold__  __attribute__((cold))
 #endif
