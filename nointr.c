@@ -35,8 +35,8 @@ extern inline
 int nointr_close(int);
 int nointr_close(int);
 extern inline
-int nointr_ftruncate(int, size_t);
-int nointr_ftruncate(int, size_t);
+int nointr_ftruncate(int, off_t);
+int nointr_ftruncate(int, off_t);
 extern inline
 ssize_t nointr_write(int, const char * restrict, size_t);
 ssize_t nointr_write(int, const char * restrict, size_t);

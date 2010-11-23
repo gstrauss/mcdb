@@ -18,7 +18,10 @@ main(int argc,char **argv)
     struct mcdb_make m;
     unsigned long loop = argc > 1 ? strtoul(argv[1], NULL, 10) : 0;
     const int fd = argc > 2 ? nointr_open(argv[2], O_RDWR|O_CREAT, 0666) : -1;
-    char key[4];
+    char buf[4];
+    /*(avoid gcc warning using key with uint32_strpack_bigendian_aligned_macro:
+     * dereferencing type-punned pointer will break strict-aliasing rules)*/
+    char * const key = buf;
 
     if (mcdb_make_start(&m,fd,malloc,free) == -1)
         return mcdb_error(MCDB_ERROR_WRITE, "testzero");

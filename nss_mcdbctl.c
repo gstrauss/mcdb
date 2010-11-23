@@ -14,6 +14,7 @@
 
 #include <sys/stat.h>  /* fchmod(), umask() */
 #include <fcntl.h>     /* open() */
+#include <limits.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>    /* malloc() free() mkstemp() */

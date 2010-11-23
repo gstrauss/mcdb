@@ -11,6 +11,7 @@
 #include "code_attributes.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <string.h>
 #include <stdlib.h>     /* strtol() */
 #include <netdb.h>
