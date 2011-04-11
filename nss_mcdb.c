@@ -120,7 +120,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
 
     if (pthread_mutex_lock(&_nss_mcdb_global_mutex) != 0)
         return false;
-    if (_nss_mcdb_mmap[dbtype] != 0) {
+    if (__builtin_expect( _nss_mcdb_mmap[dbtype] != 0, false)) {
         /* init'ed by another thread while waiting for mutex */
         pthread_mutex_unlock(&_nss_mcdb_global_mutex);
         return true;
@@ -266,8 +266,8 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
         return NSS_STATUS_UNAVAIL;
     }
 
-    if (  mcdb_findtagstart(&m, v->key, v->klen, v->tagc)
-        && mcdb_findtagnext(&m, v->key, v->klen, v->tagc)  )
+    if (  __builtin_expect( mcdb_findtagstart(&m, v->key, v->klen, v->tagc), 1)
+        && __builtin_expect( mcdb_findtagnext(&m, v->key, v->klen, v->tagc), 1))
         status = v->decode(&m, v);
     else {
         status = NSS_STATUS_NOTFOUND;
