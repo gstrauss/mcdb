@@ -42,7 +42,7 @@ mcdb_error (const int rv, const char * const restrict prefix)
 
       case MCDB_ERROR_USAGE:
         fprintf(stderr, "%s: %s", prefix, mcdb_usage);
-        return 100;
+        return 101;
 
       default:
         fprintf(stderr, "%s: (unknown error)\n", prefix);
