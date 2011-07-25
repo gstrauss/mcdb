@@ -12,8 +12,8 @@
 #include "nss_mcdb_netdb_make.h"
 #include "nointr.h"
 
-#include <sys/stat.h>  /* fchmod(), umask() */
-#include <fcntl.h>     /* open() */
+#include <sys/types.h>
+#include <sys/stat.h>  /* stat(), fchmod(), umask() */
 #include <limits.h>
 #include <assert.h>
 #include <stdbool.h>

@@ -1,6 +1,5 @@
 #include "nss_mcdb.h"
 #include "mcdb.h"
-#include "nointr.h"
 #include "uint32.h"
 #include "code_attributes.h"
 
