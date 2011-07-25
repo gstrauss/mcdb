@@ -25,12 +25,12 @@
  * - mmap page alignment requirements and use of address space limits const db
  *   max size when created by 32-bit process.  Sizes approaching 4 GB may fail.
  * - arbitrary limit of each key or data set to (INT_MAX - 8 bytes; almost 2 GB)
- *   (djb cdb doc states there is limit besides cdb fitting into 4 GB)
+ *   (djb cdb doc states there is no limit besides cdb fitting into 4 GB)
  *   (writev() on some platforms in 32-bit exe might also have 2 GB limit)
  * - djb cdb tools work on input stream; mcdbctl operates on file
  *   The ability to work on an input stream forced certain design choices that
- *   might not be relevant to working on an mmap'd file, but mcdb preserves the
- *   same format for compatibility.
+ *   might not be relevant to working on an mmap'd file, but mcdb uses similar
+ *   layout to cdb in format specification.
  *
  * Incompatibilities with djb cdb
  * - padding added at the end of key,value data to 8-byte align hash tables
@@ -45,7 +45,7 @@
 #define MCDB_H
 
 #include <stdbool.h>  /* bool     */
-#include <stdint.h>   /* uint32_t */
+#include <stdint.h>   /* uint32_t, uint64_t */
 #include <unistd.h>   /* size_t   */
 #include <sys/time.h> /* time_t   */
 
@@ -62,8 +62,7 @@ extern "C" {
 
 struct mcdb_mmap {
   unsigned char *ptr;         /* mmap pointer */
-  uint32_t size;              /* mmap size */
-  uint32_t pad0;              /* (unused; padding) */
+  uint64_t size;              /* mmap size */
   time_t mtime;               /* mmap file mtime */
   struct mcdb_mmap * volatile next;    /* updated (new) mcdb_mmap */
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
@@ -77,12 +76,12 @@ struct mcdb_mmap {
 struct mcdb {
   struct mcdb_mmap *map;
   uint32_t loop;   /* number of hash slots searched under this key */
-  uint32_t khash;  /* initialized if loop is nonzero */
-  uint32_t kpos;   /* initialized if loop is nonzero */
-  uint32_t hpos;   /* initialized if loop is nonzero */
   uint32_t hslots; /* initialized if loop is nonzero */
-  uint32_t dpos;   /* initialized if cdb_findnext() returns 1 */
+  uint64_t kpos;   /* initialized if loop is nonzero */
+  uint64_t hpos;   /* initialized if loop is nonzero */
+  uint64_t dpos;   /* initialized if cdb_findnext() returns 1 */
   uint32_t dlen;   /* initialized if cdb_findnext() returns 1 */
+  uint32_t khash;  /* initialized if loop is nonzero */
 };
 
 extern bool
@@ -170,10 +169,10 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
    || __builtin_expect(mcdb_thread_register(mcdb), true))
 
 
-#define MCDB_SLOTS 256                      /* must be power-of-2 */
+#define MCDB_SLOT_BITS 8                    /* 2^8 = 256 */
+#define MCDB_SLOTS (1u<<(MCDB_SLOT_BITS-1)) /* must be power-of-2 */
 #define MCDB_SLOT_MASK (MCDB_SLOTS-1)       /* bitmask */
-#define MCDB_HEADER_SZ (MCDB_SLOTS<<3)      /* MCDB_SLOTS * 8  (256*8 = 2048) */
-#define MCDB_HEADER_MASK (MCDB_HEADER_SZ-1) /* bitmask */
+#define MCDB_HEADER_SZ (MCDB_SLOTS<<4)      /* MCDB_SLOTS * 16  (256*16=4096) */
 #define MCDB_MMAP_SZ (1<<19)     /* 512KB; must be larger than MCDB_HEADER_SZ */
 
 

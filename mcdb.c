@@ -54,13 +54,16 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     (void) mcdb_thread_refresh_self(m);
     /* (ignore rc; continue with previous map in case of failure) */
 
-    ptr = m->map->ptr + ((khash << 3) & MCDB_HEADER_MASK) + 4;
+    /* (size of data in lvl1 hash table element is 16-bytes (shift 4 bits)) */
+    ptr = m->map->ptr + ((khash & MCDB_SLOT_MASK) << 4) + 8;
     m->hslots = uint32_strunpack_bigendian_aligned_macro(ptr);
     if (!m->hslots)
         return false;
-    m->hpos  = uint32_strunpack_bigendian_aligned_macro(ptr-4);
-    m->kpos  = m->hpos + (((khash >> 8) % m->hslots) << 3);
-    m->khash = khash;
+    m->hpos  = (((uint64_t)uint32_strunpack_bigendian_aligned_macro(ptr-8))<<31)
+               |((uint64_t)uint32_strunpack_bigendian_aligned_macro(ptr-4));
+    /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
+    m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << 4);
+    m->khash = khash;      /* (use khash bits not used above) */
     m->loop  = 0;
     return true;
 }
@@ -72,21 +75,24 @@ mcdb_findtagnext(struct mcdb * const restrict m,
 {
     const unsigned char * ptr;
     const unsigned char * const restrict mptr = m->map->ptr;
-    uint32_t vpos, khash, len;
+    const uint64_t hslots_end = m->hpos + (((uint64_t)m->hslots) << 4);
+    uint32_t vpos, khash;
+    size_t len;
 
     while (m->loop < m->hslots) {
-        ptr = mptr + m->kpos + 4;
-        vpos = uint32_strunpack_bigendian_aligned_macro(ptr);
+        ptr = mptr + m->kpos + 8;
+        vpos = (((uint64_t)uint32_strunpack_bigendian_aligned_macro(ptr))<<31)
+               |((uint64_t)uint32_strunpack_bigendian_aligned_macro(ptr+4));
         if (!vpos)
             return false;
-        khash = uint32_strunpack_bigendian_aligned_macro(ptr-4);
-        m->kpos += 8;
-        if (m->kpos == m->hpos + (m->hslots << 3))
+        khash = uint32_strunpack_bigendian_aligned_macro(ptr-8);
+        m->kpos += 16;
+        if (m->kpos == hslots_end)
             m->kpos = m->hpos;
         m->loop += 1;
         if (khash == m->khash) {
             ptr = mptr + vpos;
-            len = uint32_strunpack_bigendian_macro(ptr);
+            len = (size_t)uint32_strunpack_bigendian_macro(ptr);
             if (tagc != 0
                 ? len == klen+1 && tagc == ptr[8] && memcmp(key,ptr+9,klen) == 0
                 : len == klen && memcmp(key,ptr+8,klen) == 0) {
@@ -149,7 +155,7 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
   #ifdef __GNUC__
     __builtin_prefetch((char *)x+960, 0, 1); /*(touch mem page w/ mcdb header)*/
   #endif
-    if (st.st_size > USHRT_MAX) /*(skip extra syscall overhead for small mcdb)*/
+    if (st.st_size > 4194304) /*(skip extra syscall overhead for mcdb < 4 MB)*/
         posix_madvise(((char *)x), st.st_size, POSIX_MADV_RANDOM);
 	/*(addr (x) must be aligned on _SC_PAGESIZE for madvise portability)*/
     map->ptr   = (unsigned char *)x;
@@ -380,7 +386,7 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
     return true;
 }
 
-/* theaded programs (in while multiple threads are using same struct mcdb_mmap)
+/* theaded programs (while multiple threads are using same struct mcdb_mmap)
  * must reopen and register (update refcnt on previous and new mcdb_mmap) while
  * holding a lock, or else there are race conditions with refcnt'ing. */
 bool  __attribute_noinline__

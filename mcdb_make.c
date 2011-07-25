@@ -46,19 +46,19 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>  /* memcpy() */
-#include <stdint.h>  /* uint32_t */
+#include <stdint.h>  /* uint32_t uint64_t */
 #include <stdlib.h>  /* posix_fallocate() */
 #include <fcntl.h>   /* posix_fallocate() */
 #include <limits.h>  /* UINT_MAX, INT_MAX */
 
-#define MCDB_HPLIST 1000
+#define MCDB_HPLIST 4000
 
-struct mcdb_hp { uint32_t h; uint32_t p; };
+struct mcdb_hp { uint64_t p; uint32_t h; };
 
 struct mcdb_hplist {
-  struct mcdb_hp hp[MCDB_HPLIST];
+  uint32_t num;  /* index into struct mcdb_hp hp[MCDB_HPLIST] */
   struct mcdb_hplist *next;
-  uint32_t num;
+  struct mcdb_hp hp[MCDB_HPLIST];
 };
 
 static struct mcdb_hplist *  __attribute_noinline__  __attribute_malloc__
@@ -120,12 +120,14 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
     }
 
     /* limit max size of mcdb to (4GB - pagesize) */
-    if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
+    /*(commented out to remove the 4 GB limit)*/
+    //if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
 
     offset = m->offset + ((m->pos - m->offset) & m->pgalign);
     msz = (MCDB_MMAP_SZ > sz - offset) ? MCDB_MMAP_SZ : sz - offset;
-    if (offset > (UINT_MAX & m->pgalign) - msz)
-        msz = (UINT_MAX & m->pgalign) - offset;
+    /*(commented out to remove the 4 GB limit)*/
+    //if (offset > (UINT_MAX & m->pgalign) - msz)
+    //    msz = (UINT_MAX & m->pgalign) - offset;
 
     m->fsz = offset + msz; /* (mcdb_make mmap region is always to end of file)*/
     if (m->fd != -1 && nointr_ftruncate(m->fd,(off_t)m->fsz) != 0) return false;
@@ -153,10 +155,11 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     struct mcdb_hplist * const head =
       m->head->num < MCDB_HPLIST ? m->head : mcdb_hplist_alloc(m);
     if (head == NULL) return -1;
+    head->hp[head->num].p = pos;
     head->hp[head->num].h = UINT32_HASH_DJB_INIT;
-    head->hp[head->num].p = (uint32_t)pos;  /* arbitrary ~2 GB limit for lens */
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
-    if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
+    /*(no 4 GB limit in 64-bit or in 32-bit with large file support)*/
+    //if (pos > UINT_MAX-len)                      { errno=ENOMEM; return -1; }
     if (m->fsz < pos+len && !mcdb_mmap_upsize(m,pos+len))          return -1;
     p = m->map + pos - m->offset;
     uint32_strpack_bigendian_macro(p,keylen);
@@ -234,7 +237,7 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
 
     if (mcdb_mmap_upsize(m, MCDB_MMAP_SZ)  /* MCDB_MMAP_SZ >= MCDB_HEADER_SZ */
         && mcdb_hplist_alloc(m) != NULL) { /*init to skip NULL check every add*/
-        m->head->hp[m->head->num].p = (uint32_t)m->pos;
+        m->head->hp[m->head->num].p = m->pos;
         return 0;
     }
     else {
@@ -248,12 +251,16 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
 int
 mcdb_make_finish(struct mcdb_make * const restrict m)
 {
+    /* Current code below effectively limits mcdb to approx 2 billion entries.
+     * Use of 32-bit hash is the basis for continuing to use 32-bit structures.
+     * Even a mostly uniform distribution of hash keys will likely show
+     * increasing number of collisions as number of keys approaches 2 billion.*/
     uint32_t u;
     uint32_t i;
-    uint32_t d;
+    uint64_t d;
     uint32_t len;
     uint32_t cnt;
-    uint32_t where;
+    uint32_t w;
     struct mcdb_hp *hash;
     struct mcdb_hp *split;
     struct mcdb_hp *hp;
@@ -267,7 +274,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
     cnt = 0; /* num entries */
     for (x = m->head; x; x = x->next) {
-        cnt += (u = x->num);
+        u = x->num;
+        if (u > UINT_MAX - cnt)                { errno = ENOMEM; return -1; }
+        cnt += u;
         while (u--)
             ++count[MCDB_SLOT_MASK & x->hp[u].h];
     }
@@ -280,15 +289,18 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     }
 
     /* check for integer overflow and that sufficient space allocated in file */
-    if (cnt > (UINT_MAX>>4) || len > INT_MAX)  { errno = ENOMEM; return -1; }
+    //if (cnt > (UINT_MAX>>5) || len > INT_MAX){ errno = ENOMEM; return -1; }
+    if (cnt > INT_MAX || len > INT_MAX)        { errno = ENOMEM; return -1; }
     len += cnt;
     if (len > UINT_MAX/sizeof(struct mcdb_hp)) { errno = ENOMEM; return -1; }
-    u = cnt << 4; /* multiply by 2 and then by 8 (for 8 chars) */
-    if (m->pos > (UINT_MAX-u))                 { errno = ENOMEM; return -1; }
+    /*(no 4 GB limit in 64-bit or in 32-bit with large file support)*/
+    //u = cnt << 5; /* multiply by 2 and then by 16 (for 16 chars) */
+    //if (m->pos > (UINT_MAX-u))               { errno = ENOMEM; return -1; }
 
     /* add "hole" for alignment; incompatible with djb cdbdump */
     d = (8 - (m->pos & 7)) & 7; /* padding to align hash tables to 8 bytes */
-    if (d > (UINT_MAX-(m->pos+u)))             { errno = ENOMEM; return -1; }
+    /*(no 4 GB limit in 64-bit or in 32-bit with large file support)*/
+    //if (d > (UINT_MAX-(m->pos+u)))           { errno = ENOMEM; return -1; }
     if (m->fsz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d)) return -1;
     if (d) memset(m->map + m->pos - m->offset, '\0', d);
     m->pos += d;                     /* clear hole for binary cmp of mcdbs */
@@ -297,8 +309,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     if (!split) return -1;
     hash = split + cnt;
 
-    u = 0;
-    for (i = 0; i < MCDB_SLOTS; ++i) {
+    for (u = 0, i = 0; i < MCDB_SLOTS; ++i) {
         u += count[i]; /* bounded by cnt number of entries, so no overflow */
         start[i] = u;
     }
@@ -312,36 +323,42 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     for (i = 0; i < MCDB_SLOTS; ++i) {
         cnt = count[i];
         len = cnt << 1; /* no overflow possible */
-        u   = m->pos;
+        d   = m->pos;
 
         /* check for sufficient space in mmap to write hash table for this slot
          * (integer overflow not possible: total size checked outside loop) */
-        if (m->fsz < u+(len<<3) && !mcdb_mmap_upsize(m,u+(len<<3))) break;
+        if (m->fsz < d+(len<<4) && !mcdb_mmap_upsize(m,d+(len<<4))) break;
 
-        /* constant header (8 bytes per header slot, so multiply by 8) */
-        p = header + (i << 3);  /* (i << 3) == (i * 8) */
-        uint32_strpack_bigendian_aligned_macro(p,u);
-        uint32_strpack_bigendian_aligned_macro(p+4,len);
+        /* constant header (16 bytes per header slot, so multiply by 16) */
+        p = header + (i << 4);  /* (i << 4) == (i * 16) */
+        u = (uint32_t)(d >> 32);
+        uint32_strpack_bigendian_aligned_macro(p,u);     /* hpos (high bits) */
+        u = (uint32_t)d;
+        uint32_strpack_bigendian_aligned_macro(p+4,u);   /* hpos (low bits) */
+        uint32_strpack_bigendian_aligned_macro(p+8,len); /* hslots */
 
         /* generate hash table for this slot */
         memset(hash, 0, len * sizeof(struct mcdb_hp));
         hp = split + start[i];
         for (u = 0; u < cnt; ++u) {
-            where = (hp->h >> 8) % len;
-            while (hash[where].p)
-                if (++where == len)
-                    where = 0;
-            hash[where] = *hp++;
+            w = (hp->h >> MCDB_SLOT_BITS) % len;
+            while (hash[w].p)
+                if (++w == len)
+                    w = 0;
+            hash[w] = *hp++;
         }
 
         /* write hash table directly to map; allocated space checked above */
         for (u = 0; u < len; ++u) {
             p = m->map + m->pos - m->offset;
-            m->pos += 8;
-            d = hash[u].h;
-            uint32_strpack_bigendian_aligned_macro(p,d);
-            d = hash[u].p;
-            uint32_strpack_bigendian_aligned_macro(p+4,d);
+            m->pos += 16; /* sizeof(struct mcdb_hp) */
+            w = hash[u].h;
+            uint32_strpack_bigendian_aligned_macro(p,w);   /* khash */
+            *(int *)(p+4) = 0;    /*(fill hole with 0 only for consistency)*/
+            w = (uint32_t)(hash[u].p >> 32);
+            uint32_strpack_bigendian_aligned_macro(p+8,w); /* dpos (high bits)*/
+            w = (uint32_t)hash[u].p;
+            uint32_strpack_bigendian_aligned_macro(p+12,w);/* dpos (low bits)*/
         }
     }
     m->fn_free(split);
