@@ -10,6 +10,14 @@
 #define _GNU_SOURCE 1
 #endif
 
+/* Note: mcdb client does not use largefile defines when compiled 32-bit
+ * since the implementation mmap()s the entire file into the address space,
+ * meaning only up to 4 GB (minus memory used by program and other libraries)
+ * is supported in 32-bit.  djb's original implementation using lseek() and
+ * read() would support > 4 GB with the > 4 GB support added in mcdb, but
+ * mcdb uses mmap() for performance instead of lseek() and read().  In current
+ * mcdb implementation, client must compile and run 64-bit for > 4 GB mcdb. */
+
 #include "mcdb.h"
 #include "nointr.h"
 #include "uint32.h"
