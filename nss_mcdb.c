@@ -224,7 +224,7 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     unsigned char *map;
-    uint32_t eod;
+    uint64_t eod;
     uint32_t klen;
     if (__builtin_expect(m->map == NULL, false)
         && nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS) {
@@ -232,7 +232,8 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
         return NSS_STATUS_UNAVAIL;
     }
     map = m->map->ptr;
-    eod = uint32_strunpack_bigendian_aligned_macro(map) - 7;
+    eod = ((((uint64_t)uint32_strunpack_bigendian_aligned_macro(map))<<31)
+           |(uint64_t)uint32_strunpack_bigendian_aligned_macro(map+4)) - 7;
     while (m->hpos < eod) {
         unsigned char * const restrict p = map + m->hpos;
         klen    = uint32_strunpack_bigendian_macro(p);

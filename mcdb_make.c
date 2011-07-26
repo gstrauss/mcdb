@@ -336,6 +336,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         u = (uint32_t)d;
         uint32_strpack_bigendian_aligned_macro(p+4,u);   /* hpos (low bits) */
         uint32_strpack_bigendian_aligned_macro(p+8,len); /* hslots */
+        *(uint32_t *)(p+12) = 0;    /*(fill hole with 0 only for consistency)*/
 
         /* generate hash table for this slot */
         memset(hash, 0, len * sizeof(struct mcdb_hp));
@@ -354,7 +355,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
             m->pos += 16; /* sizeof(struct mcdb_hp) */
             w = hash[u].h;
             uint32_strpack_bigendian_aligned_macro(p,w);   /* khash */
-            *(int *)(p+4) = 0;    /*(fill hole with 0 only for consistency)*/
+            *(uint32_t *)(p+4) = 0;  /*(fill hole with 0 only for consistency)*/
             w = (uint32_t)(hash[u].p >> 32);
             uint32_strpack_bigendian_aligned_macro(p+8,w); /* dpos (high bits)*/
             w = (uint32_t)hash[u].p;
