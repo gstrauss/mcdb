@@ -110,10 +110,10 @@ mcdb_findtagnext(struct mcdb * const restrict m,
  * Note: caller must terminate with '\0' if desired, i.e. buf[len] = '\0';
  */
 void *
-mcdb_read(struct mcdb * const restrict m, const uint32_t pos,
+mcdb_read(struct mcdb * const restrict m, const uint64_t pos,
           const uint32_t len, void * const restrict buf)
 {
-    const uint32_t mapsz = m->map->size;
+    const uint64_t mapsz = m->map->size;
     return (pos <= mapsz && mapsz - pos >= len) /* bounds check */
       ? memcpy(buf, m->map->ptr + pos, len)
       : NULL;

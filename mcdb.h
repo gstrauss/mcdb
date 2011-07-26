@@ -99,7 +99,7 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
   (mcdb_findstart((m),(key),(klen)) && mcdb_findnext((m),(key),(klen)))
 
 extern void *
-mcdb_read(struct mcdb * restrict, uint32_t, uint32_t, void * restrict)
+mcdb_read(struct mcdb * restrict, uint64_t, uint32_t, void * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 #define mcdb_datapos(m)      ((m)->dpos)
