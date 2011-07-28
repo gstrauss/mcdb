@@ -179,7 +179,7 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
   #ifdef __GNUC__
     __builtin_prefetch((char *)x+960, 0, 1); /*(touch mem page w/ mcdb header)*/
   #endif
-    if (st.st_size > 4194304) /*(skip extra syscall overhead for mcdb < 4 MB)*/
+    if (st.st_size > 4194304) /*(skip syscall overhead if < 4 MB (arbitrary))*/
         posix_madvise(((char *)x), st.st_size, POSIX_MADV_RANDOM);
 	/*(addr (x) must be aligned on _SC_PAGESIZE for madvise portability)*/
     map->ptr   = (unsigned char *)x;
