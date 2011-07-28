@@ -4,6 +4,22 @@
 #ifndef _XOPEN_SOURCE /* >= 500 on Linux for mkstemp(), fchmod() prototypes */
 #define _XOPEN_SOURCE 500
 #endif
+/* large file support needed for stat(),fstat() input file > 2 GB */
+#if defined(_AIX)
+#ifndef _LARGE_FILES
+#define _LARGE_FILES
+#endif
+#else /*#elif defined(__linux) || defined(__sun) || defined(__hpux)*/
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+#ifndef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE 1
+#endif
+#ifndef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE 1
+#endif
+#endif
 
 #include "mcdb_makefmt.h"
 #include "mcdb_make.h"
@@ -136,18 +152,18 @@ mcdb_bufread_preamble (struct mcdb_input * const restrict b,
     /* mcdbmake lines begin "+nnnn,mmmm:...."; max 23 chars with 32-bit nums */
     /* mcdbmake blank line ends input */
     if (b->datasz - b->pos < 23 && mcdb_bufread_preamble_fill(b) == -1)
-        return MCDB_ERROR_READ;                /* -1  error read         */
+        return MCDB_ERROR_READ;                /* -2  error read         */
     switch (b->buf[b->pos++]) {
       case  '+': break;
       case '\n': return EXIT_SUCCESS;          /*  0  done; EXIT_SUCCESS */
-      default:   return MCDB_ERROR_READFORMAT; /* -2  error read format  */
+      default:   return MCDB_ERROR_READFORMAT; /* -1  error read format  */
     }
     return (   mcdb_bufread_number(b,klen)
             && b->datasz - b->pos != 0 && b->buf[b->pos++] == ','
             && mcdb_bufread_number(b,dlen)
             && b->datasz - b->pos != 0 && b->buf[b->pos++] == ':')
             ? true                             /*  1  valid preamble     */
-            : MCDB_ERROR_READFORMAT;           /* -2  error read format  */
+            : MCDB_ERROR_READFORMAT;           /* -1  error read format  */
 }
 
 static bool

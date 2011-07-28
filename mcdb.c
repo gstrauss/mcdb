@@ -9,6 +9,22 @@
 #ifndef _GNU_SOURCE /* enable O_CLOEXEC on GNU systems */
 #define _GNU_SOURCE 1
 #endif
+/* large file support needed for stat(),fstat() input file > 2 GB */
+#if defined(_AIX)
+#ifndef _LARGE_FILES
+#define _LARGE_FILES
+#endif
+#else /*#elif defined(__linux) || defined(__sun) || defined(__hpux)*/
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+#ifndef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE 1
+#endif
+#ifndef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE 1
+#endif
+#endif
 
 /* Note: mcdb client does not use largefile defines when compiled 32-bit
  * since the implementation mmap()s the entire file into the address space,
