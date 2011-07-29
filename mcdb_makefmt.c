@@ -288,6 +288,11 @@ mcdb_makefmt_fdintofd (const int inputfd,
  *
  * - read from mmap:  (see mcdb_makefmt_fileintofile())
  *     mcdb_makefmt_fdintofile(-1,mmap_ptr,mmap_sz,"fname.cdb",malloc,free);
+ *
+ * Note: no mechanism provided to clean up fd or temporary file created by
+ * mkstemp() if application receives a signal that causes program termination.
+ * Application can create temp file itself and call mcdb_makefmt_fdintofd()
+ * directly, if that level of control is needed.
  */
 int  __attribute_noinline__
 mcdb_makefmt_fdintofile (const int inputfd,
