@@ -1,3 +1,6 @@
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200112L
+#endif
 #ifndef _XOPEN_SOURCE /* IOV_MAX */
 #define _XOPEN_SOURCE 500
 #endif
@@ -24,6 +27,7 @@
 #include "nointr.h"
 #include "uint32.h"
 
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>   /* open(), O_RDONLY */
@@ -87,6 +91,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     char buf[(MCDB_IOVNUM * 3)];   /* each db entry might use (2) * 10 chars */
       /* oversized buffer since all num strings must add up to less than max */
 
+    posix_madvise(m->map->ptr, (size_t)m->map->size, POSIX_MADV_SEQUENTIAL);
     for (p += MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
 
         klen = uint32_strunpack_bigendian_macro(p);
@@ -178,6 +183,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
     bool rc;
+    posix_madvise(map_ptr, (size_t)m->map->size, POSIX_MADV_SEQUENTIAL);
     for (p = map_ptr+MCDB_HEADER_SZ; p < eod; p += klen+dlen) {
         klen = uint32_strunpack_bigendian_macro(p);
         dlen = uint32_strunpack_bigendian_macro(p+4);
@@ -191,8 +197,9 @@ mcdbctl_stats(struct mcdb * const restrict m)
             } while (rc && map_ptr+m->dpos != p+klen);
         }
         if (!rc) return MCDB_ERROR_READFORMAT;
-        ++nrec;
         ++numd[ ((m->loop < 11) ? m->loop - 1 : 10) ];
+        if (0 == (++nrec & 0x3FFFF)) /* hint to release pages every 512K recs */
+            posix_madvise(map_ptr, (size_t)(p - map_ptr), POSIX_MADV_DONTNEED);
     }
     printf("records %lu\n", nrec);
     for (rv = 0; rv < 10; ++rv)
