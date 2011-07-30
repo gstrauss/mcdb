@@ -72,9 +72,10 @@ mcdb_bufread_align (struct mcdb_input * const restrict b)
     if (b->datasz - b->pos < 128 && b->pos != 0) {
         if ((b->datasz -= b->pos))
             memmove(b->buf, b->buf + b->pos, b->datasz);
+        else
+            b->buf[0] = '\0';  /* known char in buf when no data */
         b->pos = 0;
     }
-    if (b->datasz == 0) b->buf[0] = '\0';  /* known char in buf when no data */
 }
 
 static ssize_t  __attribute_noinline__
@@ -87,6 +88,7 @@ mcdb_bufread_fd (struct mcdb_input * const restrict b)
     if (b->fd == -1) return (ssize_t)-1; /* we use fd == -1 as flag for mmap */
     retry_eintr_do_while(
       (r = read(b->fd, b->buf + b->datasz, b->bufsz - b->datasz)), (r == -1));
+    if (r > 0) b->datasz += r;
     return r;
 }
 
@@ -107,7 +109,7 @@ mcdb_bufread_preamble_fill (struct mcdb_input * const restrict b)
     while (b->datasz - pos < 23
            && memchr(buf + b->datasz - r, ':',(size_t)r)==NULL && buf[pos]!='\n'
            && (r = mcdb_bufread_fd(b)) > 0)
-        b->datasz += r;
+        ;
     return r;  /* >= 0 is success; -1 is read error */
 }
 
@@ -185,7 +187,7 @@ mcdb_bufread_str (struct mcdb_input * const restrict b, size_t len,
             fn_addbuf(m, b->buf + b->pos, u);
             b->pos += u;
         }
-    } while ((len -= u) != 0 && (mcdb_bufread_align(b),mcdb_bufread_fd(b)!=-1));
+    } while ((len -= u) != 0 && (mcdb_bufread_align(b),mcdb_bufread_fd(b) > 0));
     return (len == 0);
 }
 
@@ -195,10 +197,9 @@ mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
 static bool
 mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
 {
-    ssize_t r = 0;
     mcdb_bufread_align(b);
-    while (b->datasz - b->pos < len && (r = mcdb_bufread_fd(b)) > 0)
-        b->datasz += r;
+    while (b->datasz - b->pos < len && mcdb_bufread_fd(b) > 0)
+        ;
     return (b->datasz - b->pos >= len);
 }
 
@@ -247,6 +248,8 @@ mcdb_makefmt_fdintofd (const int inputfd,
 
     if (b.fd == -1)  /* we use fd == -1 as flag for mmap */
         b.datasz = b.bufsz;
+    else
+        buf[0] = '\0'; /* known char in buf when no data */
 
     while ((rv = mcdb_bufread_preamble(&b,&klen,&dlen)) > 0) {
 

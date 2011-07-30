@@ -83,8 +83,7 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     m->hslots = uint32_strunpack_bigendian_aligned_macro(ptr);
     if (!m->hslots)
         return false;
-    m->hpos  = (((uint64_t)uint32_strunpack_bigendian_aligned_macro(ptr-8))<<31)
-               |((uint64_t)uint32_strunpack_bigendian_aligned_macro(ptr-4));
+    m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr-8);
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
     m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << 4);
     m->khash = khash;      /* (use khash bits not used above) */
@@ -105,8 +104,7 @@ mcdb_findtagnext(struct mcdb * const restrict m,
 
     while (m->loop < m->hslots) {
         ptr = mptr + m->kpos + 8;
-        vpos = (((uint64_t)uint32_strunpack_bigendian_aligned_macro(ptr))<<31)
-               |((uint64_t)uint32_strunpack_bigendian_aligned_macro(ptr+4));
+        vpos = uint64_strunpack_bigendian_aligned_macro(ptr);
         if (!vpos)
             return false;
         khash = uint32_strunpack_bigendian_aligned_macro(ptr-8);

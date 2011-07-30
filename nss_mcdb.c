@@ -232,8 +232,7 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
         return NSS_STATUS_UNAVAIL;
     }
     map = m->map->ptr;
-    eod = ((((uint64_t)uint32_strunpack_bigendian_aligned_macro(map))<<31)
-           |(uint64_t)uint32_strunpack_bigendian_aligned_macro(map+4)) - 7;
+    eod = uint64_strunpack_bigendian_aligned_macro(map) - 7;
     while (m->hpos < eod) {
         unsigned char * const restrict p = map + m->hpos;
         klen    = uint32_strunpack_bigendian_macro(p);

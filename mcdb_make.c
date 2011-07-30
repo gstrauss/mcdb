@@ -331,12 +331,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
         /* constant header (16 bytes per header slot, so multiply by 16) */
         p = header + (i << 4);  /* (i << 4) == (i * 16) */
-        u = (uint32_t)(d >> 32);
-        uint32_strpack_bigendian_aligned_macro(p,u);     /* hpos (high bits) */
-        u = (uint32_t)d;
-        uint32_strpack_bigendian_aligned_macro(p+4,u);   /* hpos (low bits) */
+        uint64_strpack_bigendian_aligned_macro(p,d);     /* hpos */
         uint32_strpack_bigendian_aligned_macro(p+8,len); /* hslots */
-        *(uint32_t *)(p+12) = 0;    /*(fill hole with 0 only for consistency)*/
+        *(uint32_t *)(p+12) = 0;     /*(fill hole with 0 only for consistency)*/
 
         /* generate hash table for this slot */
         memset(hash, 0, len * sizeof(struct mcdb_hp));
@@ -353,13 +350,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         for (u = 0; u < len; ++u) {
             p = m->map + m->pos - m->offset;
             m->pos += 16; /* sizeof(struct mcdb_hp) */
-            w = hash[u].h;
-            uint32_strpack_bigendian_aligned_macro(p,w);   /* khash */
+            uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /* khash */
             *(uint32_t *)(p+4) = 0;  /*(fill hole with 0 only for consistency)*/
-            w = (uint32_t)(hash[u].p >> 32);
-            uint32_strpack_bigendian_aligned_macro(p+8,w); /* dpos (high bits)*/
-            w = (uint32_t)hash[u].p;
-            uint32_strpack_bigendian_aligned_macro(p+12,w);/* dpos (low bits)*/
+            uint64_strpack_bigendian_aligned_macro(p+8,hash[u].p); /* dpos */
         }
     }
     m->fn_free(split);

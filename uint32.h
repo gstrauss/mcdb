@@ -18,7 +18,7 @@ extern "C" {
 #define uint32_strunpack_macro(s) \
   ( (s)[0] | ((s)[1]<<8) | ((s)[2]<<16) | ((s)[3]<<24) )
 
-/* uint32_strunpack_big_macro(): string 's' must be unsigned char */
+/* uint32_strunpack_bigendian_macro(): string 's' must be unsigned char */
 #define uint32_strunpack_bigendian_macro(s) \
   ( ((s)[0]<<24) | ((s)[1]<<16) | ((s)[2]<<8) | (s)[3] )
 
@@ -34,6 +34,15 @@ extern "C" {
    (*((uint32_t *)(s)) = htonl(u))
 #define uint32_strunpack_bigendian_aligned_macro(s) \
    ntohl(*((uint32_t *)(s)))
+
+
+/*(uint64 macros built with uint32 macros)*/
+#define uint64_strpack_bigendian_aligned_macro(s,u) \
+   uint32_strpack_bigendian_aligned_macro((s), (uint32_t)((u)>>32)), \
+   uint32_strpack_bigendian_aligned_macro((s)+4,(uint32_t)(u))
+#define uint64_strunpack_bigendian_aligned_macro(s) \
+   ( (((uint64_t)uint32_strunpack_bigendian_aligned_macro((s)))<<32) \
+    | ((uint64_t)uint32_strunpack_bigendian_aligned_macro((s)+4)) )
 
 
 /* C99 inline functions defined in header */
