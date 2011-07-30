@@ -173,14 +173,9 @@ mcdb_make_addbuf_data(struct mcdb_make * const restrict m,
                       const char * const restrict buf, const size_t len)
 {
     /* len validated in mcdb_make_addbegin(); passing any other len is wrong,
-     * unless the len is shorter from partial contents of buf.
-     * optimization: check len==1 (tagc) to avoid memcpy call for single char */
-    char * const p = m->map + m->pos - m->offset;
+     * unless the len is shorter from partial contents of buf. */
+    memcpy(m->map + m->pos - m->offset, buf, len);
     m->pos += len;
-    if (len != 1)
-        memcpy(p, buf, len);
-    else
-        *p = *buf;
 }
 
 void  inline

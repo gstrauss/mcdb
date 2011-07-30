@@ -62,22 +62,6 @@ struct mcdb_input {
  * cache hits.
  */
 
-static void  __attribute_noinline__
-mcdb_bufread_align (struct mcdb_input * const restrict b)
-  __attribute_nonnull__;
-static void
-mcdb_bufread_align (struct mcdb_input * const restrict b)
-{
-    if (b->fd == -1) return;             /* we use fd == -1 as flag for mmap */
-    if (b->datasz - b->pos < 128 && b->pos != 0) {
-        if ((b->datasz -= b->pos))
-            memmove(b->buf, b->buf + b->pos, b->datasz);
-        else
-            b->buf[0] = '\0';  /* known char in buf when no data */
-        b->pos = 0;
-    }
-}
-
 static ssize_t  __attribute_noinline__
 mcdb_bufread_fd (struct mcdb_input * const restrict b)
   __attribute_nonnull__  __attribute_warn_unused_result__;
@@ -86,6 +70,11 @@ mcdb_bufread_fd (struct mcdb_input * const restrict b)
 {
     ssize_t r;
     if (b->fd == -1) return (ssize_t)-1; /* we use fd == -1 as flag for mmap */
+    if (b->datasz - b->pos < 128 && b->pos != 0) {
+        if ((b->datasz -= b->pos))
+            memmove(b->buf, b->buf + b->pos, b->datasz);
+        b->pos = 0;
+    }
     retry_eintr_do_while(
       (r = read(b->fd, b->buf + b->datasz, b->bufsz - b->datasz)), (r == -1));
     if (r > 0) b->datasz += r;
@@ -100,15 +89,12 @@ static ssize_t
 mcdb_bufread_preamble_fill (struct mcdb_input * const restrict b)
 {
     /* mcdbmake lines begin "+nnnn,mmmm:...."; max 23 chars with 32-bit nums */
-    ssize_t r;
-    size_t pos;
     char * const buf = b->buf;
-    mcdb_bufread_align(b);
-    pos = b->pos;
-    r = b->datasz - pos;  /* len to search in existing buf before next read() */
-    while (b->datasz - pos < 23
-           && memchr(buf + b->datasz - r, ':',(size_t)r)==NULL && buf[pos]!='\n'
-           && (r = mcdb_bufread_fd(b)) > 0)
+    ssize_t r = b->datasz - b->pos; /*len to search in buf before next read()*/
+    while (memchr(buf + b->datasz - r, ':',(size_t)r) == NULL
+           && (r == 0 || buf[b->pos] != '\n') /* must test if r=0 then read 1 */
+           && (r = mcdb_bufread_fd(b)) > 0
+           && b->datasz - b->pos < 23)
         ;
     return r;  /* >= 0 is success; -1 is read error */
 }
@@ -182,12 +168,11 @@ mcdb_bufread_str (struct mcdb_input * const restrict b, size_t len,
 {
     size_t u;
     do {
-        if ((u = b->datasz - b->pos) != 0) {
-            u = (len < u ? len : u);
-            fn_addbuf(m, b->buf + b->pos, u);
-            b->pos += u;
-        }
-    } while ((len -= u) != 0 && (mcdb_bufread_align(b),mcdb_bufread_fd(b) > 0));
+        if ((u = b->datasz - b->pos) > len)
+            u = len;
+        fn_addbuf(m, b->buf + b->pos, u);
+        b->pos += u;
+    } while ((len -= u) != 0 && mcdb_bufread_fd(b) > 0);
     return (len == 0);
 }
 
@@ -197,7 +182,6 @@ mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
 static bool
 mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
 {
-    mcdb_bufread_align(b);
     while (b->datasz - b->pos < len && mcdb_bufread_fd(b) > 0)
         ;
     return (b->datasz - b->pos >= len);
@@ -248,8 +232,6 @@ mcdb_makefmt_fdintofd (const int inputfd,
 
     if (b.fd == -1)  /* we use fd == -1 as flag for mmap */
         b.datasz = b.bufsz;
-    else
-        buf[0] = '\0'; /* known char in buf when no data */
 
     while ((rv = mcdb_bufread_preamble(&b,&klen,&dlen)) > 0) {
 
