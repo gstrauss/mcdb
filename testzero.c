@@ -28,7 +28,7 @@ main(int argc,char **argv)
 
     while (loop--) {
         uint32_strpack_bigendian_aligned_macro(key,loop);
-        if (mcdb_make_add(&m,key,sizeof(key),data,sizeof(data)) == -1)
+        if (mcdb_make_add(&m,key,sizeof(uint32_t),data,sizeof(data)) == -1)
             return mcdb_error(MCDB_ERROR_WRITE, "testzero");
     }
 
