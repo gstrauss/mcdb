@@ -236,12 +236,14 @@ rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 cdbtest test.cdb
 rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 
+# testzero uses data records of size 65536
+# mcdb overhead is 4096 + 40 bytes per record
 echo '--- testzero can build a database very close to 4GB'
-testzero 65507
+testzero 65495
 rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 
 echo '--- testzero handles hash table crossing 4GB'
-testzero 65508
+testzero 65496
 rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 
 echo '--- testzero handles records past 4GB'
