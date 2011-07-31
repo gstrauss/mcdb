@@ -247,6 +247,7 @@ int
 mcdb_make_finish(struct mcdb_make * const restrict m)
 {
     /* Current code below effectively limits mcdb to approx 2 billion entries.
+     * (256 million when compiled 32-bit, in order to keep hash table in memory)
      * Use of 32-bit hash is the basis for continuing to use 32-bit structures.
      * Even a mostly uniform distribution of hash keys will likely show
      * increasing number of collisions as number of keys approaches 2 billion.*/
@@ -287,7 +288,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     //if (cnt > (UINT_MAX>>5) || len > INT_MAX){ errno = ENOMEM; return -1; }
     if (cnt > INT_MAX || len > INT_MAX)        { errno = ENOMEM; return -1; }
     len += cnt;
+  #if !defined(_LP64) && !defined(__LP64__)
     if (len > UINT_MAX/sizeof(struct mcdb_hp)) { errno = ENOMEM; return -1; }
+  #endif
     /*(no 4 GB limit in 64-bit or in 32-bit with large file support)*/
     //u = cnt << 5; /* multiply by 2 and then by 16 (for 16 chars) */
     //if (m->pos > (UINT_MAX-u))               { errno = ENOMEM; return -1; }
@@ -300,7 +303,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     if (d) memset(m->map + m->pos - m->offset, '\0', d);
     m->pos += d;                     /* clear hole for binary cmp of mcdbs */
 
-    split = (struct mcdb_hp *) m->fn_malloc(len * sizeof(struct mcdb_hp));
+    split = (struct mcdb_hp *) m->fn_malloc((size_t)len*sizeof(struct mcdb_hp));
     if (!split) return -1;
     hash = split + cnt;
 
@@ -322,7 +325,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
         /* check for sufficient space in mmap to write hash table for this slot
          * (integer overflow not possible: total size checked outside loop) */
-        if (m->fsz < d+(len<<4) && !mcdb_mmap_upsize(m,d+(len<<4))) break;
+        if (m->fsz < d+((size_t)len << 4)
+            && !mcdb_mmap_upsize(m, d+((size_t)len << 4)))
+            break;
 
         /* constant header (16 bytes per header slot, so multiply by 16) */
         p = header + (i << 4);  /* (i << 4) == (i * 16) */
@@ -331,7 +336,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         *(uint32_t *)(p+12) = 0;     /*(fill hole with 0 only for consistency)*/
 
         /* generate hash table for this slot */
-        memset(hash, 0, len * sizeof(struct mcdb_hp));
+        memset(hash, 0, (size_t)len * sizeof(struct mcdb_hp));
         hp = split + start[i];
         for (u = 0; u < cnt; ++u) {
             w = (hp->h >> MCDB_SLOT_BITS) % len;
