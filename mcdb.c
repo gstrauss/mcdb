@@ -86,7 +86,6 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr-8);
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
     m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << 4);
-    /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
   #ifdef __GNUC__
     __builtin_prefetch((char *)m->map->ptr+m->kpos,0,2);/*prefetch findtagnext*/
   #endif
