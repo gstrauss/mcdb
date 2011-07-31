@@ -247,7 +247,8 @@ int
 mcdb_make_finish(struct mcdb_make * const restrict m)
 {
     /* Current code below effectively limits mcdb to approx 2 billion entries.
-     * (256 million when compiled 32-bit, in order to keep hash table in memory)
+     * (256 million when compiled 32-bit, in order to keep hash table in memory,
+     *  and in practice, size of data fitting in 4 GB will impose lower limit)
      * Use of 32-bit hash is the basis for continuing to use 32-bit structures.
      * Even a mostly uniform distribution of hash keys will likely show
      * increasing number of collisions as number of keys approaches 2 billion.*/
