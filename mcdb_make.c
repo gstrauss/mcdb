@@ -46,14 +46,14 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>  /* memcpy() */
-#include <stdint.h>  /* uint32_t uint64_t */
+#include <stdint.h>  /* uint32_t uintptr_t */
 #include <stdlib.h>  /* posix_fallocate() */
 #include <fcntl.h>   /* posix_fallocate() */
 #include <limits.h>  /* UINT_MAX, INT_MAX */
 
 #define MCDB_HPLIST 4000
 
-struct mcdb_hp { uint64_t p; uint32_t h; };
+struct mcdb_hp { uintptr_t p; uint32_t h; uint32_t l; };
 
 struct mcdb_hplist {
   uint32_t num;  /* index into struct mcdb_hp hp[MCDB_HPLIST] */
@@ -157,6 +157,7 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     if (head == NULL) return -1;
     head->hp[head->num].p = pos;
     head->hp[head->num].h = UINT32_HASH_DJB_INIT;
+    head->hp[head->num].l = (uint32_t)keylen;
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
     /*(no 4 GB limit in 64-bit or in 32-bit with large file support)*/
     //if (pos > UINT_MAX-len)                      { errno=ENOMEM; return -1; }
@@ -254,7 +255,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
      * increasing number of collisions as number of keys approaches 2 billion.*/
     uint32_t u;
     uint32_t i;
-    uint64_t d;
+    uintptr_t d;
     uint32_t len;
     uint32_t cnt;
     uint32_t w;
@@ -286,20 +287,20 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     }
 
     /* check for integer overflow and that sufficient space allocated in file */
-    //if (cnt > (UINT_MAX>>5) || len > INT_MAX){ errno = ENOMEM; return -1; }
     if (cnt > INT_MAX || len > INT_MAX)        { errno = ENOMEM; return -1; }
     len += cnt;
   #if !defined(_LP64) && !defined(__LP64__)
     if (len > UINT_MAX/sizeof(struct mcdb_hp)) { errno = ENOMEM; return -1; }
+    if (cnt > (UINT_MAX>>5))                   { errno = ENOMEM; return -1; }
+    u = cnt << 5; /* multiply by 2 and then by 16 (for 16 chars) */
+    if (m->pos > (UINT_MAX-u))                 { errno = ENOMEM; return -1; }
   #endif
-    /*(no 4 GB limit in 64-bit or in 32-bit with large file support)*/
-    //u = cnt << 5; /* multiply by 2 and then by 16 (for 16 chars) */
-    //if (m->pos > (UINT_MAX-u))               { errno = ENOMEM; return -1; }
 
     /* add "hole" for alignment; incompatible with djb cdbdump */
     d = (8 - (m->pos & 7)) & 7; /* padding to align hash tables to 8 bytes */
-    /*(no 4 GB limit in 64-bit or in 32-bit with large file support)*/
-    //if (d > (UINT_MAX-(m->pos+u)))           { errno = ENOMEM; return -1; }
+  #if !defined(_LP64) && !defined(__LP64__)
+    if (d > (UINT_MAX-(m->pos+u)))             { errno = ENOMEM; return -1; }
+  #endif
     if (m->fsz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d)) return -1;
     if (d) memset(m->map + m->pos - m->offset, '\0', d);
     m->pos += d;                     /* clear hole for binary cmp of mcdbs */
@@ -332,8 +333,8 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
         /* constant header (16 bytes per header slot, so multiply by 16) */
         p = header + (i << 4);  /* (i << 4) == (i * 16) */
-        uint64_strpack_bigendian_aligned_macro(p,d);     /* hpos */
-        uint32_strpack_bigendian_aligned_macro(p+8,len); /* hslots */
+        uint64_strpack_bigendian_aligned_macro(p,(uint64_t)d); /* hpos */
+        uint32_strpack_bigendian_aligned_macro(p+8,len);       /* hslots */
         *(uint32_t *)(p+12) = 0;     /*(fill hole with 0 only for consistency)*/
 
         /* generate hash table for this slot */
@@ -351,9 +352,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         for (u = 0; u < len; ++u) {
             p = m->map + m->pos - m->offset;
             m->pos += 16; /* sizeof(struct mcdb_hp) */
-            uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /* khash */
-            *(uint32_t *)(p+4) = 0;  /*(fill hole with 0 only for consistency)*/
-            uint64_strpack_bigendian_aligned_macro(p+8,hash[u].p); /* dpos */
+            uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /*khash*/
+            uint32_strpack_bigendian_aligned_macro(p+4,hash[u].l); /*klen,dpos*/
+            uint64_strpack_bigendian_aligned_macro(p+8,(uint64_t)hash[u].p);
         }
     }
     m->fn_free(split);

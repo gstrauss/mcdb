@@ -90,7 +90,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     char buf[(MCDB_IOVNUM * 3)];   /* each db entry might use (2) * 10 chars */
       /* oversized buffer since all num strings must add up to less than max */
 
-    posix_madvise(m->map->ptr, (size_t)m->map->size, POSIX_MADV_SEQUENTIAL);
+    posix_madvise(m->map->ptr, m->map->size, POSIX_MADV_SEQUENTIAL);
     for (p += MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
 
         klen = uint32_strunpack_bigendian_macro(p);
@@ -180,7 +180,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
     bool rc;
-    posix_madvise(map_ptr, (size_t)m->map->size, POSIX_MADV_SEQUENTIAL);
+    posix_madvise(map_ptr, m->map->size, POSIX_MADV_SEQUENTIAL);
     for (p = map_ptr+MCDB_HEADER_SZ; p < eod; p += klen+dlen) {
         klen = uint32_strunpack_bigendian_macro(p);
         dlen = uint32_strunpack_bigendian_macro(p+4);

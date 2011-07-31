@@ -5,6 +5,7 @@
 
 #include "code_attributes.h"
 
+#include <sys/types.h>
 #include <stdint.h>
 #include <unistd.h>
 
@@ -42,7 +43,13 @@ extern "C" {
    uint32_strpack_bigendian_aligned_macro((s)+4,(uint32_t)(u))
 #define uint64_strunpack_bigendian_aligned_macro(s) \
    ( (((uint64_t)uint32_strunpack_bigendian_aligned_macro((s)))<<32) \
-    | ((uint64_t)uint32_strunpack_bigendian_aligned_macro((s)+4)) )
+    |           (uint32_strunpack_bigendian_aligned_macro((s)+4)) )
+/*(non-generic optimization specific to mcdb code usage and only for 32-bit)*/
+#if !defined(_LP64) && !defined(__LP64__)
+#undef  uint64_strunpack_bigendian_aligned_macro
+#define uint64_strunpack_bigendian_aligned_macro(s) \
+                 uint32_strunpack_bigendian_aligned_macro((s)+4)
+#endif
 
 
 /* C99 inline functions defined in header */

@@ -224,7 +224,7 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     unsigned char *map;
-    uint64_t eod;
+    uintptr_t eod;
     uint32_t klen;
     if (__builtin_expect(m->map == NULL, false)
         && nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS) {

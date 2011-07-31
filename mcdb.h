@@ -45,7 +45,7 @@
 #define MCDB_H
 
 #include <stdbool.h>  /* bool     */
-#include <stdint.h>   /* uint32_t, uint64_t */
+#include <stdint.h>   /* uint32_t, uintptr_t */
 #include <unistd.h>   /* size_t   */
 #include <sys/time.h> /* time_t   */
 
@@ -62,7 +62,7 @@ extern "C" {
 
 struct mcdb_mmap {
   unsigned char *ptr;         /* mmap pointer */
-  uint64_t size;              /* mmap size */
+  uintptr_t size;             /* mmap size */
   time_t mtime;               /* mmap file mtime */
   struct mcdb_mmap * volatile next;    /* updated (new) mcdb_mmap */
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
@@ -77,9 +77,9 @@ struct mcdb {
   struct mcdb_mmap *map;
   uint32_t loop;   /* number of hash slots searched under this key */
   uint32_t hslots; /* initialized if loop is nonzero */
-  uint64_t kpos;   /* initialized if loop is nonzero */
-  uint64_t hpos;   /* initialized if loop is nonzero */
-  uint64_t dpos;   /* initialized if cdb_findnext() returns 1 */
+  uintptr_t kpos;  /* initialized if loop is nonzero */
+  uintptr_t hpos;  /* initialized if loop is nonzero */
+  uintptr_t dpos;  /* initialized if cdb_findnext() returns 1 */
   uint32_t dlen;   /* initialized if cdb_findnext() returns 1 */
   uint32_t khash;  /* initialized if loop is nonzero */
 };
@@ -99,7 +99,7 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
   (mcdb_findstart((m),(key),(klen)) && mcdb_findnext((m),(key),(klen)))
 
 extern void *
-mcdb_read(struct mcdb * restrict, uint64_t, uint32_t, void * restrict)
+mcdb_read(struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 #define mcdb_datapos(m)      ((m)->dpos)

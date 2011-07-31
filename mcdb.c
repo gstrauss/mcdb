@@ -86,6 +86,9 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr-8);
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
     m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << 4);
+  #ifdef __GNUC__
+    __builtin_prefetch((char *)ptr+m->kpos, 0, 2);/* prefetch for findtagnext */
+  #endif
     m->khash = khash;      /* (use khash bits not used above) */
     m->loop  = 0;
     return true;
@@ -98,9 +101,9 @@ mcdb_findtagnext(struct mcdb * const restrict m,
 {
     const unsigned char * ptr;
     const unsigned char * const restrict mptr = m->map->ptr;
-    const uint64_t hslots_end = m->hpos + (((uint64_t)m->hslots) << 4);
-    uint32_t vpos, khash;
-    size_t len;
+    const uintptr_t hslots_end = m->hpos + (((uintptr_t)m->hslots) << 4);
+    uintptr_t vpos;
+    uint32_t khash, len;
 
     while (m->loop < m->hslots) {
         ptr = mptr + m->kpos + 8;
@@ -113,14 +116,19 @@ mcdb_findtagnext(struct mcdb * const restrict m,
             m->kpos = m->hpos;
         m->loop += 1;
         if (khash == m->khash) {
-            ptr = mptr + vpos;
-            len = (size_t)uint32_strunpack_bigendian_macro(ptr);
-            if (tagc != 0
-                ? len == klen+1 && tagc == ptr[8] && memcmp(key,ptr+9,klen) == 0
-                : len == klen && memcmp(key,ptr+8,klen) == 0) {
-                m->dlen = uint32_strunpack_bigendian_macro(ptr+4);
-                m->dpos = vpos + 8 + len;
-                return true;
+          #ifdef __GNUC__
+            __builtin_prefetch((char *)mptr+vpos+4, 0, 1); /* prefetch data */
+          #endif
+            len = uint32_strunpack_bigendian_aligned_macro(ptr-4);
+            if (len == klen+(tagc!=0)) {
+                ptr = mptr + vpos + 8;
+                if (tagc != 0
+                    ? tagc == ptr[0] && memcmp(key,ptr+1,klen) == 0
+                    : memcmp(key,ptr,klen) == 0) {
+                    m->dlen = uint32_strunpack_bigendian_macro(ptr-4);
+                    m->dpos = vpos + 8 + len;
+                    return true;
+                }
             }
         }
     }
@@ -132,10 +140,10 @@ mcdb_findtagnext(struct mcdb * const restrict m,
  * Note: caller must terminate with '\0' if desired, i.e. buf[len] = '\0';
  */
 void *
-mcdb_read(struct mcdb * const restrict m, const uint64_t pos,
+mcdb_read(struct mcdb * const restrict m, const uintptr_t pos,
           const uint32_t len, void * const restrict buf)
 {
-    const uint64_t mapsz = m->map->size;
+    const uintptr_t mapsz = m->map->size;
     return (pos <= mapsz && mapsz - pos >= len) /* bounds check */
       ? memcpy(buf, m->map->ptr + pos, len)
       : NULL;
