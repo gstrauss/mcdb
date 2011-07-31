@@ -77,6 +77,16 @@ install: /lib64/libnss_mcdb.so.2 /usr/lib64/libnss_mcdb.so.2
 endif
 
 
+.PHONY: test
+test: mcdbctl
+	$(RM) -r t/scratch
+	mkdir -p t/scratch
+	cd t/scratch && \
+	  env - PATH="$(CURDIR):$$PATH" \
+	  $(CURDIR)/t/mcdbctl.t 2>&1 | cat -v
+	$(RM) -r t/scratch
+
+
 .PHONY: clean
 clean:
 	! [ "$$(/usr/bin/id -u)" = "0" ]
