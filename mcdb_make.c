@@ -119,7 +119,7 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
         m->map = MAP_FAILED;
     }
 
-    /* limit max size of mcdb to (4GB - pagesize) */
+    /* limit max size of mcdb to (4 GB - pagesize) */
     /*(commented out to remove the 4 GB limit)*/
     //if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
 

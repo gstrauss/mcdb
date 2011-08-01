@@ -6,9 +6,10 @@
  *
  * - updated to C99 and POSIX.1-2001 (not available/portable when djb wrote cdb)
  * - optimized for mmap access to constant db (and avoid double buffering)
- * - redesigned for use in threaded programs
+ * - redesigned for use in threaded programs (thread-safe interface available)
  * - convenience routines to check for updated constant db and to refresh mmap
- * - 64-bit safe (needed to be able to create up to 4 GB database, max cdb size)
+ * - support cdb > 4 GB with 64-bit program (required to mmap() mcdb > 4 GB)
+ * - 64-bit safe (for use in 64-bit programs)
  *
  * Advantages over external database
  * - performance: better; avoids context switch to external database process
@@ -18,7 +19,7 @@
  * - shared across processes (though shared-memory could be used for hash map)
  * - read-only (though memory pages could also be marked read-only for hash map)
  * Disadvantages to specialized hash map
- * - performance: slightly lower than specialized hash map
+ * - performance: slightly slower than specialized hash map
  * Disadvantages to djb cdb
  * - mmap requires address space be available into which to mmap the const db
  *   (i.e. large const db might fail to mmap into 32-bit process)
@@ -27,18 +28,32 @@
  * - arbitrary limit of each key or data set to (INT_MAX - 8 bytes; almost 2 GB)
  *   (djb cdb doc states there is no limit besides cdb fitting into 4 GB)
  *   (writev() on some platforms in 32-bit exe might also have 2 GB limit)
- * - djb cdb tools work on input stream; mcdbctl operates on file
- *   The ability to work on an input stream forced certain design choices that
- *   might not be relevant to working on an mmap'd file, but mcdb uses similar
- *   layout to cdb in format specification.
  *
  * Incompatibilities with djb cdb
  * - padding added at the end of key,value data to 8-byte align hash tables
  *   (incompatible with djb cdbdump)
+ * - initial table and hash tables have 8-byte values instead of 4-byte values
+ *   in order to support cdb > 4 GB.  cdb uses 24 bytes per record plus 2048,
+ *   whereas mcdb uses 40 bytes per record plus 4096.
  * - packing of integral lengths into char strings is done big-endian for
  *   performance in packing/unpacking integer data in 4-byte (or better)
  *   aligned addresses.  (incompatible with all djb cdb* tools and cdb's)
  *   (djb cdb documents all 32-bit quantities stored in little-endian form)
+ *   Memory load latency is limiting factor, not x86 assembly instruction
+ *   to convert uint32_t to and from big-endian.
+ *
+ * Limitations
+ * - 2 billion keys
+ *   As long as djb hash is 32-bit, mcdb_make.c limits number of hash keys to
+ *   2 billion.  cdb handles hash collisions, but there is a small expense each
+ *   collision.  As the key space becomes denser within the 2 billion, there is
+ *   greater chance of collisions.  Input strings also affect this probability,
+ *   as do the sizes of the hash tables.
+ * - process must mmap() entire mcdb
+ *   Each mcdb is mmap()d in its entirety into the address space.  For 32-bit
+ *   programs that means there is a 4 GB limit on size of mcdb, minus address
+ *   space used by the program (including stack, heap, shared libraries, shmat
+ *   and other mmaps, etc).  Compile and link 64-bit to remove this limitation.
  */
 
 #ifndef MCDB_H

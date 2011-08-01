@@ -80,10 +80,10 @@ mcdb_findtagstart(struct mcdb * const restrict m,
 
     /* (size of data in lvl1 hash table element is 16-bytes (shift 4 bits)) */
     ptr = m->map->ptr + ((khash & MCDB_SLOT_MASK) << 4) + 8;
-    m->hslots = uint32_strunpack_bigendian_aligned_macro(ptr);
+    m->hslots= uint32_strunpack_bigendian_aligned_macro(ptr);
+    m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr-8);
     if (!m->hslots)
         return false;
-    m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr-8);
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
     m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << 4);
   #ifdef __GNUC__
@@ -107,13 +107,13 @@ mcdb_findtagnext(struct mcdb * const restrict m,
 
     while (m->loop < m->hslots) {
         ptr = mptr + m->kpos + 8;
+        m->kpos += 16;
+        if (m->kpos == hslots_end)
+            m->kpos = m->hpos;
         vpos = uint64_strunpack_bigendian_aligned_macro(ptr);
         if (!vpos)
             return false;
         khash = uint32_strunpack_bigendian_aligned_macro(ptr-8);
-        m->kpos += 16;
-        if (m->kpos == hslots_end)
-            m->kpos = m->hpos;
         m->loop += 1;
         if (khash == m->khash) {
           #ifdef __GNUC__
@@ -178,7 +178,6 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 
     mcdb_mmap_unmap(map);
 
-    /* size of mcdb is limited to 4 GB minus difference needed to page-align */
     if (fstat(fd, &st) != 0) return false;
     x = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (x == MAP_FAILED) return false;
