@@ -80,8 +80,8 @@ mcdb_findtagstart(struct mcdb * const restrict m,
 
     /* (size of data in lvl1 hash table element is 16-bytes (shift 4 bits)) */
     ptr = m->map->ptr + ((khash & MCDB_SLOT_MASK) << 4) + 8;
-    m->hslots= uint32_strunpack_bigendian_aligned_macro(ptr);
     m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr-8);
+    m->hslots= uint32_strunpack_bigendian_aligned_macro(ptr);
     if (!m->hslots)
         return false;
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
@@ -110,11 +110,11 @@ mcdb_findtagnext(struct mcdb * const restrict m,
         m->kpos += 16;
         if (m->kpos == hslots_end)
             m->kpos = m->hpos;
+        khash = uint32_strunpack_bigendian_aligned_macro(ptr-8);
         vpos = uint64_strunpack_bigendian_aligned_macro(ptr);
         if (!vpos)
             return false;
-        khash = uint32_strunpack_bigendian_aligned_macro(ptr-8);
-        m->loop += 1;
+        ++m->loop;
         if (khash == m->khash) {
           #ifdef __GNUC__
             __builtin_prefetch((char *)mptr+vpos+4, 0, 1); /* prefetch data */
@@ -184,9 +184,12 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
   #ifdef __GNUC__
     __builtin_prefetch((char *)x+960, 0, 1); /*(touch mem page w/ mcdb header)*/
   #endif
+  #if 0 /* disable; does not appear to improve performance */
+    /*(peformance hit when hitting an uncached mcdb on my 32-bit Pentium-M)*/
     if (st.st_size > 4194304) /*(skip syscall overhead if < 4 MB (arbitrary))*/
         posix_madvise(((char *)x), st.st_size, POSIX_MADV_RANDOM);
 	/*(addr (x) must be aligned on _SC_PAGESIZE for madvise portability)*/
+  #endif
     map->ptr   = (unsigned char *)x;
     map->size  = st.st_size;
     map->mtime = st.st_mtime;
