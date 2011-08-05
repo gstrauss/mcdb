@@ -79,9 +79,9 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     /* (ignore rc; continue with previous map in case of failure) */
 
     /* (size of data in lvl1 hash table element is 16-bytes (shift 4 bits)) */
-    ptr = m->map->ptr + ((khash & MCDB_SLOT_MASK) << 4) + 8;
-    m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr-8);
-    m->hslots= uint32_strunpack_bigendian_aligned_macro(ptr);
+    ptr = m->map->ptr + ((khash & MCDB_SLOT_MASK) << 4);
+    m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr);
+    m->hslots= uint32_strunpack_bigendian_aligned_macro(ptr+8);
     if (!m->hslots)
         return false;
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
@@ -106,20 +106,20 @@ mcdb_findtagnext(struct mcdb * const restrict m,
     uint32_t khash, len;
 
     while (m->loop < m->hslots) {
-        ptr = mptr + m->kpos + 8;
+        ptr = mptr + m->kpos;
         m->kpos += 16;
-        if (m->kpos == hslots_end)
+        if (__builtin_expect((m->kpos == hslots_end), 0))
             m->kpos = m->hpos;
-        khash = uint32_strunpack_bigendian_aligned_macro(ptr-8);
-        vpos = uint64_strunpack_bigendian_aligned_macro(ptr);
-        if (!vpos)
+        khash = uint32_strunpack_bigendian_aligned_macro(ptr);
+        vpos = uint64_strunpack_bigendian_aligned_macro(ptr+8);
+        if (__builtin_expect((!vpos), 0))
             return false;
         ++m->loop;
         if (khash == m->khash) {
           #ifdef __GNUC__
             __builtin_prefetch((char *)mptr+vpos+4, 0, 1); /* prefetch data */
           #endif
-            len = uint32_strunpack_bigendian_aligned_macro(ptr-4);
+            len = uint32_strunpack_bigendian_aligned_macro(ptr+4);
             if (len == klen+(tagc!=0)) {
                 ptr = mptr + vpos + 8;
                 if (tagc != 0

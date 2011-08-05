@@ -102,11 +102,11 @@ struct mcdb {
 extern bool
 mcdb_findtagstart(struct mcdb * restrict, const char * restrict, size_t,
                   unsigned char)/* note: must be 0 or cast to (unsigned char) */
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_hot__;
 extern bool
 mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
                  unsigned char) /* note: must be 0 or cast to (unsigned char) */
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_hot__;
 
 #define mcdb_findstart(m,key,klen) mcdb_findtagstart((m),(key),(klen),0)
 #define mcdb_findnext(m,key,klen)  mcdb_findtagnext((m),(key),(klen),0)
