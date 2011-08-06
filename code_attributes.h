@@ -169,6 +169,10 @@
 #endif
 #endif
 
+#if !defined(__GNUC__)
+#define __builtin_prefetch(addr,rw,locality)
+#endif
+
 
 #define retry_eintr_while(x) \
   /*@-whileempty@*/                 /* caller must #include <errno.h> */   \

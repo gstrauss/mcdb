@@ -86,9 +86,7 @@ mcdb_findtagstart(struct mcdb * const restrict m,
         return false;
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
     m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << 4);
-  #ifdef __GNUC__
     __builtin_prefetch((char *)m->map->ptr+m->kpos,0,2);/*prefetch findtagnext*/
-  #endif
     m->khash = khash;
     m->loop  = 0;
     return true;
@@ -107,28 +105,25 @@ mcdb_findtagnext(struct mcdb * const restrict m,
 
     while (m->loop < m->hslots) {
         ptr = mptr + m->kpos;
+        __builtin_prefetch((char *)ptr+16, 0, 2);
         m->kpos += 16;
         if (__builtin_expect((m->kpos == hslots_end), 0))
             m->kpos = m->hpos;
-        khash = uint32_strunpack_bigendian_aligned_macro(ptr);
+        khash= uint32_strunpack_bigendian_aligned_macro(ptr);
+        len  = uint32_strunpack_bigendian_aligned_macro(ptr+4);
         vpos = uint64_strunpack_bigendian_aligned_macro(ptr+8);
+        __builtin_prefetch((char *)mptr+vpos+4, 0, 2);
         if (__builtin_expect((!vpos), 0))
             return false;
         ++m->loop;
-        if (khash == m->khash) {
-          #ifdef __GNUC__
-            __builtin_prefetch((char *)mptr+vpos+4, 0, 1); /* prefetch data */
-          #endif
-            len = uint32_strunpack_bigendian_aligned_macro(ptr+4);
-            if (len == klen+(tagc!=0)) {
-                ptr = mptr + vpos + 8;
-                if (tagc != 0
-                    ? tagc == ptr[0] && memcmp(key,ptr+1,klen) == 0
-                    : memcmp(key,ptr,klen) == 0) {
-                    m->dlen = uint32_strunpack_bigendian_macro(ptr-4);
-                    m->dpos = vpos + 8 + len;
-                    return true;
-                }
+        if (khash == m->khash && len == klen+(tagc!=0)) {
+            m->dpos = vpos + 8 + len;
+            ptr = mptr + vpos + 8;
+            if (tagc != 0
+                ? tagc == ptr[0] && memcmp(key,ptr+1,klen) == 0
+                : memcmp(key,ptr,klen) == 0) {
+                m->dlen = uint32_strunpack_bigendian_macro(ptr-4);
+                return true;
             }
         }
     }
@@ -181,9 +176,7 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     if (fstat(fd, &st) != 0) return false;
     x = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (x == MAP_FAILED) return false;
-  #ifdef __GNUC__
-    __builtin_prefetch((char *)x+960, 0, 1); /*(touch mem page w/ mcdb header)*/
-  #endif
+    __builtin_prefetch((char *)x+960, 0, 3); /*(touch mem page w/ mcdb header)*/
   #if 0 /* disable; does not appear to improve performance */
     /*(peformance hit when hitting an uncached mcdb on my 32-bit Pentium-M)*/
     if (st.st_size > 4194304) /*(skip syscall overhead if < 4 MB (arbitrary))*/
