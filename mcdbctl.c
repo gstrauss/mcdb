@@ -81,7 +81,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     uint32_t klen;
     uint32_t dlen;
     unsigned char * const eod =
-      p + uint64_strunpack_bigendian_aligned_macro(p) - 7;
+      p + uint64_strunpack_bigendian_aligned_macro(p) - MCDB_PAD_MASK;
     int    iovcnt = 0;
     size_t iovlen = 0;
     size_t buflen = 0;
@@ -175,7 +175,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
     uint32_t klen;
     uint32_t dlen;
     unsigned char * const eod =
-      map_ptr + uint64_strunpack_bigendian_aligned_macro(map_ptr) - 7;
+      map_ptr+uint64_strunpack_bigendian_aligned_macro(map_ptr)-MCDB_PAD_MASK;
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;

@@ -90,13 +90,13 @@ struct mcdb_mmap {
 
 struct mcdb {
   struct mcdb_mmap *map;
-  uint32_t loop;   /* number of hash slots searched under this key */
-  uint32_t hslots; /* initialized if loop is nonzero */
-  uintptr_t kpos;  /* initialized if loop is nonzero */
-  uintptr_t hpos;  /* initialized if loop is nonzero */
-  uintptr_t dpos;  /* initialized if cdb_findnext() returns 1 */
-  uint32_t dlen;   /* initialized if cdb_findnext() returns 1 */
-  uint32_t khash;  /* initialized if loop is nonzero */
+  uint32_t loop;   /* num of hash slots searched under this key */
+  uint32_t hslots; /* num of hash slots; init if mcdb_findtagstart() ret true */
+  uintptr_t kpos;  /* initialized if mcdb_findtagstart() returns true */
+  uintptr_t hpos;  /* initialized if mcdb_findtagstart() returns true */
+  uintptr_t dpos;  /* initialized if mcdb_findtagnext() returns true */
+  uint32_t dlen;   /* initialized if mcdb_findtagnext() returns true */
+  uint32_t khash;  /* initialized by call to mcdb_findtagstart() */
 };
 
 extern bool
@@ -111,7 +111,8 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
 #define mcdb_findstart(m,key,klen) mcdb_findtagstart((m),(key),(klen),0)
 #define mcdb_findnext(m,key,klen)  mcdb_findtagnext((m),(key),(klen),0)
 #define mcdb_find(m,key,klen) \
-  (mcdb_findstart((m),(key),(klen)) && mcdb_findnext((m),(key),(klen)))
+  (__builtin_expect((mcdb_findstart((m),(key),(klen))), 1) \
+                  && mcdb_findnext((m),(key),(klen)))
 
 extern void *
 mcdb_read(struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
@@ -185,10 +186,13 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
 
 
 #define MCDB_SLOT_BITS 8                    /* 2^8 = 256 */
-#define MCDB_SLOTS (1u<<(MCDB_SLOT_BITS-1)) /* must be power-of-2 */
+#define MCDB_SLOTS (1u<<MCDB_SLOT_BITS)     /* must be power-of-2 */
 #define MCDB_SLOT_MASK (MCDB_SLOTS-1)       /* bitmask */
 #define MCDB_HEADER_SZ (MCDB_SLOTS<<4)      /* MCDB_SLOTS * 16  (256*16=4096) */
 #define MCDB_MMAP_SZ (1<<19)     /* 512KB; must be larger than MCDB_HEADER_SZ */
+
+#define MCDB_PAD_ALIGN 16
+#define MCDB_PAD_MASK (MCDB_PAD_ALIGN-1)
 
 
 #ifdef __cplusplus

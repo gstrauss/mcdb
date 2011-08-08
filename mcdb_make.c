@@ -297,7 +297,8 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
   #endif
 
     /* add "hole" for alignment; incompatible with djb cdbdump */
-    d = (8 - (m->pos & 7)) & 7; /* padding to align hash tables to 8 bytes */
+    /* padding to align hash tables to MCDB_PAD_ALIGN bytes (16) */
+    d = (MCDB_PAD_ALIGN - (m->pos & MCDB_PAD_MASK)) & MCDB_PAD_MASK;
   #if !defined(_LP64) && !defined(__LP64__)
     if (d > (UINT_MAX-(m->pos+u)))             { errno = ENOMEM; return -1; }
   #endif

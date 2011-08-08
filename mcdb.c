@@ -82,7 +82,7 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     ptr = m->map->ptr + ((khash & MCDB_SLOT_MASK) << 4);
     m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr);
     m->hslots= uint32_strunpack_bigendian_aligned_macro(ptr+8);
-    if (!m->hslots)
+    if (__builtin_expect((!m->hslots), 0))
         return false;
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
     m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << 4);
