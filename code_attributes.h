@@ -169,6 +169,7 @@
 #endif
 #endif
 
+/* GCC __builtin_prefetch() http://gcc.gnu.org/projects/prefetch.html */
 #if !defined(__GNUC__)
 #define __builtin_prefetch(addr,rw,locality)
 #endif

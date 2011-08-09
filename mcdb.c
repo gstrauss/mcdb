@@ -86,8 +86,10 @@ mcdb_findtagstart(struct mcdb * const restrict m,
         return false;
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
     m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << 4);
-    __builtin_prefetch((char *)m->map->ptr+m->kpos,0,2);/*prefetch findtagnext*/
-    m->khash = khash;
+    ptr = (char *)m->map->ptr + m->kpos;
+    __builtin_prefetch(ptr,0,2);    /*prefetch for mcdb_findtagnext()*/
+    __builtin_prefetch(ptr+64,0,2); /*prefetch for mcdb_findtagnext()*/
+    uint32_strpack_bigendian_aligned_macro(&m->khash, khash);/*store bigendian*/
     m->loop  = 0;
     return true;
 }
@@ -105,14 +107,13 @@ mcdb_findtagnext(struct mcdb * const restrict m,
 
     while (m->loop < m->hslots) {
         ptr = mptr + m->kpos;
-        __builtin_prefetch((char *)ptr+16, 0, 2);
         m->kpos += 16;
         if (__builtin_expect((m->kpos == hslots_end), 0))
             m->kpos = m->hpos;
-        khash= uint32_strunpack_bigendian_aligned_macro(ptr);
+        khash= *(uint32_t *)ptr; /* m->khash stored bigendian */
         len  = uint32_strunpack_bigendian_aligned_macro(ptr+4);
         vpos = uint64_strunpack_bigendian_aligned_macro(ptr+8);
-        __builtin_prefetch((char *)mptr+vpos+4, 0, 2);
+        __builtin_prefetch((char *)mptr+vpos+4, 0, 1);
         if (__builtin_expect((!vpos), 0))
             return false;
         ++m->loop;
