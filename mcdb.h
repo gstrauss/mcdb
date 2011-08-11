@@ -30,7 +30,7 @@
  *   (writev() on some platforms in 32-bit exe might also have 2 GB limit)
  *
  * Incompatibilities with djb cdb
- * - padding added at the end of key,value data to 8-byte align hash tables
+ * - padding added at the end of key,value data to 16-byte align hash tables
  *   (incompatible with djb cdbdump)
  * - initial table and hash tables have 8-byte values instead of 4-byte values
  *   in order to support cdb > 4 GB.  cdb uses 24 bytes per record plus 2048,

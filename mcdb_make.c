@@ -119,15 +119,17 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
         m->map = MAP_FAILED;
     }
 
+  #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
     /* limit max size of mcdb to (4 GB - pagesize) */
-    /*(commented out to remove the 4 GB limit)*/
-    //if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
+    if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
+  #endif
 
     offset = m->offset + ((m->pos - m->offset) & m->pgalign);
     msz = (MCDB_MMAP_SZ > sz - offset) ? MCDB_MMAP_SZ : sz - offset;
-    /*(commented out to remove the 4 GB limit)*/
-    //if (offset > (UINT_MAX & m->pgalign) - msz)
-    //    msz = (UINT_MAX & m->pgalign) - offset;
+  #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
+    if (offset > (UINT_MAX & m->pgalign) - msz)
+        msz = (UINT_MAX & m->pgalign) - offset;
+  #endif
 
     m->fsz = offset + msz; /* (mcdb_make mmap region is always to end of file)*/
     if (m->fd != -1 && nointr_ftruncate(m->fd,(off_t)m->fsz) != 0) return false;
@@ -159,8 +161,9 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     head->hp[head->num].h = UINT32_HASH_DJB_INIT;
     head->hp[head->num].l = (uint32_t)keylen;
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
-    /*(no 4 GB limit in 64-bit or in 32-bit with large file support)*/
-    //if (pos > UINT_MAX-len)                      { errno=ENOMEM; return -1; }
+  #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
+    if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
+  #endif
     if (m->fsz < pos+len && !mcdb_mmap_upsize(m,pos+len))          return -1;
     p = m->map + pos - m->offset;
     uint32_strpack_bigendian_macro(p,keylen);
