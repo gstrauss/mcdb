@@ -48,8 +48,17 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 /usr/lib/libnss_mcdb.so.2: /lib/libnss_mcdb.so.2
 	[ -L $@ ] || /bin/ln -s $< $@
 
+/bin/mcdbctl: mcdbctl
+	/bin/cp -f $< $@.$$$$ \
+	&& /bin/mv -f $@.$$$$ $@
+
+/bin/nss_mcdbctl: nss_mcdbctl
+	/bin/cp -f $< $@.$$$$ \
+	&& /bin/mv -f $@.$$$$ $@
+
 .PHONY: install
-install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2
+install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2 \
+         /bin/mcdbctl /bin/nss_mcdbctl
 
 
 # 64-bit nss_mcdb_* library
