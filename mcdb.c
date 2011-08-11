@@ -120,12 +120,9 @@ mcdb_findtagnext(struct mcdb * const restrict m,
         if (khash == m->khash && len == klen+(tagc!=0)) {
             m->dpos = vpos + 8 + len;
             ptr = mptr + vpos + 8;
-            if (tagc != 0
-                ? tagc == ptr[0] && memcmp(key,ptr+1,klen) == 0
-                : memcmp(key,ptr,klen) == 0) {
-                m->dlen = uint32_strunpack_bigendian_macro(ptr-4);
+            m->dlen = uint32_strunpack_bigendian_macro(ptr-4);
+            if ((tagc == 0 || tagc == *ptr++) && memcmp(key,ptr,klen) == 0)
                 return true;
-            }
         }
     }
     return false;
@@ -190,6 +187,15 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     map->next  = NULL;
     map->refcnt= 0;
     return true;
+}
+
+void  __attribute_noinline__
+mcdb_mmap_prefault(struct mcdb_mmap * const restrict map)
+{
+    /* improves performance on uncached mcdb (if about to make *many* queries)
+     * by asking operating system to prefault pages into memory from disk
+     * (call only if mcdb fits into filesystem cache in physical memory) */
+    posix_madvise(((char *)map->ptr), map->size, POSIX_MADV_WILLNEED);
 }
 
 void  __attribute_noinline__

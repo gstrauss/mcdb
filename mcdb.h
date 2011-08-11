@@ -147,6 +147,9 @@ extern bool
 mcdb_mmap_init(struct mcdb_mmap * restrict, int)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 extern void
+mcdb_mmap_prefault(struct mcdb_mmap * restrict)
+  __attribute_nonnull__;
+extern void
 mcdb_mmap_free(struct mcdb_mmap * restrict)
   __attribute_nonnull__;
 extern bool
