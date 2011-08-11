@@ -4,7 +4,7 @@ all: mcdbctl nss_mcdbctl testzero \
      libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
 
 CC=gcc
-CFLAGS+=-pipe -Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3 -g
+CFLAGS+=-pipe -Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3
 # To disable uint32 and nointr C99 inline functions:
 #   -DNO_C99INLINE
 # Another option to smaller binary is -Os instead of -O3, and remove -Winline
