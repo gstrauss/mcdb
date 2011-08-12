@@ -138,9 +138,9 @@ mcdb_bufread_preamble (struct mcdb_input * const restrict b,
                        size_t * const restrict dlen)
 {
     /* mcdbmake lines begin "+nnnn,mmmm:...."; max 23 chars with 32-bit nums */
-    /* mcdbmake blank line ends input */
-    if (b->datasz - b->pos < 23 && mcdb_bufread_preamble_fill(b) == -1)
-        return MCDB_ERROR_READ;                /* -2  error read         */
+    /* mcdbmake blank line ends input, or else MCDB_ERROR_READFORMAT error */
+    if (b->datasz - b->pos < 23 && mcdb_bufread_preamble_fill(b) <= 0)
+        return (errno == 0 ? MCDB_ERROR_READFORMAT : MCDB_ERROR_READ);
     switch (b->buf[b->pos++]) {
       case  '+': break;
       case '\n': return EXIT_SUCCESS;          /*  0  done; EXIT_SUCCESS */
@@ -226,6 +226,8 @@ mcdb_makefmt_fdintofd (const int inputfd,
     size_t klen;
     size_t dlen;
     int rv;
+
+    errno = 0;
 
     if (mcdb_make_start(&m, outputfd, fn_malloc, fn_free) == -1)
         return MCDB_ERROR_WRITE;
