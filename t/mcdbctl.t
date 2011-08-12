@@ -186,7 +186,7 @@ echo '' | cdbmake loop/test.cdb - 2>/dev/null
 rc=$?; [ $rc -eq 111 ] || echo 1>&2 "FAIL $rc"
 
 
-if which softlimit 2>/dev/null; then
+if which softlimit >/dev/null 2>&1; then
 
 echo '--- cdbmake handles nomem'
 perl -e 'for (1..5000) { print "+3,5:one->Hello\n"; }' \

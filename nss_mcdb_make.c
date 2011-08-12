@@ -27,6 +27,7 @@
 #include <sys/mman.h> /* mmap() munmap() */
 #include <fcntl.h>    /* open() */
 #include <stdbool.h>  /* true false */
+#include <stdint.h>   /* uint32_t */
 #include <stdio.h>    /* snprintf() */
 #include <string.h>   /* memcpy() strcmp() strncmp() strrchr() */
 #include <unistd.h>   /* fstat() close() */
@@ -135,7 +136,9 @@ nss_mcdb_make_mcdbctl_write(struct nss_mcdb_make_winfo * const restrict w)
      * (flush buffer to wbuf->fd if not enough space for next record)
      * (wbuf->bufsz must always be large enough to hold largest full line) */
     /* 6 bytes of mcdb input line overhead ("+,:->\n")
-     * + max 10 digits for two nums + klen + dlen */
+     * + max 10 digits for two nums + klen + dlen 
+     * (cast klen and dlen to uint32_t;
+     *  if either is >= 2 GB in nss dbs, that indicates some other problems!)*/
 
     if (__builtin_expect( w->klen+w->dlen+26 > wbuf->bufsz-wbuf->offset, 0)) {
         if (__builtin_expect( nointr_write(wbuf->fd, wbuf->buf,
@@ -145,7 +148,7 @@ nss_mcdb_make_mcdbctl_write(struct nss_mcdb_make_winfo * const restrict w)
     }
 
     wbuf->offset += snprintf(wbuf->buf + wbuf->offset, 25, "+%u,%u:%c",
-                          w->klen+1, w->dlen, w->tagc);
+                             (uint32_t)w->klen+1, (uint32_t)w->dlen, w->tagc);
     memcpy(wbuf->buf + wbuf->offset, w->key, w->klen);
     wbuf->offset += w->klen;
     wbuf->buf[wbuf->offset++] = '-';
