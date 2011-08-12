@@ -82,6 +82,8 @@ lib64/libnss_mcdb.so.2: $(LIB64_PIC_OBJS)
 /usr/lib64/libnss_mcdb.so.2: /lib64/libnss_mcdb.so.2
 	[ -L $@ ] || /bin/ln -s $< $@
 
+all: lib64/libnss_mcdb.so.2
+
 install: /lib64/libnss_mcdb.so.2 /usr/lib64/libnss_mcdb.so.2
 endif
 
