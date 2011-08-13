@@ -3,8 +3,15 @@
 all: mcdbctl nss_mcdbctl testzero \
      libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
 
-CC=gcc
-CFLAGS+=-pipe -Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3
+_HAS_LIB64:=$(wildcard /lib64)
+ifneq (,$(_HAS_LIB64))
+  ABI_BITS=64
+  ABI_FLAGS=-m64
+endif
+
+CC=gcc -pipe
+CFLAGS+=$(ABI_FLAGS) -Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3
+LDFLAGS+=$(ABI_FLAGS)
 # To disable uint32 and nointr C99 inline functions:
 #   -DNO_C99INLINE
 # Another option to smaller binary is -Os instead of -O3, and remove -Winline
@@ -13,13 +20,13 @@ CFLAGS+=-pipe -Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3
 _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) -o $@ $(CFLAGS) -c $<
 
 # (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
 PIC_OBJS:= mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
 $(PIC_OBJS): CFLAGS+= -fpic
 libnss_mcdb.so.2: $(PIC_OBJS)
-	$(CC) -shared -fpic -Wl,-soname,$(@F) -o $@ $^
+	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,$(@F) $^
 
 libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o
 	$(AR) -r $@ $^
@@ -41,11 +48,11 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 
 # (update library atomically (important to avoid crashing running programs))
 # (could use /usr/bin/install if available)
-/lib/libnss_mcdb.so.2: libnss_mcdb.so.2
+/lib$(ABI_BITS)/libnss_mcdb.so.2: libnss_mcdb.so.2
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-/usr/lib/libnss_mcdb.so.2: /lib/libnss_mcdb.so.2
+/usr/lib$(ABI_BITS)/libnss_mcdb.so.2: /lib$(ABI_BITS)/libnss_mcdb.so.2
 	[ -L $@ ] || /bin/ln -s $< $@
 
 /bin/mcdbctl: mcdbctl
@@ -57,34 +64,38 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 	&& /bin/mv -f $@.$$$$ $@
 
 .PHONY: install
-install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2 \
+install: /lib$(ABI_BITS)/libnss_mcdb.so.2 /usr/lib$(ABI_BITS)/libnss_mcdb.so.2 \
          /bin/mcdbctl /bin/nss_mcdbctl
 
 
-# 64-bit nss_mcdb_* library
-# (hack: most modern CPUs in high-end computers are 64-bit; though not i686)
-ifneq (i686,$(shell uname -p))
-ifeq (,$(wildcard lib64))
-  $(shell mkdir lib64)
+# also create 32-bit libraries for /lib on systems with /lib and /lib64
+ifneq (,$(_HAS_LIB64))
+ifneq (,$(ABI_BITS))
+ifeq (,$(wildcard lib32))
+  $(shell mkdir lib32)
 endif
-lib64/%.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
-	$(CC) $(CFLAGS) -c -o $@ $<
+lib32/%.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
+	$(CC) -o $@ $(CFLAGS) -c $<
 
-LIB64_PIC_OBJS:= $(addprefix lib64/,$(PIC_OBJS))
-$(LIB64_PIC_OBJS): CFLAGS+= -fpic -m64
-lib64/libnss_mcdb.so.2: $(LIB64_PIC_OBJS)
-	$(CC) -shared -fpic -Wl,-soname,$(@F) -o $@ $^
+LIB32_PIC_OBJS:= $(addprefix lib32/,$(PIC_OBJS))
+$(LIB32_PIC_OBJS): ABI_BITS=32
+$(LIB32_PIC_OBJS): ABI_FLAGS=-m32
+$(LIB32_PIC_OBJS): CFLAGS+= -fpic
+lib32/libnss_mcdb.so.2: ABI_FLAGS=-m32
+lib32/libnss_mcdb.so.2: $(LIB32_PIC_OBJS)
+	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,$(@F) $^
 
-/lib64/libnss_mcdb.so.2: lib64/libnss_mcdb.so.2
+/lib/libnss_mcdb.so.2: lib32/libnss_mcdb.so.2
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-/usr/lib64/libnss_mcdb.so.2: /lib64/libnss_mcdb.so.2
+/usr/lib/libnss_mcdb.so.2: /lib/libnss_mcdb.so.2
 	[ -L $@ ] || /bin/ln -s $< $@
 
-all: lib64/libnss_mcdb.so.2
+all: lib32/libnss_mcdb.so.2
 
-install: /lib64/libnss_mcdb.so.2 /usr/lib64/libnss_mcdb.so.2
+install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2
+endif
 endif
 
 
@@ -102,6 +113,6 @@ test: mcdbctl
 clean:
 	! [ "$$(/usr/bin/id -u)" = "0" ]
 	$(RM) *.o libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
-	$(RM) -r lib64
+	$(RM) -r lib32
 	$(RM) mcdbctl nss_mcdbctl testzero
 
