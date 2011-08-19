@@ -58,6 +58,16 @@
 #define __attribute_noinline__
 #endif
 
+#if (defined(__GNUC__) && __GNUC_PREREQ(2,5)) \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */
+#ifndef __attribute_noreturn__
+#define __attribute_noreturn__  __attribute__((noreturn))
+#endif
+#endif
+#ifndef __attribute_noreturn__
+#define __attribute_noreturn__
+#endif
+
 #if defined(__GNUC__) && __GNUC_PREREQ(3,3)
 #ifndef __attribute_nonnull__
 #define __attribute_nonnull__  __attribute__((nonnull))
@@ -161,9 +171,11 @@
 /* GCC __builtin_expect() is used below to hint to compiler expected results
  * of commands executed.  Successful execution is expected and should be
  * optimally scheduled and predicted as branch taken.  Error conditions are
- * not expected and should be scheduled as the less likely branch taken. */
+ * not expected and should be scheduled as the less likely branch taken.
+ * (__builtin_expect() is recognized by IBM xlC compiler) */
 
-#if !defined(__GNUC__) || !__GNUC_PREREQ(2,96)
+#if !(defined(__GNUC__) && __GNUC_PREREQ(2,96)) \
+ && !(defined(__xlc__) || defined(__xlC__))
 #ifndef __builtin_expect
 #define __builtin_expect(x,y) (x)
 #endif
@@ -171,7 +183,34 @@
 
 /* GCC __builtin_prefetch() http://gcc.gnu.org/projects/prefetch.html */
 #if !defined(__GNUC__)
+/* xlC __dcbt() http://publib.boulder.ibm.com/infocenter/comphelp/v111v131/
+ * (on Power7, might check locality and use __dcbtt() or __dcbstt())*/
+#if defined(__xlc__) || defined(__xlC__)
+#define __builtin_prefetch(addr,rw,locality) \
+        ((rw) ? __dcbst(addr) : __dcbt(addr))
+#endif
+/* Sun Studio
+ * http://blogs.oracle.com/solarisdev/entry/new_article_prefetching
+ * (other prefetch options are available, but not mapped to locality here) */
+#if defined(__SUNPRO_C) || defined(__SUNPRO_CC)
+#include <sun_prefetch.h>
+#define __builtin_prefetch(addr,rw,locality) \
+        ((rw) ? sun_prefetch_write_once(addr) : sun_prefetch_read_once(addr))
+#endif
+/* HP aCC for IA-64 (Itanium)
+ * Search internet "Inline assembly for Itanium-based HP-UX"
+ * _Asm_lfhint competers appear to be reverse those of gcc __builtin_prefetch */
+#if defined(__ia64) && (defined(__HP_cc) || defined(__HP_aCC))
+#include <fenv.h>
+#include <machine/sys/inline.h>
+#define __builtin_prefetch(addr,rw,locality) \
+        ((rw) ? _Asm_lfetch_excl(_LFTYPE_NONE, -(locality)+3, (addr)) \
+              : _Asm_lfetch(_LFTYPE_NONE, -(locality)+3, (addr)))
+#endif
+/* default (do-nothing macros) */
+#ifndef __builtin_prefetch
 #define __builtin_prefetch(addr,rw,locality)
+#endif
 #endif
 
 
