@@ -114,6 +114,7 @@ uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
 {
     /* TODO: test if better code is generated with:
      *    while (sz--) h = (h + (h << 5)) ^ *buf++; */
+    /* Note: if size_t is signed type, then overflow is undefined behavior */
     const unsigned char * const restrict buf = (const unsigned char *)vbuf;
     size_t i = SIZE_MAX;  /* (size_t)-1; will wrap around to 0 with first ++i */
     while (++i < sz)

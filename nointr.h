@@ -14,6 +14,8 @@
  * processed as-is.  One such example is read(), where the data read should
  * be processed, unless a certain amount of data is required and it is
  * reasonable to block and wait longer.
+ * Note: inlining these do not provide much performance benefit since the cost
+ * of a system call is much greater than the overhead of calling a subroutine.
  */
 
 int  C99INLINE
