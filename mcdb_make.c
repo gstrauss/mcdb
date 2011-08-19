@@ -90,7 +90,7 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
     }
 
     return (    0 == nointr_ftruncate(m->fd, (off_t)m->pos)
-            &&  0 == posix_fallocate(m->fd, m->offset, m->pos - m->offset)
+            &&  0 == (errno = posix_fallocate(m->fd,m->offset,m->pos-m->offset))
             &&  0 == msync(m->map, m->pos - m->offset, MS_SYNC)
             && -1 != lseek(m->fd, 0, SEEK_SET)
             && -1 != nointr_write(m->fd, header, MCDB_HEADER_SZ)
@@ -114,7 +114,7 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
     if (m->map != MAP_FAILED) {
         if (m->fd != -1) { /* (m->fd == -1 during some large mcdb size tests) */
             /* msync MS_ASYNC, except MS_SYNC for mmap containing mcdb header */
-            if (posix_fallocate(m->fd, m->offset, m->pos - m->offset) != 0
+            if ((errno = posix_fallocate(m->fd,m->offset,m->pos-m->offset)) != 0
                 || msync(m->map, m->pos - m->offset,
                          m->offset >= MCDB_HEADER_SZ ? MS_ASYNC : MS_SYNC) != 0)
                 return false;
