@@ -83,7 +83,11 @@ static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
                  char header[MCDB_HEADER_SZ])
 {
-    if (m->fd == -1) return true; /*(m->fd == -1 during large mcdb size tests)*/
+    if (m->fd == -1) { /*(m->fd == -1 during large mcdb size tests)*/
+        if (m->offset == 0)
+            memcpy(m->map, header, MCDB_HEADER_SZ);
+        return true;
+    }
 
     return (    0 == nointr_ftruncate(m->fd, (off_t)m->pos)
             &&  0 == posix_fallocate(m->fd, m->offset, m->pos - m->offset)
@@ -139,7 +143,7 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
       ? (char *)mmap(0, msz, PROT_WRITE, MAP_SHARED, m->fd, (off_t)offset)
       : (char *)mmap(0, msz, PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     if (m->map == MAP_FAILED) return false;
-    posix_madvise(m->map, msz, POSIX_MADV_SEQUENTIAL);
+    posix_madvise(m->map, msz, POSIX_MADV_WILLNEED);
     m->offset = offset;
     m->msz = msz;
     return true;
@@ -228,13 +232,16 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
     m->map       = MAP_FAILED;
     m->pos       = MCDB_HEADER_SZ;
     m->offset    = 0;
+    m->fsz       = 0;
+    m->msz       = 0;
     m->head      = NULL;
     m->fd        = fd;
     m->fn_malloc = fn_malloc;
     m->fn_free   = fn_free;
     m->pgalign   = ~( ((size_t)sysconf(_SC_PAGESIZE)) - 1 );
 
-    if (mcdb_mmap_upsize(m, MCDB_MMAP_SZ)  /* MCDB_MMAP_SZ >= MCDB_HEADER_SZ */
+    if ((fd == -1            /*(m->fd == -1 during some large mcdb size tests)*/
+         || mcdb_mmap_upsize(m, MCDB_MMAP_SZ))/*(MCDB_MMAP_SZ>=MCDB_HEADER_SZ)*/
         && mcdb_hplist_alloc(m) != NULL) { /*init to skip NULL check every add*/
         m->head->hp[m->head->num].p = m->pos;
         return 0;
@@ -353,9 +360,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         }
 
         /* write hash table directly to map; allocated space checked above */
-        for (u = 0; u < len; ++u) {
-            p = m->map + m->pos - m->offset;
-            m->pos += 16; /* sizeof(struct mcdb_hp) */
+        p = m->map + m->pos - m->offset;
+        m->pos += (len << 4);
+        for (u = 0; u < len; p+=16, ++u) { /* 16 == sizeof(struct mcdb_hp) */
             uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /*khash*/
             uint32_strpack_bigendian_aligned_macro(p+4,hash[u].l); /*klen,dpos*/
             uint64_strpack_bigendian_aligned_macro(p+8,(uint64_t)hash[u].p);
