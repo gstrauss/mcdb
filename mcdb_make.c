@@ -146,7 +146,7 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
       ? (char *)mmap(0, msz, PROT_WRITE, MAP_SHARED, m->fd, (off_t)offset)
       : (char *)mmap(0, msz, PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     if (m->map == MAP_FAILED) return false;
-    posix_madvise(m->map, msz, POSIX_MADV_WILLNEED);
+    posix_madvise(m->map, msz, POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     m->offset = offset;
     m->msz = msz;
     return true;

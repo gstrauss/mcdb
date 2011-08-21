@@ -195,7 +195,8 @@ mcdb_mmap_prefault(struct mcdb_mmap * const restrict map)
     /* improves performance on uncached mcdb (if about to make *many* queries)
      * by asking operating system to prefault pages into memory from disk
      * (call only if mcdb fits into filesystem cache in physical memory) */
-    posix_madvise(((char *)map->ptr), map->size, POSIX_MADV_WILLNEED);
+    posix_madvise(((char *)map->ptr), map->size,
+                  POSIX_MADV_WILLNEED | POSIX_MADV_RANDOM);
 }
 
 void  __attribute_noinline__
