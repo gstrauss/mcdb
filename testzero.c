@@ -34,6 +34,9 @@ main(int argc,char **argv)
 
     if (mcdb_make_finish(&m) == -1 || (fd != -1 && nointr_close(fd) != 0))
         return mcdb_error(MCDB_ERROR_WRITE, "testzero");
+    /* Note: fdatasync(m.fd) is not called here due to type of usage here.
+     * See comments in mcdb_make.c:mcdb_mmap_commit() for when to use
+     * fsync() or fdatasync(). */
 
     return 0;
 }

@@ -1,7 +1,7 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
-#ifndef _XOPEN_SOURCE /* >= 500 on Linux for mkstemp(), fchmod() prototypes */
+#ifndef _XOPEN_SOURCE /* >= 500 on Linux for mkstemp(), fchmod(), fdatasync() */
 #define _XOPEN_SOURCE 500
 #endif
 /* large file support needed for stat(),fstat() input file > 2 GB */
@@ -312,6 +312,7 @@ mcdb_makefmt_fdintofile (const int inputfd,
     if ((fd = mkstemp(fnametmp)) != -1
         && (rv=mcdb_makefmt_fdintofd(inputfd,buf,bufsz,fd,fn_malloc,fn_free))==0
         && fchmod(fd, st.st_mode) == 0
+        && fdatasync(fd) == 0
         && nointr_close(fd) == 0        /* NFS might report write errors here */
         && (fd = -2, rename(fnametmp,fname) == 0)) /* (fd=-2 so not re-closed)*/
         rv = EXIT_SUCCESS;

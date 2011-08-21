@@ -9,7 +9,7 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
-#ifndef _XOPEN_SOURCE /* 600 for posix_fallocate(), >= 500 for fdatasync() */
+#ifndef _XOPEN_SOURCE /* 600 for posix_fallocate() */
 #define _XOPEN_SOURCE 600
 #endif
 /* gcc -std=c99 hides MAP_ANONYMOUS
@@ -91,14 +91,18 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
 
     return (    0 == nointr_ftruncate(m->fd, (off_t)m->pos)
             &&  0 == (errno = posix_fallocate(m->fd,m->offset,m->pos-m->offset))
-            &&  0 == msync(m->map, m->pos - m->offset, MS_SYNC)
+            &&  0 == msync(m->map, m->pos - m->offset, MS_ASYNC)
             && -1 != lseek(m->fd, 0, SEEK_SET)
-            && -1 != nointr_write(m->fd, header, MCDB_HEADER_SZ)
-            &&  0 == fdatasync(m->fd));
-    /* fdatasync() on Linux happens to ensure prior msync() MS_ASYNC complete.
-     * If there is no way on other platforms to ensure this, then use MS_SYNC
-     * unconditionally in mcdb_mmap_upsize() call to msync().  Most (all?)
-     * modern UNIX use a unified page cache, which should fsync as we expect. */
+            && -1 != nointr_write(m->fd, header, MCDB_HEADER_SZ));
+    /* Most (all?) modern UNIX use a unified VM page cache, so the difference
+     * between writing to mmap and then write() to fd should have identical
+     * (and coherent) results.  Calling msync with MS_SYNC can be as expensive
+     * as fsync() on whole file, so avoid unless necessary on specific platform.
+     * Caller of mcdb_make_finish() (which calls mcdb_mmap_commit()) may wish to
+     * call fsync() or fdatasync() on fd to ensure data is written to disk,
+     * e.g. in case when writing new mcdb to temporary file, before renaming
+     * temporary file to overwrite existing mcdb.  If not sync'd to disk and
+     * OS crashes, then the update mcdb can be corrupted. */
 }
 
 static bool  __attribute_noinline__
@@ -115,8 +119,7 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
         if (m->fd != -1) { /* (m->fd == -1 during some large mcdb size tests) */
             /* msync MS_ASYNC, except MS_SYNC for mmap containing mcdb header */
             if ((errno = posix_fallocate(m->fd,m->offset,m->pos-m->offset)) != 0
-                || msync(m->map, m->pos - m->offset,
-                         m->offset >= MCDB_HEADER_SZ ? MS_ASYNC : MS_SYNC) != 0)
+                || msync(m->map, m->pos - m->offset, MS_ASYNC) != 0)
                 return false;
         }
         if (munmap(m->map, m->msz) != 0) return false;

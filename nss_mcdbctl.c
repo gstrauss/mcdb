@@ -1,3 +1,6 @@
+#ifndef _XOPEN_SOURCE /* >= 500 for fdatasync() */
+#define _XOPEN_SOURCE 500
+#endif
 /* _BSD_SOURCE or _SVID_SOURCE for struct rpcent on Linux */
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
@@ -223,6 +226,7 @@ int main(void)
 
         rc =   nss_mcdb_make_dbfile(&w, fdb[i].file, fdb[i].parse)
             && fchmod(fd, st.st_mode) == 0
+            && fdatasync(fd) == 0
             && nointr_close(fd) == 0    /* NFS might report write errors here */
             && (fd = -2,                /* (fd=-2 so not re-closed)*/
                 rename(fnametmp, fname) == 0);

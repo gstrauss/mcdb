@@ -10,7 +10,9 @@ extern "C" {
 #endif
 
 /* Note: ensure output file is open() O_RDWR if calling mcdb_makefmt_fdintofd()
- * or else mmap() may fail */
+ * or else mmap() may fail.
+ * Note: caller of mcdb_makefmt_fdintofd() should choose whether or not to then
+ * call fsync() or fdatasync().  See notes in mcdb_make.c:mcdb_mmap_commit() */
 
 int
 mcdb_makefmt_fdintofd (int, char * restrict, size_t,
