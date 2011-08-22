@@ -82,6 +82,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     uint32_t dlen;
     unsigned char * const eod =
       p + uint64_strunpack_bigendian_aligned_macro(p) - MCDB_PAD_MASK;
+    unsigned char *j = p + (1u << 25); /* add 32 MB */
     int    iovcnt = 0;
     size_t iovlen = 0;
     size_t buflen = 0;
@@ -90,8 +91,15 @@ mcdbctl_dump(struct mcdb * const restrict m)
     char buf[(MCDB_IOVNUM * 3)];   /* each db entry might use (2) * 10 chars */
       /* oversized buffer since all num strings must add up to less than max */
 
-    posix_madvise(m->map->ptr, m->map->size, POSIX_MADV_SEQUENTIAL);
+    posix_madvise(m->map->ptr, m->map->size,
+                  POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     for (p += MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
+
+        /* hint to release memory pages every 32 MB */
+        if (__builtin_expect( (p >= j), 0)) {
+            posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
+            j += (1u << 25); /* add 32 MB */
+        }
 
         klen = uint32_strunpack_bigendian_macro(p);
         dlen = uint32_strunpack_bigendian_macro(p+4);
@@ -176,11 +184,13 @@ mcdbctl_stats(struct mcdb * const restrict m)
     uint32_t dlen;
     unsigned char * const eod =
       map_ptr+uint64_strunpack_bigendian_aligned_macro(map_ptr)-MCDB_PAD_MASK;
+    unsigned char *j = map_ptr + MCDB_HEADER_SZ + (1u << 25); /* add 32 MB */
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
     bool rc;
-    posix_madvise(map_ptr, m->map->size, POSIX_MADV_SEQUENTIAL);
+    posix_madvise(map_ptr, m->map->size,
+                  POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     for (p = map_ptr+MCDB_HEADER_SZ; p < eod; p += klen+dlen) {
         klen = uint32_strunpack_bigendian_macro(p);
         dlen = uint32_strunpack_bigendian_macro(p+4);
@@ -195,8 +205,13 @@ mcdbctl_stats(struct mcdb * const restrict m)
         }
         if (!rc) return MCDB_ERROR_READFORMAT;
         ++numd[ ((m->loop < 11) ? m->loop - 1 : 10) ];
-        if (0 == (++nrec & 0x3FFFF)) /* hint to release pages every 512K recs */
-            posix_madvise(map_ptr, (size_t)(p - map_ptr), POSIX_MADV_DONTNEED);
+        ++nrec;
+        /* hint to release memory pages every 32 MB */
+        if (__builtin_expect( (p >= j), 0)) {
+            posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
+            j += (1u << 25); /* add 32 MB */
+        }
+
     }
     printf("records %lu\n", nrec);
     for (rv = 0; rv < 10; ++rv)
