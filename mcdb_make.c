@@ -9,8 +9,8 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
-#ifndef _XOPEN_SOURCE /* 600 for posix_fallocate() */
-#define _XOPEN_SOURCE 600
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
 #endif
 /* gcc -std=c99 hides MAP_ANONYMOUS
  * _BSD_SOURCE or _SVID_SOURCE needed for mmap MAP_ANONYMOUS on Linux */
@@ -47,8 +47,6 @@
 #include <errno.h>
 #include <string.h>  /* memcpy() */
 #include <stdint.h>  /* uint32_t uintptr_t */
-#include <stdlib.h>  /* posix_fallocate() */
-#include <fcntl.h>   /* posix_fallocate() */
 #include <limits.h>  /* UINT_MAX, INT_MAX */
 
 #define MCDB_HPLIST 4000
@@ -90,7 +88,6 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
     }
 
     return (    0 == nointr_ftruncate(m->fd, (off_t)m->pos)
-            &&  0 == (errno = posix_fallocate(m->fd,m->offset,m->pos-m->offset))
             &&  0 == msync(m->map, m->pos - m->offset, MS_ASYNC)
             && -1 != lseek(m->fd, 0, SEEK_SET)
             && -1 != nointr_write(m->fd, header, MCDB_HEADER_SZ));
@@ -115,14 +112,12 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
     size_t msz;
 
     /* flush and munmap prior mmap */
-    if (m->map != MAP_FAILED) {
-        if (m->fd != -1) { /* (m->fd == -1 during some large mcdb size tests) */
-            if ((errno = posix_fallocate(m->fd,m->offset,m->pos-m->offset)) != 0
-                || msync(m->map, m->pos - m->offset, MS_ASYNC) != 0)
-                return false;
-        }
-        if (munmap(m->map, m->msz) != 0) return false;
-        m->map = MAP_FAILED;
+    if (m->map != MAP_FAILED) {/*(m->fd==-1 during some large mcdb size tests)*/
+        if ((m->fd == -1 || msync(m->map, m->pos - m->offset, MS_ASYNC) == 0)
+            && munmap(m->map, m->msz) == 0)
+            m->map = MAP_FAILED;
+        else
+            return false;
     }
 
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
@@ -131,7 +126,9 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
   #endif
 
     offset = m->offset + ((m->pos - m->offset) & m->pgalign);
-    msz = (MCDB_MMAP_SZ > sz - offset) ? MCDB_MMAP_SZ : sz - offset;
+    msz = (MCDB_MMAP_SZ > sz - offset)
+      ? MCDB_MMAP_SZ
+      : (sz - offset + ~m->pgalign) & m->pgalign;
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
     if (offset > (UINT_MAX & m->pgalign) - msz)
         msz = (UINT_MAX & m->pgalign) - offset;
