@@ -117,7 +117,6 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
     /* flush and munmap prior mmap */
     if (m->map != MAP_FAILED) {
         if (m->fd != -1) { /* (m->fd == -1 during some large mcdb size tests) */
-            /* msync MS_ASYNC, except MS_SYNC for mmap containing mcdb header */
             if ((errno = posix_fallocate(m->fd,m->offset,m->pos-m->offset)) != 0
                 || msync(m->map, m->pos - m->offset, MS_ASYNC) != 0)
                 return false;
