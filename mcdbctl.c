@@ -91,7 +91,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     char buf[(MCDB_IOVNUM * 3)];   /* each db entry might use (2) * 10 chars */
       /* oversized buffer since all num strings must add up to less than max */
 
-    posix_madvise(m->map->ptr, m->map->size,
+    posix_madvise(p, (size_t)(eod - p),
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     for (p += MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
 
