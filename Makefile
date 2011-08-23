@@ -1,6 +1,6 @@
 
 .PHONY: all
-all: mcdbctl nss_mcdbctl testzero \
+all: mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero \
      libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
 
 _HAS_LIB64:=$(wildcard /lib64)
@@ -40,7 +40,15 @@ libnss_mcdb_make.a: nss_mcdb_make.o nss_mcdb_acct_make.o nss_mcdb_netdb_make.o
 mcdbctl: mcdbctl.o libmcdb.a
 	$(CC) -o $@ $(CFLAGS) $^
 
-testzero: testzero.o libmcdb.a
+t/%.o: CFLAGS+=-I$(CURDIR)
+
+t/testmcdbmake: t/testmcdbmake.o libmcdb.a
+	$(CC) -o $@ $(CFLAGS) $^
+
+t/testmcdbrand: t/testmcdbrand.o libmcdb.a
+	$(CC) -o $@ $(CFLAGS) $^
+
+t/testzero: t/testzero.o libmcdb.a
 	$(CC) -o $@ $(CFLAGS) $^
 
 nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
@@ -104,7 +112,7 @@ test: mcdbctl
 	$(RM) -r t/scratch
 	mkdir -p t/scratch
 	cd t/scratch && \
-	  env - PATH="$(CURDIR):$$PATH" \
+	  env - PATH="$(CURDIR):$(CURDIR)/t:$$PATH" \
 	  $(CURDIR)/t/mcdbctl.t 2>&1 | cat -v
 	$(RM) -r t/scratch
 
@@ -112,7 +120,8 @@ test: mcdbctl
 .PHONY: clean
 clean:
 	! [ "$$(/usr/bin/id -u)" = "0" ]
-	$(RM) *.o libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
+	$(RM) *.o t/*.o
 	$(RM) -r lib32
-	$(RM) mcdbctl nss_mcdbctl testzero
+	$(RM) libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
+	$(RM) mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
 
