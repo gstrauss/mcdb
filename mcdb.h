@@ -34,13 +34,14 @@
  *   (incompatible with djb cdbdump)
  * - initial table and hash tables have 8-byte values instead of 4-byte values
  *   in order to support cdb > 4 GB.  cdb uses 24 bytes per record plus 2048,
- *   whereas mcdb uses 40 bytes per record plus 4096.
+ *   whereas mcdb uses 24 bytes per record plus 4096 when data section < 4 GB,
+ *   and mcdb uses 40 bytes per record plus 4096 when data section >= 4 GB.
  * - packing of integral lengths into char strings is done big-endian for
  *   performance in packing/unpacking integer data in 4-byte (or better)
  *   aligned addresses.  (incompatible with all djb cdb* tools and cdb's)
  *   (djb cdb documents all 32-bit quantities stored in little-endian form)
- *   Memory load latency is limiting factor, not x86 assembly instruction
- *   to convert uint32_t to and from big-endian.
+ *   Memory load latency is limiting factor, not the x86 assembly instruction
+ *   to convert uint32_t to and from big-endian (when data is 4-byte aligned).
  *
  * Limitations
  * - 2 billion keys
