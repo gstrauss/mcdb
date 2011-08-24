@@ -268,6 +268,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     uint32_t len;
     uint32_t cnt;
     uint32_t w;
+    uint32_t b;
     struct mcdb_hp *hash;
     struct mcdb_hp *split;
     struct mcdb_hp *hp;
@@ -330,6 +331,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
             split[--start[MCDB_SLOT_MASK & x->hp[u].h]] = x->hp[u];
     }
 
+    b = (m->pos < UINT_MAX) ? 3 : 4;
     for (i = 0; i < MCDB_SLOTS; ++i) {
         cnt = count[i];
         len = cnt << 1; /* no overflow possible */
@@ -337,8 +339,8 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
         /* check for sufficient space in mmap to write hash table for this slot
          * (integer overflow not possible: total size checked outside loop) */
-        if (m->fsz < d+((size_t)len << 4)
-            && !mcdb_mmap_upsize(m, d+((size_t)len << 4)))
+        if (m->fsz < d+((size_t)len << b)
+            && !mcdb_mmap_upsize(m, d+((size_t)len << b)))
             break;
 
         /* constant header (16 bytes per header slot, so multiply by 16) */
@@ -360,11 +362,19 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
         /* write hash table directly to map; allocated space checked above */
         p = m->map + m->pos - m->offset;
-        m->pos += (len << 4);
-        for (u = 0; u < len; p+=16, ++u) { /* 16 == sizeof(struct mcdb_hp) */
-            uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /*khash*/
-            uint32_strpack_bigendian_aligned_macro(p+4,hash[u].l); /*klen,dpos*/
-            uint64_strpack_bigendian_aligned_macro(p+8,(uint64_t)hash[u].p);
+        m->pos += (len << b);
+        if (b == 3) { /* data section ends < 4 GB; use 32-bit dpos offset */
+            for (u = 0; u < len; p+=8, ++u) {
+                uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /*khash*/
+                uint32_strpack_bigendian_aligned_macro(p+4,hash[u].p); /*dpos*/
+            }
+        }
+        else {        /* data section crosses 4 GB; need 64-bit dpos offset */
+            for (u = 0; u < len; p+=16, ++u) {
+                uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /*khash*/
+                uint32_strpack_bigendian_aligned_macro(p+4,hash[u].l); /*klen*/
+                uint64_strpack_bigendian_aligned_macro(p+8,(uint64_t)hash[u].p);
+            }                                                          /*dpos*/
         }
     }
     m->fn_free(split);

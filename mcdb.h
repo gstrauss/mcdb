@@ -77,6 +77,7 @@ extern "C" {
 
 struct mcdb_mmap {
   unsigned char *ptr;         /* mmap pointer */
+  uint32_t b;                 /* hash table stride bits: (data < 4GB) ? 3 : 4 */
   uintptr_t size;             /* mmap size */
   time_t mtime;               /* mmap file mtime */
   struct mcdb_mmap * volatile next;    /* updated (new) mcdb_mmap */
