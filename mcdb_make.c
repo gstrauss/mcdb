@@ -400,6 +400,6 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
         m->fn_free(n);
     }
     m->head = NULL;
-    m->map = MAP_FAILED;
-    return (map != MAP_FAILED) ? munmap(map, m->msz) : 0;
+    m->map = MAP_FAILED;  /*(m->fd == -1 during some large mcdb size tests)*/
+    return (m->fd != -1 && map != MAP_FAILED) ? munmap(map, m->msz) : 0;
 }
