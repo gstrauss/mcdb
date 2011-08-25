@@ -63,7 +63,6 @@ int main (int argc, char *argv[])
     p = (const char *)mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (p == MAP_FAILED)                            {perror("mmap"); return -1;}
     close(fd);
-    posix_madvise((void *)p, (size_t)st.st_size, POSIX_MADV_WILLNEED);
 
     /* read each key from input mmap and query mcdb
      * (no error checking since key might not exist) */
