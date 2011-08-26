@@ -1,0 +1,40 @@
+mcdb installation
+
+  $ make
+  $ make install
+  $ make test
+
+
+Using mcdb for nsswitch databases: (optional)
+
+  $ mkdir /etc/mcdb
+  $ nss_mcdbctl
+  $ vi /etc/nsswitch.conf
+      passwd: mcdb
+      shadow: mcdb
+      group: mcdb
+      hosts: mcdb dns
+      protocols: mcdb
+      services: mcdb
+      rpc: mcdb
+      networks: mcdb
+  # (save /etc/nsswitch.conf and test things out in another window)
+  $ getent passwd root
+  root:x:0:0:root:/root:/bin/bash
+  $ getent group root
+  root:x:0:root
+
+Please note that changes to any databases require re-running nss_mcdbctl.
+While I have been running the above configuration on my laptop for > 1 year,
+nss_mcdbctl still needs to be run for changes made by other users to passwd,
+shadow, and group databases.  Since I have not yet written pam code to be
+triggered when those files are changed, you might leave
+  shadow: files
+if others might change passwords and you do not automate running nss_mcdbctl
+so that password changes take effect immediately.
+
+You may choose to disable nscd and test if performance increases.
+
+
+See NOTES for more technical (and probably less readable) details and features.
+See Makefile for various overrides, such as alternate installation location.

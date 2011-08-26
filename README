@@ -1,0 +1,15 @@
+mcdb - fast, reliable, simple code to create and read constant databases
+
+README  - summary (this file)
+INSTALL - quick installation 
+COPYING - copyright/license
+NOTES   - technical details (if interested)
+
+t/PERFORMANCE - performance notes
+
+mcdb (mmap constant database) is based on the Public Domain cdb package, a:
+"fast, reliable, simple package for creating and reading constant databases."
+mcdb is almost 33% faster, provides support for use in threaded programs, and
+supports databases larger than 4 GB.
+
+http://cr.yp.to/cdb.html provides information about cdb, on which mcdb is based.

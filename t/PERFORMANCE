@@ -1,0 +1,153 @@
+Performance Preface
+-------------------
+Performance of a database varies depending on the data set and the workload.
+Some vary more, some vary less.  Even so, some tests can be better indicators
+of likely real-world performance than others.  A performance measurement that
+executes queries based on a random input data set is likely to be better than
+a sequential read of data tables that are laid out sequentially on disk.
+Similarly, repeated performance tests on small databases (resulting in the
+database being entirely cached in memory) are less likely to be an accurate
+measure of random access to data in a large database, where the data is less
+likely to be cached in memory.
+
+To what other database can mcdb be compared?  How about Tokyo Cabinet?
+Tokyo Cabinet is a full DBM, allowing read and write, while mcdb is a constant
+database, based on cdb.  One reason to compare mcdb to Tokyo Cabinet is that 
+Tokyo Cabinet is very fast.  Keep in mind that Tokyo Cabinet has more features
+than does mcdb.  That said, if mcdb meets all the requirements for a given
+database (e.g. constant data), then the benchmarks below show that mcdb is
+often about 2x faster than even the very fast Tokyo Cabinet.
+
+
+Performance Comparison to Tokyo Cabinet DBM
+-------------------------------------------
+Tokyo Cabinet: a modern implementation of DBM
+  http://fallabs.com/tokyocabinet/
+Tokyo Cabinet is a very fast DBM.  Its author put together a benchmark test
+involving one million keys of 8-byte strings "00000000" - "00999999" with value
+the same as the key.  See link above and click on "Report of a Benchmark Test".
+The benchmark measured the time to write 1,000,000 records to the database, and
+separately, to retrieve each of those records from the database.
+
+To repeat this experiment, create an input file for mcdb (or cdb) creation:
+$ time perl -e 'for (0..999999) {printf "+8,8:%08d->%08d\n",$_;} print "\n"' \
+  > t/1mrec.in
+$ sync; time mcdbctl make t/1mrec.mcdb t/1mrec.in            # (mcdb)
+# sync; time cdbmake t/1mrec.cdb t/1mrec.tmp < t/1mrec.in    #  (cdb)
+Note the time it takes to generate the input 1mrec.in is non-trivial --
+even in C code, one million calls to snprintf() adds up quickly.
+Also, note that mcdbctl calls fdatasync() to ensure data has been flushed to
+disk before renaming the temporary file into the target mcdb.  This behavior
+is robust and is for safety in the event of a system crash, but ends up being
+the step that takes majority of time when measuring mcdb creation.
+
+On the other hand, creating an mcdb by accessing the mcdb creation routines
+directly shows real performance, and leaves the fdatasync() to the calling
+application to handle (or not).
+$ sync; time t/testmcdbmake t/1mrec.mcdb 1000000
+$ sync; time t/testtokyomake t/1mrec.hdb 1000000
+# (Hints how to build t/testtokyomake are at top of t/testtokyomake.c)
+As an aside, the snprintf calls in testmcdbmake can account for more than half
+the total time, and the majority (> 80%) of CPU time, to create the test mcdb.
+Another way to test this would be to pre-create the input file instead of
+generating the keys.  However, creation of large databases is I/O-bound and
+for the purpose of testing, generating the keys is better to keep the input
+processing time scaling linearly as different size databases are tested.  The
+last parameter to the above two commands is the number of records to create and
+can be varied.  On my Pentium-M laptop, Tokyo Cabinet falls off a performance
+cliff when creating hdb somewhere between 3 million (~21 sec) and 4 million
+records (~2m 45s).  mcdb can do 10 million in ~13 sec, 30 million in ~64 sec,
+and could go further if more than 2 GB free disk space were available on my
+laptop.  Some number of records past 30 million, my 1 GB RAM is exhausted and
+swap is used, but mcdbctl does not appear to thrash.
+
+
+To compare read (query) performance of mcdb with that of Tokyo Cabinet, a more
+random benchmark is preferred by this coder.  Instead of retrieving each and
+every record (presumably in order) from the database as was done in the Tokyo
+Cabinet benchmark, 1 million keys were randomly generated (within the range
+of keys in the database).  (Note that this differs from above where keys are
+generated with snprintf()).  On larger data sets, the I/O of reading random key
+input will have greater affect on results.)
+
+# 100% hit rate
+$ perl -e 'for (1..1000000) {printf "%08d",int(rand(1000000));} print "\n";' \
+  > t/1mrandkeys
+
+# 90% (approx) hit rate, 10% (approx) miss rate, statistically
+# (1000000/0.9 = 1111111)
+$ perl -e 'for (1..1000000) {printf "%08d",int(rand(1111111));} print "\n";' \
+  > t/1mrandkeys10pmiss
+
+# 100% miss rate
+$ perl -e \
+  'for (1..1000000) {printf "%08d",1000000+int(rand(1000000));} print "\n";' \
+  > t/1mrandkeys100pmiss
+
+Some C code was written for each test that mmap()s the input file of random
+keys and simply interates through the file looking up each key in the database.
+
+# sync; time t/testcdbrand   t/1mrec.cdb  t/1mrandkeys
+$ sync; time t/testmcdbrand  t/1mrec.mcdb t/1mrandkeys
+$ sync; time t/testtokyorand t/1mrec.hdb  t/1mrandkeys
+# (Hints how to build t/testtokyorand are at top of t/testtokyorand.c)
+
+For repeated tests (where data is in memory cache) tokyo cabinet query of
+1 million keys took over 1.1 seconds and mcdb took less than 0.37 seconds,
+a difference of 3x on my 32-bit Pentium-M laptop!  On a more modern 64-bit
+machine (2) 4-core Intel Core i7-2600K with SSD disk, and with both tokyo
+cabinet and mcdb compiled 64-bit, the difference is only about 1.7x.  There,
+tokyo cabinet took 0.32 seconds and mcdb took 0.19 seconds.
+
+Briefly comparing to cdb, mcdb is 3x faster creating a database and almost
+33% faster for querying.
+
+To simulate an uncached database without having to create a humongous database,
+execute the following commands as root on a test Linux box
+  $ sync; echo 1 >>/proc/sys/vm/drop_caches; echo 0 >>/proc/sys/vm/drop_caches
+between database performance tests.
+
+Testing from cache cold start, tokyo cabinet query of 1 million keys took
+5.8 seconds whereas mcdb took 3.1 seconds, almost 1.9x performance.
+
+Note, however, that testmcdbrand.c calls mcdb_mmap_prefault() on the mcdb,
+which prefaults the pages into memory.  This really helps performance on cache
+cold start whenever many queries will be made in a burst to an uncached mcdb.
+(It has little to no effect on mcdb already cached in memory.)  Without the
+prefaulting, uncached mcdb might be many times slower (taking 40 seconds) for
+a burst of a large number of random queries.  On the other hand, for a small
+number of random queries on an uncached database, mcdb is consistently faster
+than tokyo cabinet, but timings can have a large margin of error depending on
+state of the I/O subsystem.  Keep in mind that a heavily used database will
+often have pieces cached in memory, so the cold cache burst of a large number
+of queries is not the norm and is more indicative of the I/O subsystem and OS
+filesystem cache management than the database.  The advantage that tokyo
+cabinet might have is that for databases smaller than 2 GB, toykyo cabinet
+overhead per record is 16 bytes for hash db, while mcdb is 24 bytes, so for
+the same number of entries, tokyo cabinet is less likely to trigger regressive
+I/O behavior.  In this test, the size of tokyo cabinet database is 31.0 MiB
+versus mcdb size of 38.2 MiB for 1 million 8-byte keys and values.
+
+In any case, mcdb_mmap_prefault() results in mcdb being faster by 1.9x, even
+though mcdb is larger.  Also, for any DBM that is file-based and on which many
+queries are about to be performed, there is a performance advantage to getting
+the whole file cached instead of random access.  Crudely, this can be done with:
+'cat 1mrec.mcdb 1mrec.hdb >/dev/null' immediately prior to making lots of
+queries.  Much less crudely, use mcdb_mmap_prefault(), which is used by mcdbctl
+stats and dump commands, as long as mcdb fits in physical memory.  For example,
+'mcdbctl stats' on an mcdb with 10 million records (534 MiB), created like
+1mrec.mcdb, takes 41.5 secs on cache cold start and 2.3 secs when cached.
+Of course, all these comparisions of large databases highlight the importance
+of the performance characteristics of the I/O subsystems.
+
+What all this means is that when working with larger databases, it is important
+to understand and account for your usage modes and how your I/O subsystem
+responds if you see lots of queries in a short burst into an uncached database.
+Test performance of databases using a typical workload (and timing) for your
+application.
+
+In most use cases, mcdb will be significantly faster than tokyo cabinet.
+ 
+All of the above tests, unless otherwise specified, are on a Pentium-M laptop
+2 GHz CPU with 1 GB memory and a single 60 GB SATA hard drive.  At the time
+of this writing, the laptop is > 6 years old.

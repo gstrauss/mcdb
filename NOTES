@@ -1,0 +1,148 @@
+mcdb - fast, reliable, simple code to create and read constant databases
+
+mcdb enhancements to cdb (on which mcdb is based; see References section below)
+- updated to C99 and POSIX.1-2001 (not available/portable when djb wrote cdb)
+- optimized for mmap access to constant db (and avoid double buffering)
+- redesigned for use in threaded programs (thread-safe interface available)
+- convenience routines to check for updated constant db and to refresh mmap
+- support cdb > 4 GB with 64-bit program (required to mmap() mcdb > 4 GB)
+- 64-bit safe (for use in 64-bit programs)
+
+Advantages over external database
+- performance: better; avoids context switch to external database process
+Advantages over specialized hash map
+- generic, reusable
+- maintained (created and verified) externally from process (less overhead)
+- shared across processes (though shared-memory could be used for hash map)
+- read-only (though memory pages could also be marked read-only for hash map)
+Disadvantages to specialized hash map
+- performance: slightly slower than specialized hash map
+Disadvantages to djb cdb
+- mmap requires address space be available into which to mmap the const db
+  (i.e. large const db might fail to mmap into 32-bit process)
+- mmap page alignment requirements and use of address space limits const db
+  max size when created by 32-bit process.  Sizes approaching 4 GB may fail.
+- arbitrary limit of each key or data set to (INT_MAX - 8 bytes; almost 2 GB)
+  (djb cdb doc states there is no limit besides cdb fitting into 4 GB)
+  (writev() on some platforms in 32-bit exe might also have 2 GB limit)
+
+Incompatibilities with djb cdb
+- padding added at the end of key,value data to 16-byte align hash tables
+  (incompatible with djb cdbdump)
+- initial table and hash tables have 8-byte values instead of 4-byte values
+  in order to support cdb > 4 GB.  cdb uses 24 bytes per record plus 2048,
+  whereas mcdb uses 24 bytes per record plus 4096 when data section < 4 GB,
+  and mcdb uses 40 bytes per record plus 4096 when data section >= 4 GB.
+- packing of integral lengths into char strings is done big-endian for
+  performance in packing/unpacking integer data in 4-byte (or better)
+  aligned addresses.  (incompatible with all djb cdb* tools and cdb's)
+  (djb cdb documents all 32-bit quantities stored in little-endian form)
+  Memory load latency is limiting factor, not the x86 assembly instruction
+  to convert uint32_t to and from big-endian (when data is 4-byte aligned).
+
+Limitations
+- 2 billion keys
+  As long as djb hash is 32-bit, mcdb_make.c limits number of hash keys to
+  2 billion.  cdb handles hash collisions, but there is a small expense each
+  collision.  As the key space becomes denser within the 2 billion, there is
+  greater chance of collisions.  Input strings also affect this probability,
+  as do the sizes of the hash tables.
+- process must mmap() entire mcdb
+  Each mcdb is mmap()d in its entirety into the address space.  For 32-bit
+  programs that means there is a 4 GB limit on size of mcdb, minus address
+  space used by the program (including stack, heap, shared libraries, shmat
+  and other mmaps, etc).  Compile and link 64-bit to remove this limitation.
+
+
+References
+----------
+  Dan Bernstein's (djb) reference implementation of cdb (public domain)
+    http://cr.yp.to/cdb.html
+
+
+
+There is plenty more information which will eventually (hopefully) be here.
+In the meantime, here are some snippets, and more will come after the
+initial release, as time allows.
+
+
+
+Technical Asides
+----------------
+
+
+mcdbctl creates databases with limited permissions (0400)
+---------------------------------------------------------
+mcdbctl creates new databases with limited permissions (0400), important for
+security when creating mcdb for sensitive data, such as /etc/shadow data.
+mcdbctl recreates existing databases and preserves the permission modes that
+were applied to the previous mcdb (replaced by the recreated mcdb).
+
+mcdb performant design tidbits
+------------------------------
+Data locality is one of the primary keys to performance: djb cdb linearly
+probed open hash tables minimize arbitrary jumps around memory.
+Endian tranformations are absorbed in the noise of memory load latency.
+
+An immediate performance boost can be seen when using mcdb for nsswitch
+databases on machines that run Apache with suexec which was the reason behind
+using cdb, and now mcdb, for passwd and group databases.  See INSTALL file.
+
+smallest mcdb
+-------------
+Empty mcdb with no keys is 4K
+$ echo | ./mcdbctl make empty.mcdb -
+
+mcdb supports empty keys and values
+-----------------------------------
+$ echo -e "+0,0:->\n" | ./mcdbctl make empty.mcdb -
+In practice, empty values can be useful to when interested only in existence,
+or not, of keys.  However, more than one empty key is not generically useful,
+(or a use case is not immediately apparent to me).
+
+mcdb supports one-char tag prefix on keys
+-----------------------------------------
+One method of storing multiple types of constant data in a single mcdb is
+to prefix the key with a single character that indicate the type of data in
+the key.  This feature is used by nss_mcdb for various nsswitch.conf databases.
+For example, passwd databaes can be queried by name or by uid.  Both are stored
+in the same mcdb database, with a different character prefixing the keys for
+names versus the keys for uids.  This prefix tag character feature of mcdb
+allows for tagged-key queries without the extra work of having to create a
+temporary buffer to set the tag followed by a copy of the key.
+
+mcdb creation speed
+-------------------
+mcdb creation supports the same input format as cdb.  There is an overhead to
+formating the input as ASCII numbers, as well as parsing and translating the
+ASCII back to native numbers.  (The cost adds up with lots of keys.)   Another 
+method to create mcdb which is even faster is for a program to link with and
+call mcdb_make_* routines directly, as is done in nss_mcdbctl.
+
+mcdb in memory only
+-------------------
+Creating an mcdb in memory without filesystem backing is possible.  This might
+be useful for testing, but in practice, a hash function customized to the
+specific purpose at hand would be faster.  Setting the fd to -1 in the call to
+mcdb_make_start() is how to tell mcdb routines the mcdb is not backed by the
+filesystem.  Then, caller must create mmap large enough for all keys and data
+(filling in nkeys (num keys), total_klen (key len), and total_dlen (data len)).
+  struct mcdb_make m;
+  size_t msz;
+  mcdb_make_start(&m, -1, malloc, free);
+  /* preallocated mcdb mmap to proper full size; (msz+15) & ~15 for alignment */
+  msz = (MCDB_HEADER_SZ + nkeys*8 + total_klen + total_dlen + 15) & ~15;
+  msz+= (msz < UINT_MAX ? nkeys*16 : nkeys*32);
+  m.fsz = m.msz = (msz = (msz + ~m.pgalign) & m.pgalign); /*align to page size*/
+  m.map = (char *)mmap(0, msz, PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+  if (m.map == MAP_FAILED) return false;
+  /* ... loop and mcdb_make_add(), then mcdb_make_finish() */
+  /* ... when finished using the mmap, then munmap(m.map, m.msz) */
+
+compiler intrinsics/builtins not (yet) tested on all platforms
+--------------------------------------------------------------
+The compiler intrinsics/builtins in code_attributes.h have been tested on i686
+and x86_64 platforms, but have not (yet) been tested on all other platforms.
+They were written from vendor documentation available on the internet, but I do
+not have private access to all those platforms in order to test.  Please send
+to me advice, suggestions, and corrections.

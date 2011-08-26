@@ -1,4 +1,23 @@
-/* License: GPLv3 */
+/*
+ * uint32 - pack and unpack ASCII and hex strings to uint32_t (4-bytes)
+ *
+ * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
+ *
+ *  This file is part of mcdb.
+ *
+ *  mcdb is free software: you can redistribute it and/or modify it under
+ *  the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 2.1 of the License, or
+ *  (at your option) any later version.
+ *
+ *  mcdb is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef INCLUDED_UINT32_H
 #define INCLUDED_UINT32_H
@@ -99,7 +118,8 @@ uint32_strpack_bigendian(char s[4], const uint32_t u)
 #endif
 
 
-/* djb cdb hash function: http://cr.yp.to/cdb/cdb.txt */
+/* djb cdb hash function: http://cr.yp.to/cdb/cdb.txt
+ * modified from the Public Domain cdb-0.75 by Dan Bernstein */
 
 #define UINT32_HASH_DJB_INIT 5381
 
