@@ -253,11 +253,13 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
         return NSS_STATUS_UNAVAIL;
     }
     map = m->map->ptr;
-    eod = uint64_strunpack_bigendian_aligned_macro(map) - MCDB_PAD_MASK;
+    eod = uint64_strunpack_bigendian_aligned_macro(map) - 7;
     while (m->hpos < eod) {
         unsigned char * const restrict p = map + m->hpos;
         klen    = uint32_strunpack_bigendian_macro(p);
         m->dlen = uint32_strunpack_bigendian_macro(p+4);
+        if (__builtin_expect( (klen==~0), 0) && m->hpos>=eod-(MCDB_PAD_MASK-7))
+            break;
         m->hpos = (m->dpos = (m->kpos = m->hpos + 8) + klen) + m->dlen;
         if (p[8] == (unsigned char)'=')
             /* valid data in mcdb_datapos() mcdb_datalen() mcdb_dataptr() */

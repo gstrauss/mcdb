@@ -104,8 +104,8 @@ mcdbctl_dump(struct mcdb * const restrict m)
     unsigned char * restrict p = m->map->ptr;
     uint32_t klen;
     uint32_t dlen;
-    unsigned char * const eod =
-      p + uint64_strunpack_bigendian_aligned_macro(p) - MCDB_PAD_MASK;
+    unsigned char * const eod = /*(min record size is 8 bytes for klen, dlen)*/
+      p + uint64_strunpack_bigendian_aligned_macro(p) - 7;
     unsigned char *j = p + (1u << 25); /* add 32 MB */
     int    iovcnt = 0;
     size_t iovlen = 0;
@@ -127,6 +127,9 @@ mcdbctl_dump(struct mcdb * const restrict m)
 
         klen = uint32_strunpack_bigendian_macro(p);
         dlen = uint32_strunpack_bigendian_macro(p+4);
+
+        if (__builtin_expect( (klen == ~0), 0) && p >= eod-(MCDB_PAD_MASK-7))
+            break;
 
         /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
         /* klen, dlen each limited to (2GB - 8); space for extra tokens exists*/
@@ -206,8 +209,8 @@ mcdbctl_stats(struct mcdb * const restrict m)
     unsigned char *p;
     uint32_t klen;
     uint32_t dlen;
-    unsigned char * const eod =
-      map_ptr+uint64_strunpack_bigendian_aligned_macro(map_ptr)-MCDB_PAD_MASK;
+    unsigned char * const eod = /*(min record size is 8 bytes for klen, dlen)*/
+      map_ptr+uint64_strunpack_bigendian_aligned_macro(map_ptr)-7;
     unsigned char *j = map_ptr + MCDB_HEADER_SZ + (1u << 25); /* add 32 MB */
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
@@ -223,6 +226,8 @@ mcdbctl_stats(struct mcdb * const restrict m)
          * alias into the map (p+8) as key is in violation of C99 restrict
          * pointers, but is inconsequential since it is all read-only */
         p += 8;
+        if (__builtin_expect( (klen == ~0), 0) && p >= eod-(MCDB_PAD_MASK-15))
+            break;
         if ((rc = mcdb_findstart(m, (char *)p, klen))) {
             do { rc = mcdb_findnext(m, (char *)p, klen);
             } while (rc && map_ptr+m->dpos != p+klen);

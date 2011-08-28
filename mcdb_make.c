@@ -333,8 +333,8 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     if (d > (UINT_MAX-(m->pos+u)))             { errno = ENOMEM; return -1; }
   #endif
     if (m->fsz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d)) return -1;
-    if (d) memset(m->map + m->pos - m->offset, '\0', d);
-    m->pos += d;                     /* clear hole for binary cmp of mcdbs */
+    if (d) memset(m->map + m->pos - m->offset, ~0, d);
+    m->pos += d; /*set all bits in hole so code can detect end of data padding*/
 
     split = (struct mcdb_hp *) m->fn_malloc((size_t)len*sizeof(struct mcdb_hp));
     if (!split) return -1;
