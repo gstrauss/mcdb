@@ -30,6 +30,10 @@
 #include <errno.h>
 #include <unistd.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Note: please do not use these routines indescriminantly.
  * There are times when a library call should be interrupted by EINTR and
  * processed as-is.  One such example is read(), where the data read should
@@ -101,6 +105,11 @@ nointr_openat(const int dfd, const char * const restrict fn,
               const int flags, const mode_t mode)
 { int r; retry_eintr_do_while((r=openat(dfd,fn,flags,mode)),(r==-1)); return r;}
 #endif
+#endif
+
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

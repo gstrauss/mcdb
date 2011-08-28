@@ -22,6 +22,9 @@
 #ifndef INCLUDED_CODE_ATTRIBUTES_H
 #define INCLUDED_CODE_ATTRIBUTES_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * C inline functions defined in header
@@ -243,5 +246,9 @@
 #define retry_eintr_do_while(x,c)         /* caller must #include <errno.h> */ \
   do {(x);} while (__builtin_expect((c),0) && __builtin_expect(errno==EINTR, 1))
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
