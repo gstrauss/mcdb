@@ -1,7 +1,7 @@
 
 .PHONY: all
 all: mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero \
-     libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
+     libmcdb.so libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
 
 _HAS_LIB64:=$(wildcard /lib64)
 ifneq (,$(_HAS_LIB64))
@@ -22,11 +22,16 @@ _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
-# (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
-PIC_OBJS:= mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
+PIC_OBJS:= mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o \
+           nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
 $(PIC_OBJS): CFLAGS+= -fpic
-libnss_mcdb.so.2: $(PIC_OBJS)
+
+# (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
+libnss_mcdb.so.2: mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
 	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,$(@F) $^
+
+libmcdb.so: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o
+	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,mcdb $^
 
 libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o
 	$(AR) -r $@ $^
@@ -63,6 +68,10 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 /usr/lib$(ABI_BITS)/libnss_mcdb.so.2: /lib$(ABI_BITS)/libnss_mcdb.so.2
 	[ -L $@ ] || /bin/ln -s $< $@
 
+/usr/lib$(ABI_BITS)/libmcdb.so: libmcdb.so
+	/bin/cp -f $< $@.$$$$ \
+	&& /bin/mv -f $@.$$$$ $@
+
 /bin/mcdbctl: mcdbctl
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
@@ -71,9 +80,13 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-.PHONY: install
+.PHONY: install-headers install
+install-headers:mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h nointr.h uint32.h
+	/bin/mkdir -p -m 0755 /usr/include/mcdb
+	umask 333; /bin/cp -f --preserve=timestamps $^ /usr/include/mcdb/
 install: /lib$(ABI_BITS)/libnss_mcdb.so.2 /usr/lib$(ABI_BITS)/libnss_mcdb.so.2 \
-         /bin/mcdbctl /bin/nss_mcdbctl
+         /usr/lib$(ABI_BITS)/libmcdb.so /bin/mcdbctl /bin/nss_mcdbctl \
+         install-headers
 
 
 # also create 32-bit libraries for /lib on systems with /lib and /lib64
@@ -90,8 +103,13 @@ $(LIB32_PIC_OBJS): ABI_BITS=32
 $(LIB32_PIC_OBJS): ABI_FLAGS=-m32
 $(LIB32_PIC_OBJS): CFLAGS+= -fpic
 lib32/libnss_mcdb.so.2: ABI_FLAGS=-m32
-lib32/libnss_mcdb.so.2: $(LIB32_PIC_OBJS)
+lib32/libnss_mcdb.so.2: $(addprefix lib32/, \
+  mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o)
 	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,$(@F) $^
+lib32/libmcdb.so: ABI_FLAGS=-m32
+lib32/libmcdb.so: $(addprefix lib32/, \
+  mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o)
+	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,mcdb $^
 
 /lib/libnss_mcdb.so.2: lib32/libnss_mcdb.so.2
 	/bin/cp -f $< $@.$$$$ \
@@ -100,9 +118,13 @@ lib32/libnss_mcdb.so.2: $(LIB32_PIC_OBJS)
 /usr/lib/libnss_mcdb.so.2: /lib/libnss_mcdb.so.2
 	[ -L $@ ] || /bin/ln -s $< $@
 
+/usr/lib/libmcdb.so: lib32/libmcdb.so
+	/bin/cp -f $< $@.$$$$ \
+	&& /bin/mv -f $@.$$$$ $@
+
 all: lib32/libnss_mcdb.so.2
 
-install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2
+install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2 /usr/lib/libmcdb.so
 endif
 endif
 
@@ -122,6 +144,7 @@ clean:
 	! [ "$$(/usr/bin/id -u)" = "0" ]
 	$(RM) *.o t/*.o
 	$(RM) -r lib32
-	$(RM) libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
+	$(RM) libmcdb.a libnss_mcdb.a libnss_mcdb_make.a
+	$(RM) libmcdb.so libnss_mcdb.so.2
 	$(RM) mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
 

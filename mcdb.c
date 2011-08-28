@@ -190,6 +190,22 @@ mcdb_read(struct mcdb * const restrict m, const uintptr_t pos,
       : NULL;
 }
 
+bool
+mcdb_nextkey(struct mcdb * const restrict m, uintptr_t * const restrict kpos)
+{
+    /* caller must initialize *kpos = 0 before first call to mcdb_nextkey() */
+    unsigned char *p    = m->map->ptr; /*(min rec: 8 bytes for klen, dlen) */
+    const uintptr_t eod = uint64_strunpack_bigendian_aligned_macro(p)-7;
+    const uintptr_t pos = *kpos ? m->dpos+m->dlen : MCDB_HEADER_SZ;
+    const uint32_t klen =
+      pos < eod ? (p+=pos, uint32_strunpack_bigendian_macro(p)) : ~0;
+    if (klen != ~0) {
+        m->dpos = klen + (*kpos = pos+8);
+        m->dlen = uint32_strunpack_bigendian_macro(p+4);
+        return true; /* (caller can derive klen from: klen = m->dpos - *kpos) */
+    }
+    return false;
+}
 
 
 /* Note: __attribute_noinline__ is used to mark less frequent code paths

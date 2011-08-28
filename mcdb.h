@@ -89,6 +89,12 @@ mcdb_read(struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
 #define mcdb_datalen(m)      ((m)->dlen)
 #define mcdb_dataptr(m)      ((m)->map->ptr+(m)->dpos)
 
+#define mcdb_keylen(m,kpos)  ((m)->dpos-(kpos))
+#define mcdb_keyptr(m,kpos)  ((m)->map->ptr+(kpos))
+extern bool
+mcdb_nextkey(struct mcdb * restrict, uintptr_t * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+
 extern struct mcdb_mmap *  __attribute_malloc__
 mcdb_mmap_create(struct mcdb_mmap * restrict,
                  const char *,const char *,void * (*)(size_t),void (*)(void *))
