@@ -326,6 +326,10 @@ mcdb_makefmt_fdintofile (const int inputfd,
         if (errno != ENOENT)
             return MCDB_ERROR_WRITE;
     }
+    else if (!S_ISREG(st.st_mode)) {
+        errno = EINVAL;
+        return MCDB_ERROR_WRITE;
+    }
 
     fnametmp = fn_malloc(len + 8);
     if (fnametmp == NULL)
@@ -371,7 +375,7 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
     if ((fd = nointr_open(infile,O_RDONLY,0)) == -1)
         return MCDB_ERROR_READ;
 
-    if (fstat(fd, &st) == -1
+    if (fstat(fd, &st) == -1 || (!S_ISREG(st.st_mode) && (errno = EINVAL))
         || ((x = mmap(0,st.st_size,PROT_READ,MAP_SHARED,fd,0)) == MAP_FAILED))
         errsave = errno;
 

@@ -121,8 +121,10 @@ mcdbctl_dump(struct mcdb * const restrict m)
 
         /* hint to release memory pages every 32 MB */
         if (__builtin_expect( (p >= j), 0)) {
-            posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
-            j += (1u << 25); /* add 32 MB */
+            do {
+                posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
+                j += (1u << 25); /* add 32 MB */
+            } while (__builtin_expect( (p >= j), 0));
         }
 
         klen = uint32_strunpack_bigendian_macro(p);
@@ -237,8 +239,10 @@ mcdbctl_stats(struct mcdb * const restrict m)
         ++nrec;
         /* hint to release memory pages every 32 MB */
         if (__builtin_expect( (p >= j), 0)) {
-            posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
-            j += (1u << 25); /* add 32 MB */
+            do {
+                posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
+                j += (1u << 25); /* add 32 MB */
+            } while (__builtin_expect( (p >= j), 0));
         }
 
     }
