@@ -81,7 +81,8 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 	&& /bin/mv -f $@.$$$$ $@
 
 .PHONY: install-headers install
-install-headers:mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h nointr.h uint32.h
+install-headers: mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h \
+                 code_attributes.h nointr.h uint32.h
 	/bin/mkdir -p -m 0755 /usr/include/mcdb
 	umask 333; /bin/cp -f --preserve=timestamps $^ /usr/include/mcdb/
 install: /lib$(ABI_BITS)/libnss_mcdb.so.2 /usr/lib$(ABI_BITS)/libnss_mcdb.so.2 \
