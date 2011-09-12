@@ -85,14 +85,36 @@ extern void *
 mcdb_read(struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
+/* (macros valid only after mcdb_find() or mcdb_find*next() returns true) */
 #define mcdb_datapos(m)      ((m)->dpos)
 #define mcdb_datalen(m)      ((m)->dlen)
 #define mcdb_dataptr(m)      ((m)->map->ptr+(m)->dpos)
+#define mcdb_keyptr(m,klen)  ((m)->map->ptr+(m)->dpos-(klen))
 
-#define mcdb_keylen(m,kpos)  ((m)->dpos-(kpos))
-#define mcdb_keyptr(m,kpos)  ((m)->map->ptr+(kpos))
+struct mcdb_iter {
+  unsigned char *ptr;
+  unsigned char *eod;
+  uint32_t klen;
+  uint32_t dlen;
+  struct mcdb_mmap *map;
+  uint32_t n;
+};
+
+/* (macros valid only after mcdb_iter() returns true) */
+#define mcdb_iter_datapos(iter) ((iter)->ptr-(iter)->dlen-(iter)->map->ptr)
+#define mcdb_iter_datalen(iter) ((iter)->dlen)
+#define mcdb_iter_dataptr(iter) ((iter)->ptr-(iter)->dlen)
+#define mcdb_iter_keylen(iter)  ((iter)->klen)
+#define mcdb_iter_keyptr(iter)  ((iter)->ptr-(iter)->dlen-(iter)->klen)
+
 extern bool
-mcdb_nextkey(struct mcdb * restrict, uintptr_t * restrict)
+mcdb_iter(struct mcdb_iter * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+extern void
+mcdb_iter_init(struct mcdb_iter * restrict, struct mcdb * restrict)
+  __attribute_nonnull__;
+extern uint32_t
+mcdb_iter_numrecs(struct mcdb_iter * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 extern struct mcdb_mmap *  __attribute_malloc__

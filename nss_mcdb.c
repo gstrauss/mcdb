@@ -219,7 +219,7 @@ nss_mcdb_setent(const enum nss_dbtype dbtype)
     const enum mcdb_flags mcdb_flags = MCDB_REGISTER_USE_INCR;
     if (m->map != NULL
         || (m->map = _nss_mcdb_db_getshared(dbtype, mcdb_flags)) != NULL) {
-        m->hpos = MCDB_HEADER_SZ;
+        m->hpos = (uintptr_t)(m->map->ptr + MCDB_HEADER_SZ);
         return NSS_STATUS_SUCCESS;
     }
     return NSS_STATUS_UNAVAIL;
@@ -241,30 +241,27 @@ nss_mcdb_endent(const enum nss_dbtype dbtype)
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
 nss_status_t
 nss_mcdb_getent(const enum nss_dbtype dbtype,
-                 const struct nss_mcdb_vinfo * const restrict v)
+                const struct nss_mcdb_vinfo * const restrict v)
 {
+    struct mcdb_iter iter;
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
-    unsigned char *map;
-    uintptr_t eod;
-    uint32_t klen;
     if (__builtin_expect(m->map == NULL, false)
         && nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS) {
         *v->errnop = errno;
         return NSS_STATUS_UNAVAIL;
     }
-    map = m->map->ptr;
-    eod = uint64_strunpack_bigendian_aligned_macro(map) - 7;
-    while (m->hpos < eod) {
-        unsigned char * const restrict p = map + m->hpos;
-        klen    = uint32_strunpack_bigendian_macro(p);
-        m->dlen = uint32_strunpack_bigendian_macro(p+4);
-        if (__builtin_expect( (klen==~0), 0) && m->hpos>=eod-(MCDB_PAD_MASK-7))
-            break;
-        m->hpos = (m->dpos = (m->kpos = m->hpos + 8) + klen) + m->dlen;
-        if (p[8] == (unsigned char)'=')
-            /* valid data in mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
+    mcdb_iter_init(&iter, m);
+    iter.ptr = (unsigned char *)m->hpos;
+    while (mcdb_iter(&iter)) {
+        if (mcdb_iter_keyptr(&iter)[0] == (unsigned char)'=') {
+            m->hpos = (uintptr_t)iter.ptr;
+            /* valid data for mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
+            m->dpos = mcdb_iter_datapos(&iter);
+            m->dlen = mcdb_iter_datalen(&iter);
             return v->decode(m, v);
+        }
     }
+    m->hpos = (uintptr_t)iter.ptr;
     *v->errnop = errno = ENOENT;
     return NSS_STATUS_NOTFOUND;
 }

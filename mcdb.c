@@ -191,20 +191,61 @@ mcdb_read(struct mcdb * const restrict m, const uintptr_t pos,
 }
 
 bool
-mcdb_nextkey(struct mcdb * const restrict m, uintptr_t * const restrict kpos)
+mcdb_iter(struct mcdb_iter * const restrict iter)
 {
-    /* caller must initialize *kpos = 0 before first call to mcdb_nextkey() */
-    unsigned char *p    = m->map->ptr; /*(min rec: 8 bytes for klen, dlen) */
-    const uintptr_t eod = uint64_strunpack_bigendian_aligned_macro(p)-7;
-    const uintptr_t pos = *kpos ? m->dpos+m->dlen : MCDB_HEADER_SZ;
-    const uint32_t klen =
-      pos < eod ? (p+=pos, uint32_strunpack_bigendian_macro(p)) : ~0;
-    if (klen != ~0) {
-        m->dpos = klen + (*kpos = pos+8);
-        m->dlen = uint32_strunpack_bigendian_macro(p+4);
-        return true; /* (caller can derive klen from: klen = m->dpos - *kpos) */
+    if (iter->ptr < iter->eod) {
+        iter->klen = uint32_strunpack_bigendian_macro(iter->ptr);
+        iter->dlen = uint32_strunpack_bigendian_macro(iter->ptr+4);
+        iter->ptr += 8 + iter->klen + iter->dlen;
+        if (iter->klen != ~0) {  /* (klen == ~0 padding at end of data) */
+            /* klen <= INT_MAX-8 (see mcdb_make.c), so no need to also check
+             *   (iter->ptr >= iter->eod-(MCDB_PAD_MASK-7))
+             * (using original iter->ptr value before update above) */
+            __builtin_prefetch(iter->ptr, 0, 3);
+            return true;
+        }
+        iter->ptr = iter->eod;   /* (reached end of data; return false below) */
     }
     return false;
+}
+
+void
+mcdb_iter_init(struct mcdb_iter * const restrict iter,
+               struct mcdb * const restrict m)
+{
+    /* About eod: Last data record must begin before end-of-data (iter->eod)
+     * End-of-data is beginning of open hash tables minus up to MCDB_PAD_MASK
+     * MCDB_PAD_MASK is 1-filled (~0), so iter->klen == ~0 is in padding
+     * MCDB_PAD_MASK might be larger than min record size, so a valid
+     *   record might reside in MCDB_PAD_MASK bytes before open hash tables
+     * Minimum rec size is 8 bytes for klen, dlen; 7 or fewer bytes are padding
+     */
+    unsigned char * const ptr = m->map->ptr;
+    iter->ptr  = ptr + MCDB_HEADER_SZ;
+    iter->eod  = ptr + uint64_strunpack_bigendian_aligned_macro(ptr) - 7;
+    __builtin_prefetch(iter->ptr,0,3); /*(must be non-faulting load if 0 recs)*/
+    iter->klen = 0;
+    iter->dlen = 0;
+    iter->map  = m->map;
+    iter->n    = ~0;
+    /* Note: callers that intend to iterate through entire mcdb might call
+     * posix_madvise() on the mcdb as long as mcdb fits into physical memory,
+     * e.g. posix_madvise(iter->ptr, (size_t)(iter->eod - iter->ptr),
+     *                    POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+     */
+}
+
+uint32_t
+mcdb_iter_numrecs(struct mcdb_iter * const restrict iter)
+{
+    if (__builtin_expect( (iter->n == ~0), 0)) {
+        const unsigned char * const restrict ptr = iter->map->ptr;
+        uint32_t u = 0;
+        for (unsigned int i = 8; i < MCDB_HEADER_SZ; i += 16)
+            u += uint32_strunpack_bigendian_aligned_macro(ptr+i);
+        iter->n = u >> 1;  /* (hslots / 2) */
+    }
+    return iter->n; /* mcdb_make.c currently limits n to INT_MAX (~2 billion) */
 }
 
 

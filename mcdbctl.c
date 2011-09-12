@@ -91,22 +91,17 @@ writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
     return (iovcnt == 0);
 }
 
-/* read and dump data section of mcdb
- * start of hash tables is end of key/data section (eod)
- * subtract 7 for maximal added alignment between data and hash table
- * (each record key,len,keystr,datastr is at least 8 bytes) */
+/* read and dump data section of mcdb */
 static int
 mcdbctl_dump(struct mcdb * const restrict m)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static int
 mcdbctl_dump(struct mcdb * const restrict m)
 {
-    unsigned char * restrict p = m->map->ptr;
+    struct mcdb_iter iter;
     uint32_t klen;
     uint32_t dlen;
-    unsigned char * const eod = /*(min record size is 8 bytes for klen, dlen)*/
-      p + uint64_strunpack_bigendian_aligned_macro(p) - 7;
-    unsigned char *j = p + (1u << 25); /* add 32 MB */
+    unsigned char *p = m->map->ptr + (1u << 25); /* add 32 MB */
     int    iovcnt = 0;
     size_t iovlen = 0;
     size_t buflen = 0;
@@ -115,23 +110,21 @@ mcdbctl_dump(struct mcdb * const restrict m)
     char buf[(MCDB_IOVNUM * 3)];   /* each db entry might use (2) * 10 chars */
       /* oversized buffer since all num strings must add up to less than max */
 
-    posix_madvise(p, (size_t)(eod - p),
+    mcdb_iter_init(&iter, m);
+    posix_madvise(iter.ptr, (size_t)(iter.eod - iter.ptr),
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
-    for (p += MCDB_HEADER_SZ; p < eod; p += 8+klen+dlen) {
+    while (mcdb_iter(&iter)) {
 
         /* hint to release memory pages every 32 MB */
-        if (__builtin_expect( (p >= j), 0)) {
+        if (__builtin_expect( (iter.ptr >= p), 0)) {
             do {
-                posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
-                j += (1u << 25); /* add 32 MB */
-            } while (__builtin_expect( (p >= j), 0));
+                posix_madvise(p - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
+                p += (1u << 25); /* add 32 MB */
+            } while (__builtin_expect( (iter.ptr >= p), 0));
         }
 
-        klen = uint32_strunpack_bigendian_macro(p);
-        dlen = uint32_strunpack_bigendian_macro(p+4);
-
-        if (__builtin_expect( (klen == ~0), 0) && p >= eod-(MCDB_PAD_MASK-7))
-            break;
+        klen = mcdb_iter_keylen(&iter);
+        dlen = mcdb_iter_datalen(&iter);
 
         /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
         /* klen, dlen each limited to (2GB - 8); space for extra tokens exists*/
@@ -163,7 +156,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         iov[iovcnt].iov_len  = 1;
         ++iovcnt;
 
-        iov[iovcnt].iov_base = p+8;
+        iov[iovcnt].iov_base = mcdb_iter_keyptr(&iter);
         iov[iovcnt].iov_len  = klen;
         ++iovcnt;
 
@@ -181,7 +174,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
             buflen = 0;
         }
 
-        iov[iovcnt].iov_base = p+8+klen;
+        iov[iovcnt].iov_base = mcdb_iter_dataptr(&iter);
         iov[iovcnt].iov_len  = dlen;
         ++iovcnt;
 
@@ -207,44 +200,36 @@ mcdbctl_stats(struct mcdb * const restrict m)
 static int
 mcdbctl_stats(struct mcdb * const restrict m)
 {
-    unsigned char * const map_ptr = m->map->ptr;
+    struct mcdb_iter iter;
     unsigned char *p;
-    uint32_t klen;
-    uint32_t dlen;
-    unsigned char * const eod = /*(min record size is 8 bytes for klen, dlen)*/
-      map_ptr+uint64_strunpack_bigendian_aligned_macro(map_ptr)-7;
-    unsigned char *j = map_ptr + MCDB_HEADER_SZ + (1u << 25); /* add 32 MB */
+    unsigned char *j = m->map->ptr + MCDB_HEADER_SZ + (1u << 25);/* add 32 MB */
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
     bool rc;
-    posix_madvise(map_ptr, m->map->size,
+    mcdb_iter_init(&iter, m);
+    posix_madvise(m->map->ptr, m->map->size,
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
-    for (p = map_ptr+MCDB_HEADER_SZ; p < eod; p += klen+dlen) {
-        klen = uint32_strunpack_bigendian_macro(p);
-        dlen = uint32_strunpack_bigendian_macro(p+4);
+    while (mcdb_iter(&iter)) {
         /* Search for key,data and track number of tries before found.
          * Technically, passing m (which contains m->map->ptr) and an
          * alias into the map (p+8) as key is in violation of C99 restrict
          * pointers, but is inconsequential since it is all read-only */
-        p += 8;
-        if (__builtin_expect( (klen == ~0), 0) && p >= eod-(MCDB_PAD_MASK-15))
-            break;
-        if ((rc = mcdb_findstart(m, (char *)p, klen))) {
-            do { rc = mcdb_findnext(m, (char *)p, klen);
-            } while (rc && map_ptr+m->dpos != p+klen);
+        p = mcdb_iter_keyptr(&iter);
+        if ((rc = mcdb_findstart(m, (char *)p, mcdb_iter_keylen(&iter)))) {
+            do { rc = mcdb_findnext(m, (char *)p, mcdb_iter_keylen(&iter));
+            } while (rc && mcdb_dataptr(m) != mcdb_iter_dataptr(&iter));
         }
         if (!rc) return MCDB_ERROR_READFORMAT;
         ++numd[ ((m->loop < 11) ? m->loop - 1 : 10) ];
         ++nrec;
         /* hint to release memory pages every 32 MB */
-        if (__builtin_expect( (p >= j), 0)) {
+        if (__builtin_expect( (iter.ptr >= j), 0)) {
             do {
                 posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
                 j += (1u << 25); /* add 32 MB */
-            } while (__builtin_expect( (p >= j), 0));
+            } while (__builtin_expect( (iter.ptr >= j), 0));
         }
-
     }
     printf("records %lu\n", nrec);
     for (rv = 0; rv < 10; ++rv)
