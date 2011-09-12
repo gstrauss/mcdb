@@ -91,12 +91,12 @@ using cdb, and now mcdb, for passwd and group databases.  See INSTALL file.
 smallest mcdb
 -------------
 Empty mcdb with no keys is 4K
-$ echo | ./mcdbctl make empty.mcdb -
+$ echo | mcdbctl make empty.mcdb -
 
 mcdb supports empty keys and values
 -----------------------------------
-$ echo -e "+0,0:->\n" | ./mcdbctl make empty.mcdb -
-In practice, empty values can be useful to when interested only in existence,
+$ echo -e "+0,0:->\n" | mcdbctl make empty.mcdb -
+In practice, empty values can be useful when interested only in existence,
 or not, of keys.  However, more than one empty key is not generically useful,
 (or a use case is not immediately apparent to me).
 
@@ -113,11 +113,13 @@ temporary buffer to set the tag followed by a copy of the key.
 
 mcdb creation speed
 -------------------
-mcdb creation supports the same input format as cdb.  There is an overhead to
-formating the input as ASCII numbers, as well as parsing and translating the
-ASCII back to native numbers.  (The cost adds up with lots of keys.)   Another 
-method to create mcdb which is even faster is for a program to link with and
-call mcdb_make_* routines directly, as is done in nss_mcdbctl.
+mcdb creation supports the same input format as cdb.  In fact, creating an
+mcdb from a cdb is as simple as: $ cdbdump foo.cdb | mcdbctl make foo.mcdb -
+However, there is an overhead to formating the input as ASCII numbers, as well
+as parsing and translating the ASCII back to native numbers.  (The cost adds up
+with lots of keys.)  Another method to create mcdb which is even faster is
+for a program to link with and call mcdb_make_* routines directly, as is done
+in nss_mcdbctl.
 
 mcdb in memory only
 -------------------
