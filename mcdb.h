@@ -82,7 +82,7 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
                   && mcdb_findnext((m),(key),(klen)))
 
 extern void *
-mcdb_read(struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
+mcdb_read(const struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 /* (macros valid only after mcdb_find() or mcdb_find*next() returns true) */
@@ -142,7 +142,7 @@ extern bool
 mcdb_mmap_init(struct mcdb_mmap * restrict, int)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 extern void
-mcdb_mmap_prefault(struct mcdb_mmap * restrict)
+mcdb_mmap_prefault(const struct mcdb_mmap * restrict)
   __attribute_nonnull__;
 extern void
 mcdb_mmap_free(struct mcdb_mmap * restrict)

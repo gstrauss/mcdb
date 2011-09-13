@@ -181,7 +181,7 @@ mcdb_findtagnext(struct mcdb * const restrict m,
  * Note: caller must terminate with '\0' if desired, i.e. buf[len] = '\0';
  */
 void *
-mcdb_read(struct mcdb * const restrict m, const uintptr_t pos,
+mcdb_read(const struct mcdb * const restrict m, const uintptr_t pos,
           const uint32_t len, void * const restrict buf)
 {
     const uintptr_t mapsz = m->map->size;
@@ -296,7 +296,7 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 }
 
 void  __attribute_noinline__
-mcdb_mmap_prefault(struct mcdb_mmap * const restrict map)
+mcdb_mmap_prefault(const struct mcdb_mmap * const restrict map)
 {
     /* improves performance on uncached mcdb (if about to make *many* queries)
      * by asking operating system to prefault pages into memory from disk
