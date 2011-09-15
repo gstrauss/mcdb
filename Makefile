@@ -22,18 +22,20 @@ _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
-PIC_OBJS:= mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o \
-           nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
+PIC_OBJS:= mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
+           nointr.o uint32.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
 $(PIC_OBJS): CFLAGS+= -fpic
 
 # (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
 libnss_mcdb.so.2: mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
 	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,$(@F) $^
 
-libmcdb.so: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o
+libmcdb.so: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
+            nointr.o uint32.o
 	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,mcdb $^
 
-libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o
+libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
+           nointr.o uint32.o
 	$(AR) -r $@ $^
 
 libnss_mcdb.a: nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
@@ -81,7 +83,7 @@ nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 	&& /bin/mv -f $@.$$$$ $@
 
 .PHONY: install-headers install
-install-headers: mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h \
+install-headers: mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h mcdb_makefn.h \
                  code_attributes.h nointr.h uint32.h
 	/bin/mkdir -p -m 0755 /usr/include/mcdb
 	umask 333; /bin/cp -f --preserve=timestamps $^ /usr/include/mcdb/
@@ -109,7 +111,8 @@ lib32/libnss_mcdb.so.2: $(addprefix lib32/, \
 	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,$(@F) $^
 lib32/libmcdb.so: ABI_FLAGS=-m32
 lib32/libmcdb.so: $(addprefix lib32/, \
-  mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o nointr.o uint32.o)
+  mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
+  nointr.o uint32.o)
 	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-soname,mcdb $^
 
 /lib/libnss_mcdb.so.2: lib32/libnss_mcdb.so.2
@@ -131,7 +134,7 @@ endif
 
 
 .PHONY: test
-test: mcdbctl
+test: mcdbctl t/testzero
 	$(RM) -r t/scratch
 	mkdir -p t/scratch
 	cd t/scratch && \

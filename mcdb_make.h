@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-struct mcdb_hp;                        /* (private structure) */
+struct mcdb_hplist;                    /* (private structure) */
 
 struct mcdb_make {
   size_t pos;
@@ -43,9 +43,12 @@ struct mcdb_make {
   size_t msz;
   size_t pgalign;
   struct mcdb_hplist *head;
-  int fd;
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
   void (*fn_free)(void *);             /* fn ptr to free() */
+  const char * restrict fname;
+  const char * restrict fntmp;
+  int fd;
+  mode_t st_mode;
 };
 
 

@@ -46,22 +46,22 @@
 #endif
 
 #include "mcdb_makefmt.h"
+#include "mcdb_makefn.h"
 #include "mcdb_make.h"
 #include "mcdb_error.h"
 #include "nointr.h"
 #include "code_attributes.h"
 
 #include <errno.h>
-#include <sys/types.h>
 #include <sys/mman.h>  /* mmap(), munmap() */
-#include <sys/stat.h>  /* fchmod(), umask() */
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>     /* open() */
 #include <stdbool.h>   /* bool */
-#include <stdlib.h>    /* mkstemp(), EXIT_SUCCESS */
+#include <stdlib.h>    /* EXIT_SUCCESS */
 #include <string.h>    /* memcpy(), memmove(), memchr() */
 #include <stdint.h>    /* SIZE_MAX */
-#include <stdio.h>     /* rename() */
-#include <unistd.h>    /* read(), unlink(), STDIN_FILENO */
+#include <unistd.h>    /* read() */
 
 /* const db input line format: "+nnnn,mmmm:xxxx->yyyy\n"
  *   nnnn = key len
@@ -304,6 +304,9 @@ mcdb_makefmt_fdintofd (const int inputfd,
  * mkstemp() if application receives a signal that causes program termination.
  * Application can create temp file itself and call mcdb_makefmt_fdintofd()
  * directly, if that level of control is needed.
+ * Note: mcdb_makefmt_fdintofd() takes args list like mcdb_makefmt_fdintofile()
+ * so we do not pass struct mcdb_make to mcdb_makefmt_fdintofd().  No big deal
+ * and keeps interface simple for direct callers of mcdb_makefmt_fdintofd().
  */
 int  __attribute_noinline__
 mcdb_makefmt_fdintofile (const int inputfd,
@@ -312,51 +315,13 @@ mcdb_makefmt_fdintofile (const int inputfd,
                          void * (* const fn_malloc)(size_t),
                          void (* const fn_free)(void *))
 {
-    int rv = 0;
-    int fd;
-
-    struct stat st;
-    const size_t len = strlen(fname);
-    char * restrict fnametmp;
-
-    /* preserve permission modes if previous mcdb exists; else make read-only
-     * (since mcdb is *constant* -- not modified -- after creation) */
-    if (stat(fname, &st) != 0) {
-        st.st_mode = S_IRUSR;
-        if (errno != ENOENT)
-            return MCDB_ERROR_WRITE;
-    }
-    else if (!S_ISREG(st.st_mode)) {
-        errno = EINVAL;
-        return MCDB_ERROR_WRITE;
-    }
-
-    fnametmp = fn_malloc(len + 8);
-    if (fnametmp == NULL)
-        return MCDB_ERROR_MALLOC;
-    memcpy(fnametmp, fname, len);
-    memcpy(fnametmp+len, ".XXXXXX", 8);
-
-    if ((fd = mkstemp(fnametmp)) != -1
-        && (rv=mcdb_makefmt_fdintofd(inputfd,buf,bufsz,fd,fn_malloc,fn_free))==0
-        && fchmod(fd, st.st_mode) == 0
-        && fdatasync(fd) == 0
-        && nointr_close(fd) == 0        /* NFS might report write errors here */
-        && (fd = -2, rename(fnametmp,fname) == 0)) /* (fd=-2 so not re-closed)*/
-        rv = EXIT_SUCCESS;
-    else {
-        const int errsave = errno;
-        if (rv == 0)
-            rv = MCDB_ERROR_WRITE;
-        if (fd != -1) {                      /* (fd == -1 if mkstemp() fails) */
-            unlink(fnametmp);
-            if (fd >= 0)
-                (void) nointr_close(fd);
-        }
-        errno = errsave;
-    }
-
-    fn_free(fnametmp);
+    struct mcdb_make m;
+    int rv = mcdb_makefn_start(&m, fname, fn_malloc, fn_free) == 0
+      ? mcdb_makefmt_fdintofd(inputfd, buf, bufsz, m.fd, fn_malloc, fn_free)
+      : (errno == ENOMEM ? MCDB_ERROR_MALLOC : MCDB_ERROR_WRITE);
+    if (rv == 0)
+        rv = mcdb_makefn_finish(&m, true) == 0 ? 0 : MCDB_ERROR_WRITE;
+    mcdb_makefn_cleanup(&m);
     return rv;
 }
 
