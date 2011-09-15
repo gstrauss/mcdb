@@ -70,6 +70,7 @@ mcdb_makefn_start (struct mcdb_make * const restrict m,
     const size_t len = strlen(fname);
     char * restrict fntmp;
 
+    m->head  = NULL;
     m->fntmp = NULL;
     m->fd    = -1;
 
