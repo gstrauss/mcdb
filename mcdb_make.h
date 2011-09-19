@@ -45,8 +45,8 @@ struct mcdb_make {
   struct mcdb_hplist *head;
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
   void (*fn_free)(void *);             /* fn ptr to free() */
-  const char * restrict fname;
-  const char * restrict fntmp;
+  const char *fname;
+  char *fntmp; /*(compiler warning for const char * restrict passed to free())*/
   int fd;
   mode_t st_mode;
 };

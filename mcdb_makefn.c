@@ -62,7 +62,7 @@
 
 int
 mcdb_makefn_start (struct mcdb_make * const restrict m,
-                   const char * const restrict fname,
+                   const char * const fname,
                    void * (* const fn_malloc)(size_t),
                    void (* const fn_free)(void *))
 {
@@ -86,18 +86,26 @@ mcdb_makefn_start (struct mcdb_make * const restrict m,
         return -1;
     }
 
-    fntmp = fn_malloc(len + 8);
+    fntmp = fn_malloc((len<<1) + 9);
     if (fntmp == NULL)
         return -1;
     memcpy(fntmp, fname, len);
     memcpy(fntmp+len, ".XXXXXX", 8);
+    memcpy(fntmp+len+8, fname, len+1);
 
     m->st_mode   = st.st_mode;
     m->fn_malloc = fn_malloc;
     m->fn_free   = fn_free;
-    m->fname     = fname;
     m->fd        = mkstemp(fntmp);
-    return (m->fd != -1) ? (m->fntmp=fntmp, EXIT_SUCCESS) : (fn_free(fntmp),-1);
+    if (m->fd != -1) {
+        m->fntmp = fntmp;
+        m->fname = fntmp+len+8;
+        return EXIT_SUCCESS;
+    }
+    else {
+        fn_free(fntmp);
+        return -1;
+    }
 }
 
 int

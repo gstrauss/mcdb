@@ -133,13 +133,15 @@ endif
 endif
 
 
-.PHONY: test
+.PHONY: test test64
+test64: TEST64=test64
+test64: test ;
 test: mcdbctl t/testzero
 	$(RM) -r t/scratch
 	mkdir -p t/scratch
 	cd t/scratch && \
 	  env - PATH="$(CURDIR):$(CURDIR)/t:$$PATH" \
-	  $(CURDIR)/t/mcdbctl.t 2>&1 | cat -v
+	  $(CURDIR)/t/mcdbctl.t $(TEST64) 2>&1 | cat -v
 	$(RM) -r t/scratch
 
 
