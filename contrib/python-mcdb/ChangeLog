@@ -1,0 +1,8 @@
+python-mcdb ChangeLog
+
+10 Sep 2011
+  - Version 0.01
+    The Python online doc was instrumental to me while writing this extension.
+    Thank you!
+       http://docs.python.org/extending/
+       http://docs.python.org/c-api/

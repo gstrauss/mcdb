@@ -1,0 +1,13 @@
+CDB_File is Copyright 1997 - 2001 Tim Goodwin.
+CDB_File is the basis for MCDB_File.
+Modifications for MCDB_File are Copyright 2011 Glue Logic LLC.
+
+    This library is free software; you can redistribute it and/or modify
+    it under the same terms as Perl itself, either Perl version 5.12.4 or,
+    at your option, any later version of Perl 5 you may have available.
+
+http://www.perl.org/about.html
+Perl is Open Source software, licensed under its Artistic License,
+or the GNU General Public License (GPL).
+
+Reference: http://dev.perl.org/licenses/

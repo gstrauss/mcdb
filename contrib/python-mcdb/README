@@ -1,0 +1,50 @@
+python-mcdb 0.01
+
+
+Python interface to create and read mcdb constant databases.
+
+The python-mcdb extension module wraps interfaces in libmcdb.so
+See https://github.com/gstrauss/mcdb/ for latest info on mcdb.
+mcdb is based on D. J. Bernstein's constant database package
+(see http://cr.yp.to/cdb.html).
+
+
+Install
+-------
+
+  $ tar zxf python-mcdb-$VERSION.tgz
+  $ cd python-mcdb-$VERSION
+  $ python setup.py build
+  $ python setup.py install
+
+  # (optional)
+  # python setup.py bdist --format=rpm
+
+
+Sample and Documentation
+------------------------
+
+Sample usage.  See sample.py.
+
+  $ ./sample.py
+
+Consult docstrings for module, class, and function documentation.
+
+  $ python -c 'import mcdb; print mcdb.__doc__'
+  $ python -c 'import mcdb; print mcdb.read("example.mcdb").__doc__'
+  $ python -c 'import mcdb; print mcdb.make("example.mcdb").__doc__'
+
+x.mcdb must exist for mcdb.read("example.mcdb").__doc__ to work.
+
+
+Questions, comments, suggestions, and bug reports:
+https://github.com/gstrauss/mcdb/issues or email <code()gluelogic.com>
+
+
+License and Copyright
+---------------------
+python-mcdb is open source software, as is mcdb itself.
+
+python-mcdb is licensed under the GNU Lesser GPL version 2.1 or later,
+and is Copyright 2011, Glue Logic LLC.  python-mcdb is based on mcdb,
+also licensed under GNU Lesser GPL version 2.1 or later.

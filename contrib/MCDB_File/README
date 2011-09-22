@@ -1,0 +1,11 @@
+README for MCDB_File
+--------------------
+
+See INSTALL for installation instructions.
+
+MCDB_File is a module which provides a Perl interface to mcdb,
+(mcdb is based on Dan Berstein's cdb package)
+
+    mcdb - fast, reliable, simple code to create and read constant databases
+
+    See https://github.com/gstrauss/mcdb/ for latest information about mcdb.

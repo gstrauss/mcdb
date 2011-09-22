@@ -1,0 +1,15 @@
+Metadata-Version: 1.0
+Name: python-mcdb
+Version: 0.01
+Summary: Interface to mcdb constant database files
+Home-page: https://github.com/gstrauss/mcdb/
+Author: gstrauss
+Author-email: code()gluelogic.com
+License: GPL
+Description: Python interface to create and read mcdb constant databases.
+  
+  The python-mcdb extension module wraps interfaces in libmcdb.so
+  See https://github.com/gstrauss/mcdb/ for latest info on mcdb.
+  mcdb is based on D. J. Bernstein's constant database package
+  (see http://cr.yp.to/cdb.html).
+Platform: UNKNOWN
