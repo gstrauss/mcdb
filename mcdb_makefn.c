@@ -62,7 +62,7 @@
 
 int
 mcdb_makefn_start (struct mcdb_make * const restrict m,
-                   const char * const fname,
+                   const char * const restrict fname,
                    void * (* const fn_malloc)(size_t),
                    void (* const fn_free)(void *))
 {

@@ -28,6 +28,7 @@
 #include <sys/types.h> /* size_t   */
 
 #include "code_attributes.h"
+#include "mcdb.h"  /* MCDB_SLOTS */
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,6 +50,8 @@ struct mcdb_make {
   char *fntmp; /*(compiler warning for const char * restrict passed to free())*/
   int fd;
   mode_t st_mode;
+  uint32_t total;
+  uint32_t count[MCDB_SLOTS];
 };
 
 
