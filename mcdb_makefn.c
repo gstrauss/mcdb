@@ -70,9 +70,9 @@ mcdb_makefn_start (struct mcdb_make * const restrict m,
     const size_t len = strlen(fname);
     char * restrict fntmp;
 
-    m->head  = NULL;
-    m->fntmp = NULL;
-    m->fd    = -1;
+    m->head[0] = NULL;
+    m->fntmp   = NULL;
+    m->fd      = -1;
 
     /* preserve permission modes if previous mcdb exists; else make read-only
      * (since mcdb is *constant* -- not modified -- after creation) */
