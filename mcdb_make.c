@@ -66,34 +66,57 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>  /* memcpy() */
+#include <stdbool.h> /* bool true false */
 #include <stdint.h>  /* uint32_t uintptr_t */
 #include <limits.h>  /* UINT_MAX, INT_MAX */
 
-#define MCDB_HPLIST 4000
-
-struct mcdb_hp { uintptr_t p; uint32_t h; uint32_t l; };
+#define MCDB_HPLIST 250
 
 struct mcdb_hplist {
   uint32_t num;  /* index into struct mcdb_hp hp[MCDB_HPLIST] */
   struct mcdb_hplist *next;
+  struct mcdb_hplist *pend;
   struct mcdb_hp hp[MCDB_HPLIST];
 };
 
-static struct mcdb_hplist *  __attribute_noinline__  __attribute_malloc__
+static bool  __attribute_noinline__
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-static struct mcdb_hplist *
+static bool
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
 {
-    struct mcdb_hplist * const restrict head =
-      (struct mcdb_hplist *) m->fn_malloc(sizeof(struct mcdb_hplist));
-    if (!head) return NULL;
-    head->num  = 0;
-    head->next = m->head;
-    m->head    = head;
-    /* detect if we have already passed 2 gibibyte records
-     * (not exact, but ok; will abort in mcdb_make_finish() if > INT_MAX) */
-    return (m->total += MCDB_HPLIST) < INT_MAX ? head : (errno = ENOMEM, NULL);
+    uint32_t i = m->hp.h & MCDB_SLOT_MASK;
+    struct mcdb_hplist * const head = m->head[i];
+    struct mcdb_hplist * const pend = head->pend;
+    if (pend != NULL) {
+        pend->next = head;
+        m->head[i] = pend;
+        return true;
+    }
+    else {
+        uint32_t cnt;
+        const uint32_t * const count = m->count;
+        struct mcdb_hplist * const restrict hplist = (struct mcdb_hplist *)
+          m->fn_malloc(sizeof(struct mcdb_hplist) * MCDB_SLOTS);
+        if (!hplist) return false;
+        for (cnt = 0, i = 0; i < MCDB_SLOTS; ++i) {
+            hplist[i].num  = 0;
+            hplist[i].pend = NULL;
+            if (m->head[i]->num != MCDB_HPLIST) {
+                if (NULL != m->head[i]->pend)
+                    hplist[i].pend = m->head[i]->pend;
+                m->head[i]->pend = hplist+i;
+            }
+            else {
+                hplist[i].next = m->head[i];
+                m->head[i] = hplist+i;
+            }
+            cnt += count[i];
+        }
+        /* detect if we have already passed 2 gibibyte records
+         * (not exact, but ok; will abort in mcdb_make_finish() if > INT_MAX) */
+        return (cnt < INT_MAX) ? true : (errno = ENOMEM, false);
+    }
 }
 
 static bool  inline
@@ -180,12 +203,10 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     char *p;
     const size_t pos = m->pos;
     const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
-    struct mcdb_hplist * const head =
-      m->head->num < MCDB_HPLIST ? m->head : mcdb_hplist_alloc(m);
-    if (head == NULL) return -1;
-    head->hp[head->num].p = pos;
-    head->hp[head->num].h = UINT32_HASH_DJB_INIT;
-    head->hp[head->num].l = (uint32_t)keylen;
+    if (m->hp.l == ~0 && !mcdb_hplist_alloc(m))                    return -1;
+    m->hp.p = pos;
+    m->hp.h = UINT32_HASH_DJB_INIT;
+    m->hp.l = (uint32_t)keylen;
     if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
     if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
@@ -214,21 +235,26 @@ mcdb_make_addbuf_key(struct mcdb_make * const restrict m,
 {
     /* len validated in mcdb_make_addbegin(); passing any other len is wrong,
      * unless the len is shorter from partial contents of buf. */
-    uint32_t * const h = &m->head->hp[m->head->num].h;
-    *h = uint32_hash_djb(*h, buf, len);
+    m->hp.h = uint32_hash_djb(m->hp.h, buf, len);
     mcdb_make_addbuf_data(m, buf, len);
 }
 
 void  inline
 mcdb_make_addend(struct mcdb_make * const restrict m)
 {
-    ++m->count[MCDB_SLOT_MASK & m->head->hp[m->head->num++].h];
+    /* copy hp data structure into list for hp slot mask */
+    const uint32_t slot_idx = m->hp.h & MCDB_SLOT_MASK;
+    const uint32_t i = m->head[slot_idx]->num++;
+    m->head[slot_idx]->hp[i] = m->hp;
+    ++m->count[slot_idx];
+    if (i == MCDB_HPLIST-1)
+        m->hp.l = ~0; /* set flag for mcdb_make_start() to allocate lists */
 }
 
 void  inline
 mcdb_make_addrevert(struct mcdb_make * const restrict m)
 {
-    m->pos = m->head->hp[m->head->num].p;
+    m->pos = m->hp.p;
 }
 
 int
@@ -256,19 +282,25 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
     m->offset    = 0;
     m->fsz       = 0;
     m->msz       = 0;
-    m->head      = NULL;
+    m->hp.p      = MCDB_HEADER_SZ;
+    m->hp.h      = 0;
+    m->hp.l      = 0;
     m->fd        = fd;
     m->fn_malloc = fn_malloc;
     m->fn_free   = fn_free;
     m->pgalign   = ~( ((size_t)sysconf(_SC_PAGESIZE)) - 1 );
-    m->total     = (uint32_t)-MCDB_HPLIST; /*init to skip 0 check every add*/
+    m->head[0]   = (struct mcdb_hplist *)
+                   fn_malloc(sizeof(struct mcdb_hplist) * MCDB_SLOTS);
     memset(m->count, 0, MCDB_SLOTS * sizeof(uint32_t));
     /* do not modify m->fname, m->fntmp, m->st_mode; may already have been set*/
-
-    if ((fd == -1            /*(m->fd == -1 during some large mcdb size tests)*/
-         || mcdb_mmap_upsize(m, MCDB_MMAP_SZ))/*(MCDB_MMAP_SZ>=MCDB_HEADER_SZ)*/
-        && mcdb_hplist_alloc(m) != NULL) { /*init to skip NULL check every add*/
-        m->head->hp[m->head->num].p = m->pos;
+    if (m->head[0] != NULL   /*(m->fd == -1 during some large mcdb size tests)*/
+        && (fd == -1 || mcdb_mmap_upsize(m, MCDB_MMAP_SZ))) {
+        for (uint32_t u = 0; u < MCDB_SLOTS; ++u) {
+            m->head[u] = m->head[0]+u;
+            m->head[u]->num  = 0;
+            m->head[u]->next = NULL;
+            m->head[u]->pend = NULL;
+        }
         return 0;
     }
     else {
@@ -292,34 +324,19 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     uint32_t i;
     uintptr_t d;
     uint32_t len;
-    uint32_t cnt;
-    uint32_t w;
     uint32_t b;
-    struct mcdb_hp *hash;
-    struct mcdb_hp *split;
-    struct mcdb_hp *hp;
-    struct mcdb_hplist *x;
     char *p;
-    const uint32_t * const count = m->count;
-    uint32_t start[MCDB_SLOTS];
+    const uint32_t * const restrict count = m->count;
     char header[MCDB_HEADER_SZ];
 
-    len = 1; /* memsize */
-    for (u = 0, i = 0; i < MCDB_SLOTS; ++i) {
-        start[i] = (u += count[i]);/*no overflow; limited in mcdb_hplist_alloc*/
-        if (len < count[i])
-            len = count[i];
-    }
-    len <<= 1;
+    for (u = 0, i = 0; i < MCDB_SLOTS; ++i)
+        u += count[i];  /* no overflow; limited in mcdb_hplist_alloc */
 
     /* check for integer overflow and that sufficient space allocated in file */
-    cnt = (m->total += m->head->num);/*add num from current struct mcdb_hplist*/
-    if (cnt > INT_MAX || len > INT_MAX)        { errno = ENOMEM; return -1; }
-    len += cnt;
+    if (u > INT_MAX)                           { errno = ENOMEM; return -1; }
   #if !defined(_LP64) && !defined(__LP64__)
-    if (len > UINT_MAX/sizeof(struct mcdb_hp)) { errno = ENOMEM; return -1; }
-    if (cnt > (UINT_MAX>>5))                   { errno = ENOMEM; return -1; }
-    u = cnt << 5; /* multiply by 2 and then by 16 (for 16 chars) */
+    if (u > (UINT_MAX>>4))                     { errno = ENOMEM; return -1; }
+    u <<= 4;  /* 8 byte hash entries in 32-bit; x 2 for space in table */
     if (m->pos > (UINT_MAX-u))                 { errno = ENOMEM; return -1; }
   #endif
 
@@ -333,21 +350,9 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     if (d) memset(m->map + m->pos - m->offset, ~0, d);
     m->pos += d; /*set all bits in hole so code can detect end of data padding*/
 
-    split = (struct mcdb_hp *) m->fn_malloc((size_t)len*sizeof(struct mcdb_hp));
-    if (!split) return -1;
-    hash = split + cnt;
-
-    /* copy hp data from chained lists into array (group hp data by slot) */
-    for (x = m->head; x; x = x->next) {
-        u = x->num;
-        while (u--)
-            split[--start[MCDB_SLOT_MASK & x->hp[u].h]] = x->hp[u];
-    }
-
     b = (m->pos < UINT_MAX) ? 3 : 4;
     for (i = 0; i < MCDB_SLOTS; ++i) {
-        cnt = count[i];
-        len = cnt << 1; /* no overflow possible */
+        len = count[i] << 1; /* no overflow possible */
         d   = m->pos;
 
         /* check for sufficient space in mmap to write hash table for this slot
@@ -362,39 +367,54 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         uint32_strpack_bigendian_aligned_macro(p+8,len);       /* hslots */
         *(uint32_t *)(p+12) = 0;     /*(fill hole with 0 only for consistency)*/
 
-        /* generate hash table for this slot */
-        memset(hash, 0, (size_t)len * sizeof(struct mcdb_hp));
-        hp = split + start[i];
-        for (u = 0; u < cnt; ++u) {
-            w = (hp->h >> MCDB_SLOT_BITS) % len;
-            while (hash[w].p)
-                if (++w == len)
-                    w = 0;
-            hash[w] = *hp++;
-        }
-
-        /* write hash table directly to map; allocated space checked above */
+        /* generate hash table for slot, writing directly to mmap */
         p = m->map + m->pos - m->offset;
-        m->pos += (len << b);
+        m->pos += ((uintptr_t)len << b);
+        memset(p, 0, (size_t)len << b);
         if (b == 3) { /* data section ends < 4 GB; use 32-bit dpos offset */
-            for (u = 0; u < len; p+=8, ++u) {
-                uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /*khash*/
-                uint32_strpack_bigendian_aligned_macro(p+4,hash[u].p); /*dpos*/
+            /* (could be make into a subroutine taking (len, p, m->head[i]) */
+            /* layout in memory: 4-byte khash, 4-byte dpos */
+            for (const struct mcdb_hplist *x = m->head[i]; x; x = x->next) {
+                const struct mcdb_hp * restrict hp = x->hp;
+                char * restrict q;
+                for (uint32_t w = x->num; w; --w, ++hp) {
+                    q = p+4;  /*(4 is offset of dpos)*/
+                    u = (hp->h >> MCDB_SLOT_BITS) % len;
+                    /* find empty entry in open hash table (dpos == 0) */
+                    while (*(uint32_t *)(q+((uintptr_t)u<<3)))
+                        if (++u == len)
+                            u = 0;
+                    q += (u<<3);
+                    uint32_strpack_bigendian_aligned_macro(q-4,hp->h); /*khash*/
+                    uint32_strpack_bigendian_aligned_macro(q,(uint32_t)hp->p);
+                }                                                      /*dpos*/
             }
         }
-        else {        /* data section crosses 4 GB; need 64-bit dpos offset */
-            for (u = 0; u < len; p+=16, ++u) {
-                uint32_strpack_bigendian_aligned_macro(p,hash[u].h);   /*khash*/
-                uint32_strpack_bigendian_aligned_macro(p+4,hash[u].l); /*klen*/
-                uint64_strpack_bigendian_aligned_macro(p+8,(uint64_t)hash[u].p);
-            }                                                          /*dpos*/
+        else {/*b==4*//* data section crosses 4 GB; need 64-bit dpos offset */
+            /* (could be made into a subroutine taking (len, p, m->head[i]) */
+            /* layout in memory: 4-byte khash, 4-byte klen, 8-byte dpos */
+            for (const struct mcdb_hplist *x = m->head[i]; x; x = x->next) {
+                const struct mcdb_hp * restrict hp = x->hp;
+                char * restrict q;
+                for (uint32_t w = x->num; w; --w, ++hp) {
+                    q = p+8;  /*(8 is offset of dpos)*/
+                    u = (hp->h >> MCDB_SLOT_BITS) % len;
+                    /* find empty entry in open hash table (dpos == 0) */
+                    while (*(uintptr_t *)(q+((uintptr_t)u<<4)))
+                        if (++u == len)
+                            u = 0;
+                    q += (u<<4);
+                    uint32_strpack_bigendian_aligned_macro(q-8,hp->h); /*khash*/
+                    uint32_strpack_bigendian_aligned_macro(q-4,hp->l); /*klen*/
+                    uint64_strpack_bigendian_aligned_macro(q,(uint64_t)hp->p);
+                }                                                      /*dpos*/
+            }
         }
     }
-    m->fn_free(split);
 
     return (i == MCDB_SLOTS) && mcdb_mmap_commit(m, header)
-        ? mcdb_make_destroy(m)
-        : -1;
+      ? mcdb_make_destroy(m)
+      : -1;
 }
 
 /* caller should call mcdb_make_destroy() upon errors from mcdb_make_*() calls
@@ -407,12 +427,17 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
 {
     void * const map = m->map;
     struct mcdb_hplist *n;
-    struct mcdb_hplist *node = m->head;
+    struct mcdb_hplist *node = m->head[0] ? m->head[0]->pend : NULL;
+    while ((n = node)) {
+        node = node->pend;
+        m->fn_free(n);
+    }
+    node = m->head[0];
     while ((n = node)) {
         node = node->next;
         m->fn_free(n);
     }
-    m->head = NULL;
+    m->head[0] = NULL;
     m->map = MAP_FAILED;  /*(m->fd == -1 during some large mcdb size tests)*/
     return (m->fd != -1 && map != MAP_FAILED) ? munmap(map, m->msz) : 0;
 }

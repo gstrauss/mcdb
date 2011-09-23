@@ -236,24 +236,20 @@ rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 mcdbtest test.mcdb
 rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 
-# testzero uses data records of size 65536
-# mcdb overhead is 4096 + 40 bytes per record
-echo '--- testzero can build a database close to 4GB'
-testzero 65491
+# testzero uses keys of size 4 and data records of size 65536
+# mcdb overhead is 4096 + 24 bytes per record as long as data section fits <4 GB
+echo '--- testzero can build a database very close to 4GB'
+testzero 65507
 rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 
 # testzero on large data sets will fail in 32-bit, but should succeed in 64-bit
 if [ -n "$1" ]; then
-  echo '--- testzero can build a database very close to 4GB'
-  testzero 65495
-  rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
-
   echo '--- testzero handles hash table crossing 4GB'
-  testzero 65496
+  testzero 65508
   rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 
   echo '--- testzero handles records past 4GB'
-  testzero 66000
+  testzero 65529
   rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 fi
 

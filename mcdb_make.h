@@ -25,7 +25,8 @@
 #ifndef INCLUDED_MCDB_MAKE_H
 #define INCLUDED_MCDB_MAKE_H
 
-#include <sys/types.h> /* size_t   */
+#include <sys/types.h> /* size_t */
+#include <stdint.h>
 
 #include "code_attributes.h"
 #include "mcdb.h"  /* MCDB_SLOTS */
@@ -34,7 +35,8 @@
 extern "C" {
 #endif
 
-struct mcdb_hplist;                    /* (private structure) */
+struct mcdb_hp { uintptr_t p; uint32_t h; uint32_t l; }; /*(private structure)*/
+struct mcdb_hplist;                                      /*(private structure)*/
 
 struct mcdb_make {
   size_t pos;
@@ -43,15 +45,15 @@ struct mcdb_make {
   size_t fsz;
   size_t msz;
   size_t pgalign;
-  struct mcdb_hplist *head;
+  struct mcdb_hp hp;
   void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
   void (*fn_free)(void *);             /* fn ptr to free() */
   const char *fname;
   char *fntmp; /*(compiler warning for const char * restrict passed to free())*/
   int fd;
   mode_t st_mode;
-  uint32_t total;
   uint32_t count[MCDB_SLOTS];
+  struct mcdb_hplist *head[MCDB_SLOTS];
 };
 
 

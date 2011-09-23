@@ -637,9 +637,10 @@ mcdbpy_make_new(PyTypeObject * const type,
     struct mcdbpy_make * const restrict self =
       (struct mcdbpy_make *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        self->fname = NULL;
-        self->m.head= NULL;
-        self->m.fd  = -1;
+        self->fname    = NULL;
+        self->fntmp    = NULL;
+        self->m.head[0]= NULL;
+        self->m.fd     = -1;
     }
     return (PyObject *)self;
 }
