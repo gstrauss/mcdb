@@ -434,7 +434,7 @@ int __attribute_noinline__
 mcdb_make_destroy(struct mcdb_make * const restrict m)
 {
     int rc = 0;
-    if (m->map != MAP_FAILED) {
+    if (m->map != MAP_FAILED && m->fd != -1) {
         const int errsave = errno;
         rc = munmap(m->map, m->msz);
         m->map = MAP_FAILED;

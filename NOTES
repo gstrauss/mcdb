@@ -148,3 +148,18 @@ and x86_64 platforms, but have not (yet) been tested on all other platforms.
 They were written from vendor documentation available on the internet, but I do
 not have private access to all those platforms in order to test.  Please send
 to me advice, suggestions, and corrections.
+
+mcdb database file validation
+-----------------------------
+mcdb database file is assumed to be consistent (not corrupt) once created.
+A failure in 'mcdbctl make' results in corrupt database temporary file -not-
+replacing an existing, good database.  One good (not perfect) method to
+check an existing mcdb is to run 'mcdbctl stats foo.mcdb', which reads the
+mcdb and queries every key.  (The only part of mcdb not fully validated is
+the slot table and padding areas.)  If 'mcdbctl stats' does not crash, then
+the database is very likely consistent (good).
+
+mcdb queries into a file that is not an mcdb has strong possibility of causing
+a program crash upon first access to slot and hash tables in mcdb.  Programs
+that pass an invalid file (not an mcdb) to mcdb_mmap_create() will likely crash
+upon first access into that invalid mcdb.
