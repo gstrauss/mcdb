@@ -32,7 +32,6 @@ struct nss_mcdb_make_wbuf {
   char * const restrict buf;
   size_t offset;
   size_t bufsz;
-  int fd;
 };
 
 struct nss_mcdb_make_winfo {

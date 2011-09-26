@@ -130,6 +130,7 @@ mcdb_makefn_cleanup (struct mcdb_make * const restrict m)
     }
     if (m->fntmp != NULL)
         m->fn_free(m->fntmp);
-    errno = errsave;
+    if (errsave != 0)
+        errno = errsave;
     return -1;
 }

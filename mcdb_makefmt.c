@@ -25,7 +25,7 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
-#ifndef _XOPEN_SOURCE /* >= 500 on Linux for mkstemp(), fchmod(), fdatasync() */
+#ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 500
 #endif
 /* large file support needed for stat(),fstat() input file > 2 GB */
@@ -282,15 +282,11 @@ mcdb_makefmt_fdintofd (const int inputfd,
     }
 
     if (rv == EXIT_SUCCESS)
-        rv = (mcdb_make_finish(&m) == 0) ? EXIT_SUCCESS : MCDB_ERROR_WRITE;
-
-    if (rv != EXIT_SUCCESS) {
-        const int errsave = errno;
+        return (mcdb_make_finish(&m) == 0) ? EXIT_SUCCESS : MCDB_ERROR_WRITE;
+    else {
         mcdb_make_destroy(&m);
-        errno = errsave;
+        return rv;
     }
-
-    return rv;
 }
 
 /* Examples:

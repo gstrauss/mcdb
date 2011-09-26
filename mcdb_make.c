@@ -79,6 +79,15 @@ struct mcdb_hplist {
   struct mcdb_hp hp[MCDB_HPLIST];
 };
 
+/* routine marked to indicate unlikely branch;
+ * __attribute_cold__ can be used instead of __builtin_expect() */
+static int  __attribute_noinline__  __attribute_cold__
+mcdb_make_err(int errnum)
+{
+    errno = errnum;
+    return -1;
+}
+
 static bool  __attribute_noinline__
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
   __attribute_nonnull__  __attribute_warn_unused_result__;
@@ -198,20 +207,21 @@ int
 mcdb_make_addbegin(struct mcdb_make * const restrict m,
                    const size_t keylen, const size_t datalen)
 {
-    /* validate/allocate space for next key/data pair
-     * (could cause swap thrash if key and data are larger than available mem)*/
+    /* validate/allocate space for next key/data pair */
     char *p;
     const size_t pos = m->pos;
     const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
-    if (m->hp.l == ~0 && !mcdb_hplist_alloc(m))                    return -1;
+    if (m->map == MAP_FAILED)                      return mcdb_make_err(EPERM);
+    if (m->hp.l == ~0 && !mcdb_hplist_alloc(m))    return mcdb_make_err(errno);
     m->hp.p = pos;
     m->hp.h = UINT32_HASH_DJB_INIT;
+    if (keylen > INT_MAX-8 || datalen > INT_MAX-8) return mcdb_make_err(EINVAL);
     m->hp.l = (uint32_t)keylen;
-    if (keylen > INT_MAX-8 || datalen > INT_MAX-8) { errno=EINVAL; return -1; }
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
-    if (pos > UINT_MAX-len)                        { errno=ENOMEM; return -1; }
+    if (pos > UINT_MAX-len)                        return mcdb_make_err(ENOMEM);
   #endif
-    if (m->fsz < pos+len && !mcdb_mmap_upsize(m,pos+len))          return -1;
+    if (m->fsz < pos+len && !mcdb_mmap_upsize(m,pos+len))
+                                                   return mcdb_make_err(errno);
     p = m->map + pos - m->offset;
     uint32_strpack_bigendian_macro(p,keylen);
     uint32_strpack_bigendian_macro(p+4,datalen);
@@ -293,8 +303,7 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
                    fn_malloc(sizeof(struct mcdb_hplist) * MCDB_SLOTS);
     memset(m->count, 0, MCDB_SLOTS * sizeof(uint32_t));
     /* do not modify m->fname, m->fntmp, m->st_mode; may already have been set*/
-    if (m->head[0] != NULL   /*(m->fd == -1 during some large mcdb size tests)*/
-        && (fd == -1 || mcdb_mmap_upsize(m, MCDB_MMAP_SZ))) {
+    if (m->head[0] != NULL && mcdb_mmap_upsize(m, MCDB_MMAP_SZ)) {
         for (uint32_t u = 0; u < MCDB_SLOTS; ++u) {
             m->head[u] = m->head[0]+u;
             m->head[u]->num  = 0;
@@ -304,9 +313,7 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
         return 0;
     }
     else {
-        const int errsave = errno;
         mcdb_make_destroy(m);
-        errno = errsave;
         return -1;
     }
 }
@@ -328,25 +335,27 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     char *p;
     const uint32_t * const restrict count = m->count;
     char header[MCDB_HEADER_SZ];
+    if (m->map == MAP_FAILED)                  return mcdb_make_err(EPERM);
 
     for (u = 0, i = 0; i < MCDB_SLOTS; ++i)
         u += count[i];  /* no overflow; limited in mcdb_hplist_alloc */
 
     /* check for integer overflow and that sufficient space allocated in file */
-    if (u > INT_MAX)                           { errno = ENOMEM; return -1; }
+    if (u > INT_MAX)                           return mcdb_make_err(ENOMEM);
   #if !defined(_LP64) && !defined(__LP64__)
-    if (u > (UINT_MAX>>4))                     { errno = ENOMEM; return -1; }
+    if (u > (UINT_MAX>>4))                     return mcdb_make_err(ENOMEM);
     u <<= 4;  /* 8 byte hash entries in 32-bit; x 2 for space in table */
-    if (m->pos > (UINT_MAX-u))                 { errno = ENOMEM; return -1; }
+    if (m->pos > (UINT_MAX-u))                 return mcdb_make_err(ENOMEM);
   #endif
 
     /* add "hole" for alignment; incompatible with djb cdbdump */
     /* padding to align hash tables to MCDB_PAD_ALIGN bytes (16) */
     d = (MCDB_PAD_ALIGN - (m->pos & MCDB_PAD_MASK)) & MCDB_PAD_MASK;
   #if !defined(_LP64) && !defined(__LP64__)
-    if (d > (UINT_MAX-(m->pos+u)))             { errno = ENOMEM; return -1; }
+    if (d > (UINT_MAX-(m->pos+u)))             return mcdb_make_err(ENOMEM);
   #endif
-    if (m->fsz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d)) return -1;
+    if (m->fsz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d))
+                                               return mcdb_make_err(errno);
     if (d) memset(m->map + m->pos - m->offset, ~0, d);
     m->pos += d; /*set all bits in hole so code can detect end of data padding*/
 
@@ -412,9 +421,8 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         }
     }
 
-    return (i == MCDB_SLOTS) && mcdb_mmap_commit(m, header)
-      ? mcdb_make_destroy(m)
-      : -1;
+    u = (i == MCDB_SLOTS && mcdb_mmap_commit(m, header));
+    return mcdb_make_destroy(m) | (u ? 0 : -1);
 }
 
 /* caller should call mcdb_make_destroy() upon errors from mcdb_make_*() calls
@@ -425,19 +433,28 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 int __attribute_noinline__
 mcdb_make_destroy(struct mcdb_make * const restrict m)
 {
-    void * const map = m->map;
-    struct mcdb_hplist *n;
-    struct mcdb_hplist *node = m->head[0] ? m->head[0]->pend : NULL;
-    while ((n = node)) {
-        node = node->pend;
-        m->fn_free(n);
+    int rc = 0;
+    if (m->map != MAP_FAILED) {
+        const int errsave = errno;
+        rc = munmap(m->map, m->msz);
+        m->map = MAP_FAILED;
+        if (errsave != 0)
+            errno = errsave;
     }
-    node = m->head[0];
-    while ((n = node)) {
-        node = node->next;
-        m->fn_free(n);
+    if (m->head[0] != NULL) {
+        struct mcdb_hplist *n;
+        struct mcdb_hplist *node;
+        node = m->head[0]->pend;
+        while ((n = node)) {
+            node = node->pend;
+            m->fn_free(n);
+        }
+        node = m->head[0];
+        while ((n = node)) {
+            node = node->next;
+            m->fn_free(n);
+        }
+        m->head[0] = NULL;
     }
-    m->head[0] = NULL;
-    m->map = MAP_FAILED;  /*(m->fd == -1 during some large mcdb size tests)*/
-    return (m->fd != -1 && map != MAP_FAILED) ? munmap(map, m->msz) : 0;
+    return rc;
 }
