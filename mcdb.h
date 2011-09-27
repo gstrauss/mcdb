@@ -44,6 +44,7 @@ extern "C" {
 struct mcdb_mmap {
   unsigned char *ptr;         /* mmap pointer */
   uint32_t b;                 /* hash table stride bits: (data < 4GB) ? 3 : 4 */
+  uint32_t n;                 /* num records in mcdb */
   uintptr_t size;             /* mmap size */
   time_t mtime;               /* mmap file mtime */
   struct mcdb_mmap * volatile next;    /* updated (new) mcdb_mmap */
@@ -84,6 +85,12 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
 extern void *
 mcdb_read(const struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
+extern uint32_t
+mcdb_numrecs(struct mcdb * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+extern bool
+mcdb_validate_slots(struct mcdb * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 /* (macros valid only after mcdb_find() or mcdb_find*next() returns true) */
 #define mcdb_datapos(m)      ((m)->dpos)
@@ -97,7 +104,6 @@ struct mcdb_iter {
   uint32_t klen;
   uint32_t dlen;
   struct mcdb_mmap *map;
-  uint32_t n;
 };
 
 /* (macros valid only after mcdb_iter() returns true) */
@@ -113,9 +119,6 @@ mcdb_iter(struct mcdb_iter * restrict)
 extern void
 mcdb_iter_init(struct mcdb_iter * restrict, struct mcdb * restrict)
   __attribute_nonnull__;
-extern uint32_t
-mcdb_iter_numrecs(struct mcdb_iter * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
 
 extern struct mcdb_mmap *  __attribute_malloc__
 mcdb_mmap_create(struct mcdb_mmap * restrict,

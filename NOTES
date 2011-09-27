@@ -153,13 +153,16 @@ mcdb database file validation
 -----------------------------
 mcdb database file is assumed to be consistent (not corrupt) once created.
 A failure in 'mcdbctl make' results in corrupt database temporary file -not-
-replacing an existing, good database.  One good (not perfect) method to
-check an existing mcdb is to run 'mcdbctl stats foo.mcdb', which reads the
-mcdb and queries every key.  (The only part of mcdb not fully validated is
-the slot table and padding areas.)  If 'mcdbctl stats' does not crash, then
-the database is very likely consistent (good).
+replacing an existing, good database.  An expensive method to validate an
+existing mcdb is to run 'mcdbctl stats foo.mcdb', which reads the mcdb and
+queries every key.  If 'mcdbctl stats' exits 0, then the database is consistent
+(good).  A faster, non-destructive (and non-crashing) heuristic to validate if
+a file is an mcdb is to call mcdb_validate_slots() which validates the slots
+table in the mcdb header.  It the slot table is coherent, then the file is very
+likely an mcdb.
 
 mcdb queries into a file that is not an mcdb has strong possibility of causing
 a program crash upon first access to slot and hash tables in mcdb.  Programs
 that pass an invalid file (not an mcdb) to mcdb_mmap_create() will likely crash
-upon first access into that invalid mcdb.
+upon first access into that invalid mcdb, unless the mcdb is first checked with
+a call to mcdb_validate_slots().

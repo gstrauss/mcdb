@@ -171,9 +171,8 @@ struct mcdbpy {
     struct mcdbpy *origin;
     struct mcdb_iter iter;
     uint32_t itertype;
-    uint32_t numrecs;
-    const unsigned char *findkey; /* used by findnext() */
     uint32_t findklen;            /* used by findnext() */
+    const unsigned char *findkey; /* used by findnext() */
 };
 
 staticforward PyTypeObject mcdbpy_Type;
@@ -186,13 +185,8 @@ mcdbpy_read_data(const struct mcdb * const restrict m)
 
 static Py_ssize_t
 mcdbpy_numrecs(struct mcdbpy * const restrict self)
-{
-    if (self->numrecs == ~0) {
-        struct mcdb_iter iter;
-        mcdb_iter_init(&iter, &self->m);
-        self->numrecs = mcdb_iter_numrecs(&iter);
-    }
-    return (Py_ssize_t)self->numrecs; /*(ok b/c 2 gibibyte numrecs mcdb limit)*/
+{   /*(cast ok because 2 gibibyte numrecs mcdb limit)*/
+    return (Py_ssize_t)mcdb_numrecs(&self->m);
 }
 
 static PyObject *
@@ -485,7 +479,6 @@ mcdbpy_init_obj(struct mcdbpy * const restrict self, PyObject * const fname)
     Py_INCREF(fname);
     self->fname   = fname;
     self->origin  = NULL;
-    self->numrecs = ~0;
     self->findkey = NULL;
     /* (mcdb_mmap_create() is not wrapped in
      *  Py_BEGIN_ALLOW_THREADS/Py_END_ALLOW_THREADS
@@ -516,7 +509,6 @@ mcdbpy_new(PyTypeObject * const type,
         self->fname   = NULL;
         self->m.map   = NULL;
         self->origin  = NULL;
-        self->numrecs = ~0;
         self->findkey = NULL;
     }
     return (PyObject *)self;
@@ -638,7 +630,6 @@ mcdbpy_make_new(PyTypeObject * const type,
       (struct mcdbpy_make *)type->tp_alloc(type, 0);
     if (self != NULL) {
         self->fname    = NULL;
-        self->fntmp    = NULL;
         self->m.head[0]= NULL;
         self->m.fd     = -1;
     }

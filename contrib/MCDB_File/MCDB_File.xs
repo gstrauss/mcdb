@@ -101,7 +101,6 @@ mcdbxs_TIEHASH(CLASS, filename)
     if (RETVAL->iter.map) {
         RETVAL->iter.ptr  = NULL;
         RETVAL->iter.eod  = NULL;
-        RETVAL->iter.n    = ~0;
         RETVAL->values    = false;
     }
     else {
@@ -115,7 +114,7 @@ U32
 mcdbxs_SCALAR(this)
     struct mcdbxs_read * this;
   CODE:
-    RETVAL = mcdb_iter_numrecs(&this->iter);
+    RETVAL = mcdb_numrecs(&this->m);
   OUTPUT:
     RETVAL
 
@@ -274,7 +273,6 @@ mcdbxs_make_new(CLASS, fname)
     char * fname;
   PREINIT:
     struct mcdb_make *mk;
-    const size_t len = strlen(fname);
   CODE:
     RETVAL = Newx(mk, 1, struct mcdb_make);
     if (mcdb_makefn_start(mk, fname, mcdbxs_malloc, mcdbxs_free) != 0

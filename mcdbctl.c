@@ -207,9 +207,11 @@ mcdbctl_stats(struct mcdb * const restrict m)
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
     bool rc;
-    mcdb_iter_init(&iter, m);
     posix_madvise(m->map->ptr, m->map->size,
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+    if (!mcdb_validate_slots(m))
+        return MCDB_ERROR_READFORMAT;
+    mcdb_iter_init(&iter, m);
     while (mcdb_iter(&iter)) {
         /* Search for key,data and track number of tries before found.
          * Technically, passing m (which contains m->map->ptr) and an

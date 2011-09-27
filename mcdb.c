@@ -190,6 +190,46 @@ mcdb_read(const struct mcdb * const restrict m, const uintptr_t pos,
       : NULL;
 }
 
+uint32_t
+mcdb_numrecs(struct mcdb * const restrict m)
+{
+    struct mcdb_mmap * const restrict map = m->map;
+    if (map->n == ~0) {
+        const unsigned char * const restrict ptr = map->ptr;
+        uint32_t u = 0;
+        for (unsigned int i = 8; i < MCDB_HEADER_SZ; i += 16)
+            u += uint32_strunpack_bigendian_aligned_macro(ptr+i);
+        map->n = u >> 1;  /* (hslots / 2) */
+    }
+    return map->n; /* mcdb_make currently limits n to INT_MAX (~2 billion) */
+}
+
+bool
+mcdb_validate_slots(struct mcdb * const restrict m)
+{
+    const unsigned char * const restrict ptr = m->map->ptr;
+    uint32_t u = 0;
+    const uint32_t bits = m->map->b;
+    uint64_t hpos;
+    uint64_t hpos_next;
+    uint32_t hslots;
+    uint32_t numrecs = 0;
+    if (MCDB_HEADER_SZ > m->map->size)
+        return false;
+    hpos_next  = uint64_strunpack_bigendian_aligned_macro(ptr);
+    do {
+        hpos = uint64_strunpack_bigendian_aligned_macro(ptr+u);
+        numrecs += (hslots = uint32_strunpack_bigendian_aligned_macro(ptr+u+8));
+        if (/* __builtin_expect( (*(uint32_t *)(ptr+u+12)) == 0, 1) && */
+            __builtin_expect( (hpos == hpos_next), 1)) /*(skip padding == 0)*/
+            hpos_next += (hslots << bits);
+        else
+            return false;
+    } while ((u += 16) < MCDB_HEADER_SZ);
+    m->map->n = numrecs >> 1;  /* (hslots / 2) */
+    return (hpos_next == m->map->size);
+}
+
 bool
 mcdb_iter(struct mcdb_iter * const restrict iter)
 {
@@ -227,25 +267,11 @@ mcdb_iter_init(struct mcdb_iter * const restrict iter,
     iter->klen = 0;
     iter->dlen = 0;
     iter->map  = m->map;
-    iter->n    = ~0;
     /* Note: callers that intend to iterate through entire mcdb might call
      * posix_madvise() on the mcdb as long as mcdb fits into physical memory,
      * e.g. posix_madvise(iter->ptr, (size_t)(iter->eod - iter->ptr),
      *                    POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
      */
-}
-
-uint32_t
-mcdb_iter_numrecs(struct mcdb_iter * const restrict iter)
-{
-    if (__builtin_expect( (iter->n == ~0), 0)) {
-        const unsigned char * const restrict ptr = iter->map->ptr;
-        uint32_t u = 0;
-        for (unsigned int i = 8; i < MCDB_HEADER_SZ; i += 16)
-            u += uint32_strunpack_bigendian_aligned_macro(ptr+i);
-        iter->n = u >> 1;  /* (hslots / 2) */
-    }
-    return iter->n; /* mcdb_make.c currently limits n to INT_MAX (~2 billion) */
 }
 
 
@@ -289,6 +315,7 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     map->ptr   = (unsigned char *)x;
     map->size  = st.st_size;
     map->b     = st.st_size < UINT_MAX || *(uint32_t *)x == 0 ? 3 : 4;
+    map->n     = ~0;
     map->mtime = st.st_mtime;
     map->next  = NULL;
     map->refcnt= 0;
