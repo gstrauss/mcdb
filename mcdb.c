@@ -290,8 +290,8 @@ mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
 {
     if (map->ptr)
         munmap(map->ptr, map->size);
-    map->ptr   = NULL;
-    map->size  = 0;    /* map->size initialization required for mcdb_read() */
+    map->ptr  = NULL;
+    map->size = 0;    /* map->size initialization required for mcdb_read() */
 }
 
 bool  __attribute_noinline__
@@ -335,6 +335,7 @@ mcdb_mmap_prefault(const struct mcdb_mmap * const restrict map)
 void  __attribute_noinline__
 mcdb_mmap_free(struct mcdb_mmap * const restrict map)
 {
+    if (map == NULL) return;
     mcdb_mmap_unmap(map);
     if (map->fn_free) {
         if (map->fname != NULL && map->fname != map->fnamebuf) {
@@ -348,8 +349,11 @@ mcdb_mmap_free(struct mcdb_mmap * const restrict map)
 void  __attribute_noinline__
 mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 {
-    if (map->dfd != -1)
+    if (map == NULL) return;
+    if (map->dfd != -1) {
         (void) nointr_close(map->dfd);
+        map->dfd = -1;
+    }
     mcdb_mmap_free(map);
 }
 

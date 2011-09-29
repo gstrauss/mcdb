@@ -126,7 +126,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict,
   __attribute_nonnull_x__((3,4,5))  __attribute_warn_unused_result__;
 extern void
 mcdb_mmap_destroy(struct mcdb_mmap * restrict)
-  __attribute_nonnull__;
+  ;
 /* check if constant db has been updated and refresh mmap
  * (for use with mcdb mmaps held open for any period of time)
  * (i.e. for any use other than mcdb_mmap_create(), query, mcdb_mmap_destroy())
@@ -149,7 +149,7 @@ mcdb_mmap_prefault(const struct mcdb_mmap * restrict)
   __attribute_nonnull__;
 extern void
 mcdb_mmap_free(struct mcdb_mmap * restrict)
-  __attribute_nonnull__;
+  ;
 extern bool
 mcdb_mmap_reopen(struct mcdb_mmap * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;

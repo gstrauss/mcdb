@@ -294,5 +294,8 @@ void
 mcdbxs_make_finish(mk)
     struct mcdb_make * mk;
   CODE:
-    if (mcdb_make_finish(mk) != 0 || mcdb_makefn_finish(mk, true) != 0)
+    if (mcdb_make_finish(mk) != 0 || mcdb_makefn_finish(mk, true) != 0) {
+        /*mcdb_make_destroy(mk);*//* already called in mcdb_make_finish() */
+        mcdb_makefn_cleanup(mk);
         croak("MCDB_File::Make::finish: %s", Strerror(errno));
+    }

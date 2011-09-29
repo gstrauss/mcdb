@@ -82,8 +82,9 @@ struct mcdb_hplist {
 /* routine marked to indicate unlikely branch;
  * __attribute_cold__ can be used instead of __builtin_expect() */
 static int  __attribute_noinline__  __attribute_cold__
-mcdb_make_err(int errnum)
+mcdb_make_err(struct mcdb_make * const restrict m, int errnum)
 {
+    if (m != NULL) mcdb_make_destroy(m);
     errno = errnum;
     return -1;
 }
@@ -211,17 +212,17 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     char *p;
     const size_t pos = m->pos;
     const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
-    if (m->map == MAP_FAILED)                      return mcdb_make_err(EPERM);
-    if (m->hp.l == ~0 && !mcdb_hplist_alloc(m))    return mcdb_make_err(errno);
+    if (m->map == MAP_FAILED)                 return mcdb_make_err(NULL,EPERM);
+    if (m->hp.l== ~0 && !mcdb_hplist_alloc(m))return mcdb_make_err(NULL,errno);
     m->hp.p = pos;
     m->hp.h = UINT32_HASH_DJB_INIT;
-    if (keylen > INT_MAX-8 || datalen > INT_MAX-8) return mcdb_make_err(EINVAL);
+    if (keylen>INT_MAX-8 || datalen>INT_MAX-8)return mcdb_make_err(NULL,EINVAL);
     m->hp.l = (uint32_t)keylen;
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
-    if (pos > UINT_MAX-len)                        return mcdb_make_err(ENOMEM);
+    if (pos > UINT_MAX-len)                   return mcdb_make_err(NULL,ENOMEM);
   #endif
-    if (m->fsz < pos+len && !mcdb_mmap_upsize(m,pos+len))
-                                                   return mcdb_make_err(errno);
+    if (m->fsz < pos+len && !mcdb_mmap_upsize(m, pos+len))
+                                              return mcdb_make_err(NULL,errno);
     p = m->map + pos - m->offset;
     uint32_strpack_bigendian_macro(p,keylen);
     uint32_strpack_bigendian_macro(p+4,datalen);
@@ -335,27 +336,27 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     char *p;
     const uint32_t * const restrict count = m->count;
     char header[MCDB_HEADER_SZ];
-    if (m->map == MAP_FAILED)                  return mcdb_make_err(EPERM);
+    if (m->map == MAP_FAILED)                  return mcdb_make_err(m,EPERM);
 
     for (u = 0, i = 0; i < MCDB_SLOTS; ++i)
         u += count[i];  /* no overflow; limited in mcdb_hplist_alloc */
 
     /* check for integer overflow and that sufficient space allocated in file */
-    if (u > INT_MAX)                           return mcdb_make_err(ENOMEM);
+    if (u > INT_MAX)                           return mcdb_make_err(m,ENOMEM);
   #if !defined(_LP64) && !defined(__LP64__)
-    if (u > (UINT_MAX>>4))                     return mcdb_make_err(ENOMEM);
+    if (u > (UINT_MAX>>4))                     return mcdb_make_err(m,ENOMEM);
     u <<= 4;  /* 8 byte hash entries in 32-bit; x 2 for space in table */
-    if (m->pos > (UINT_MAX-u))                 return mcdb_make_err(ENOMEM);
+    if (m->pos > (UINT_MAX-u))                 return mcdb_make_err(m,ENOMEM);
   #endif
 
     /* add "hole" for alignment; incompatible with djb cdbdump */
     /* padding to align hash tables to MCDB_PAD_ALIGN bytes (16) */
     d = (MCDB_PAD_ALIGN - (m->pos & MCDB_PAD_MASK)) & MCDB_PAD_MASK;
   #if !defined(_LP64) && !defined(__LP64__)
-    if (d > (UINT_MAX-(m->pos+u)))             return mcdb_make_err(ENOMEM);
+    if (d > (UINT_MAX-(m->pos+u)))             return mcdb_make_err(m,ENOMEM);
   #endif
     if (m->fsz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d))
-                                               return mcdb_make_err(errno);
+                                               return mcdb_make_err(m,errno);
     if (d) memset(m->map + m->pos - m->offset, ~0, d);
     m->pos += d; /*set all bits in hole so code can detect end of data padding*/
 
@@ -426,7 +427,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 }
 
 /* caller should call mcdb_make_destroy() upon errors from mcdb_make_*() calls
- * (already called when mcdb_make_finish() is successful)
+ * (already called unconditionally in mcdb_make_finish() (successful or not))
  * m->fd is not closed here since mcdb_make_start() takes open file descriptor
  * (caller should cleanup m->fd)
  */

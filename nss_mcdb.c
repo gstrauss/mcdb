@@ -103,12 +103,8 @@ static void _nss_mcdb_atexit(void)
     struct mcdb_mmap * restrict map;
     for (uintptr_t i = 0; i < _nss_num_dbs; ++i) {
         map = &_nss_mcdb_mmap_st[i];
-        if (   _nss_mcdb_mmap_st[i].ptr != NULL
-            || _nss_mcdb_mmap_st[i].fname != NULL  ) {
-            mcdb_mmap_destroy(&_nss_mcdb_mmap_st[i]);
-            _nss_mcdb_mmap_st[i].ptr = NULL;
-            _nss_mcdb_mmap_st[i].fname = NULL;
-        }
+        if (map->ptr || map->fname)
+            mcdb_mmap_destroy(map);
     }
 }
 #endif

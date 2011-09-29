@@ -127,9 +127,12 @@ mcdb_makefn_cleanup (struct mcdb_make * const restrict m)
         unlink(m->fntmp);
         if (m->fd >= 0)
             (void) nointr_close(m->fd);
+        m->fd = -1;
     }
-    if (m->fntmp != NULL)
+    if (m->fntmp != NULL) {
         m->fn_free(m->fntmp);
+        m->fntmp = NULL;
+    }
     if (errsave != 0)
         errno = errsave;
     return -1;
