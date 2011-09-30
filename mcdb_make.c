@@ -29,8 +29,8 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
+#ifndef _XOPEN_SOURCE /* posix_fallocate() requires _XOPEN_SOURCE 600 */
+#define _XOPEN_SOURCE 600
 #endif
 /* gcc -std=c99 hides MAP_ANONYMOUS
  * _BSD_SOURCE or _SVID_SOURCE needed for mmap MAP_ANONYMOUS on Linux */
@@ -65,6 +65,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>   /* posix_fallocate() */
 #include <string.h>  /* memcpy() */
 #include <stdbool.h> /* bool true false */
 #include <stdint.h>  /* uint32_t uintptr_t */
@@ -155,7 +156,7 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
      * call fsync() or fdatasync() on fd to ensure data is written to disk,
      * e.g. in case when writing new mcdb to temporary file, before renaming
      * temporary file to overwrite existing mcdb.  If not sync'd to disk and
-     * OS crashes, then the update mcdb can be corrupted. */
+     * OS crashes, then the updated mcdb can be corrupted. */
 }
 
 static bool  __attribute_noinline__
@@ -164,8 +165,31 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
 static bool  __attribute_noinline__
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
 {
-    size_t offset;
+    const size_t offset = m->pos & m->pgalign; /* mmap offset must be aligned */
     size_t msz;
+
+  #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
+    /* limit max size of mcdb to (4 GB - pagesize) */
+    if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
+  #endif
+
+    msz = (MCDB_MMAP_SZ > sz - offset)
+      ? MCDB_MMAP_SZ
+      : (sz - offset + ~m->pgalign) & m->pgalign;
+  #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
+    if (offset > (UINT_MAX & m->pgalign) - msz)
+        msz = (UINT_MAX & m->pgalign) - offset;
+  #endif
+
+    /* increase file size by at least msz (prefer multiple of disk block size)*/
+    if (m->fd != -1 && m->fsz < offset + msz) {
+        m->fsz = (offset + msz + (MCDB_BLOCK_SZ-1)) & ~(MCDB_BLOCK_SZ-1);
+        if ((errno =
+             posix_fallocate(m->fd, (off_t)m->osz, (off_t)(m->fsz-m->osz)))==0)
+            m->osz = m->fsz;
+        else
+            return false;
+    }
 
     /* flush and munmap prior mmap */
     if (m->map != MAP_FAILED) {/*(m->fd==-1 during some large mcdb size tests)*/
@@ -176,31 +200,14 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
             return false;
     }
 
-  #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
-    /* limit max size of mcdb to (4 GB - pagesize) */
-    if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
-  #endif
-
-    offset = m->offset + ((m->pos - m->offset) & m->pgalign);
-    msz = (MCDB_MMAP_SZ > sz - offset)
-      ? MCDB_MMAP_SZ
-      : (sz - offset + ~m->pgalign) & m->pgalign;
-  #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
-    if (offset > (UINT_MAX & m->pgalign) - msz)
-        msz = (UINT_MAX & m->pgalign) - offset;
-  #endif
-
-    m->fsz = offset + msz; /* (mcdb_make mmap region is always to end of file)*/
-    if (m->fd != -1 && nointr_ftruncate(m->fd,(off_t)m->fsz) != 0) return false;
-
     /* (compilation with large file support enables off_t max > 2 GB in cast) */
     m->map = (m->fd != -1) /* (m->fd == -1 during some large mcdb size tests) */
       ? (char *)mmap(0, msz, PROT_WRITE, MAP_SHARED, m->fd, (off_t)offset)
       : (char *)mmap(0, msz, PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     if (m->map == MAP_FAILED) return false;
-    posix_madvise(m->map, msz, POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     m->offset = offset;
     m->msz = msz;
+    posix_madvise(m->map, msz, POSIX_MADV_SEQUENTIAL);
     return true;
 }
 
@@ -221,7 +228,7 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
     if (pos > UINT_MAX-len)                   return mcdb_make_err(NULL,ENOMEM);
   #endif
-    if (m->fsz < pos+len && !mcdb_mmap_upsize(m, pos+len))
+    if (m->offset+m->msz < pos+len && !mcdb_mmap_upsize(m, pos+len))
                                               return mcdb_make_err(NULL,errno);
     p = m->map + pos - m->offset;
     uint32_strpack_bigendian_macro(p,keylen);
@@ -292,6 +299,7 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
     m->pos       = MCDB_HEADER_SZ;
     m->offset    = 0;
     m->fsz       = 0;
+    m->osz       = 0;
     m->msz       = 0;
     m->hp.p      = MCDB_HEADER_SZ;
     m->hp.h      = 0;
@@ -355,20 +363,19 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
   #if !defined(_LP64) && !defined(__LP64__)
     if (d > (UINT_MAX-(m->pos+u)))             return mcdb_make_err(m,ENOMEM);
   #endif
-    if (m->fsz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d))
+    if (m->offset+m->msz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d))
                                                return mcdb_make_err(m,errno);
     if (d) memset(m->map + m->pos - m->offset, ~0, d);
     m->pos += d; /*set all bits in hole so code can detect end of data padding*/
 
     b = (m->pos < UINT_MAX) ? 3 : 4;
     for (i = 0; i < MCDB_SLOTS; ++i) {
-        len = count[i] << 1; /* no overflow possible */
+        len = count[i] << 1;
         d   = m->pos;
 
-        /* check for sufficient space in mmap to write hash table for this slot
-         * (integer overflow not possible: total size checked outside loop) */
-        if (m->fsz < d+((size_t)len << b)
-            && !mcdb_mmap_upsize(m, d+((size_t)len << b)))
+        /* mmap sufficient space into which to write hash table for this slot */
+        if (m->offset+m->msz < d+((uintptr_t)len << b)
+            && !mcdb_mmap_upsize(m, d+((uintptr_t)len << b)))
             break;
 
         /* constant header (16 bytes per header slot, so multiply by 16) */
@@ -423,7 +430,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
     }
 
     u = (i == MCDB_SLOTS && mcdb_mmap_commit(m, header));
-    return mcdb_make_destroy(m) | (u ? 0 : -1);
+    return (u ? 0 : -1) | mcdb_make_destroy(m);
 }
 
 /* caller should call mcdb_make_destroy() upon errors from mcdb_make_*() calls

@@ -186,11 +186,12 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
    || __builtin_expect(mcdb_thread_register(mcdb), true))
 
 
-#define MCDB_SLOT_BITS 8                    /* 2^8 = 256 */
-#define MCDB_SLOTS (1u<<MCDB_SLOT_BITS)     /* must be power-of-2 */
-#define MCDB_SLOT_MASK (MCDB_SLOTS-1)       /* bitmask */
-#define MCDB_HEADER_SZ (MCDB_SLOTS<<4)      /* MCDB_SLOTS * 16  (256*16=4096) */
-#define MCDB_MMAP_SZ (1<<19)     /* 512KB; must be larger than MCDB_HEADER_SZ */
+#define MCDB_SLOT_BITS 8                  /* 2^8 = 256 */
+#define MCDB_SLOTS (1u<<MCDB_SLOT_BITS)   /* must be power-of-2 */
+#define MCDB_SLOT_MASK (MCDB_SLOTS-1)     /* bitmask */
+#define MCDB_HEADER_SZ (MCDB_SLOTS<<4)    /* MCDB_SLOTS * 16  (256*16=4096) */
+#define MCDB_MMAP_SZ (1<<19)              /* 512KB; must be >  MCDB_HEADER_SZ */
+#define MCDB_BLOCK_SZ (1<<22)             /*   4MB; must be >= MCDB_MMAP_SZ */
 
 #define MCDB_PAD_ALIGN 16
 #define MCDB_PAD_MASK (MCDB_PAD_ALIGN-1)

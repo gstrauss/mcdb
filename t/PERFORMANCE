@@ -56,10 +56,10 @@ processing time scaling linearly as different size databases are tested.  The
 last parameter to the above two commands is the number of records to create and
 can be varied.  On my Pentium-M laptop, Tokyo Cabinet falls off a performance
 cliff when creating hdb somewhere between 3 million (~21 sec) and 4 million
-records (~2m 45s).  mcdb can do 10 million in ~13 sec, 30 million in ~64 sec,
+records (~2m 45s).  mcdb can do 10 million in ~15 sec, 30 million in ~60 sec,
 and could go further if more than 2 GB free disk space were available on my
-laptop.  Some number of records past 30 million, my 1 GB RAM is exhausted and
-swap is used, but mcdbctl does not appear to thrash.
+laptop.  Some number of records before 30 million, my 1 GB RAM is exhausted
+and swap is used, but mcdbctl does not appear to thrash.
 
 
 To compare read (query) performance of mcdb with that of Tokyo Cabinet, a more

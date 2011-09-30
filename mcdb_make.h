@@ -43,6 +43,7 @@ struct mcdb_make {
   size_t offset;
   char * restrict map;
   size_t fsz;
+  size_t osz;
   size_t msz;
   size_t pgalign;
   struct mcdb_hp hp;
