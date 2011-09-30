@@ -1,0 +1,8 @@
+mcdb FAQ
+
+Q. mcdb: permission denied
+A. The owner of the process attempting to read the mcdb does not have permission
+   to read teh mcdb file.  mcdb files are created with restricive permissions
+   0400 by default, which is read-only to the user that created the mcdb.
+   Use chmod to change permissions on the mcdb file in order to allow others
+   to read the mcdb.
