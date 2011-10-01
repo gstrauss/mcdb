@@ -357,6 +357,12 @@ mcdbctl_make(const int argc, char ** const restrict argv)
     return rv;
 }
 
+static const char * const restrict mcdb_usage =
+   "mcdbctl make  <fname.mcdb> <datafile|->\n"
+   "         mcdbctl dump  <fname.mcdb>\n"
+   "         mcdbctl stats <fname.mcdb>\n"
+   "         mcdbctl get   <fname.mcdb> <key> [seq]\n";
+
 /*
  * mcdbctl get   <mcdb> <key> [seq]
  * mcdbctl dump  <mcdb>
@@ -373,10 +379,7 @@ main(const int argc, char ** const restrict argv)
       ? mcdbctl_make(argc, argv)
       : mcdbctl_query(argc, argv);
 
-    mcdb_usage = "mcdbctl make  <fname.mcdb> <datafile|->\n"
-                 "         mcdbctl dump  <fname.mcdb>\n"
-                 "         mcdbctl stats <fname.mcdb>\n"
-                 "         mcdbctl get   <fname.mcdb> <key> [seq]\n";
-
-    return rv == EXIT_SUCCESS ? EXIT_SUCCESS : mcdb_error(rv,basename(argv[0]));
+    return rv == EXIT_SUCCESS
+      ? EXIT_SUCCESS
+      : mcdb_error(rv, basename(argv[0]), mcdb_usage);
 }

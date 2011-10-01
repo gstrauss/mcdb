@@ -48,16 +48,16 @@ main(int argc,char **argv)
     char * const key = buf;
 
     if (mcdb_make_start(&m,fd,malloc,free) == -1)
-        return mcdb_error(MCDB_ERROR_WRITE, "testzero");
+        return mcdb_error(MCDB_ERROR_WRITE, "testzero", "");
 
     while (loop--) {
         uint32_strpack_bigendian_aligned_macro(key,loop);
         if (mcdb_make_add(&m,key,sizeof(uint32_t),data,sizeof(data)) == -1)
-            return mcdb_error(MCDB_ERROR_WRITE, "testzero");
+            return mcdb_error(MCDB_ERROR_WRITE, "testzero", "");
     }
 
     if (mcdb_make_finish(&m) == -1 || (fd != -1 && nointr_close(fd) != 0))
-        return mcdb_error(MCDB_ERROR_WRITE, "testzero");
+        return mcdb_error(MCDB_ERROR_WRITE, "testzero", "");
     /* Note: fdatasync(m.fd) is not called here due to type of usage here.
      * See comments in mcdb_make.c:mcdb_mmap_commit() for when to use
      * fsync() or fdatasync(). */

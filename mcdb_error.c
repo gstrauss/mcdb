@@ -33,10 +33,9 @@
 #include <string.h>  /* strerror_r() */
 #include <stdlib.h>  /* EXIT_SUCCESS */
 
-const char *mcdb_usage = "";
-
 int
-mcdb_error (const int rv, const char * const restrict prefix)
+mcdb_error (const int rv, const char * const restrict prefix,
+            const char * const restrict mcdb_usage)
 {
     char errstr[128];
 

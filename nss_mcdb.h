@@ -80,27 +80,27 @@ struct nss_mcdb_vinfo {
 };
 
 
-nss_status_t
+INTERNAL nss_status_t
 nss_mcdb_setent(enum nss_dbtype)
   __attribute_nonnull__;
 
-nss_status_t
+INTERNAL nss_status_t
 nss_mcdb_endent(enum nss_dbtype)
   __attribute_nonnull__;
 
-nss_status_t
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
+INTERNAL nss_status_t
 nss_mcdb_getent(enum nss_dbtype,
                 const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
-nss_status_t
+INTERNAL nss_status_t
 nss_mcdb_get_generic(enum nss_dbtype,
                      const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
-nss_status_t
+INTERNAL nss_status_t
 nss_mcdb_buf_decode(struct mcdb * restrict,
                     const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;

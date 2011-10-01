@@ -51,7 +51,7 @@ main (int argc, char **argv)
     } else e = 1; /* !u */
     return (u == e && mcdb_make_finish(&m) == 0 && close(fd) == 0)
       ? 0
-      : mcdb_error(MCDB_ERROR_WRITE, "testmake");
+      : mcdb_error(MCDB_ERROR_WRITE, "testmake", "");
     /* Note: fdatasync(fd) not called before close() due to type of usage here.
      * See comments in mcdb_make.c:mcdb_mmap_commit() for when to use fsync()
      * or fdatasync(). */
