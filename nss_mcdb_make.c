@@ -40,7 +40,6 @@
 #endif
 
 #include "nss_mcdb_make.h"
-#include "mcdb_make.h"
 #include "nointr.h"
 
 #include <sys/types.h>

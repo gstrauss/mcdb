@@ -248,13 +248,13 @@ mcdbpy_findall(struct mcdbpy * const self, PyObject * const args)
 static PyObject *
 mcdbpy_getseq(struct mcdbpy * const self, PyObject * const args)
 {
-    const char *key; uint32_t klen; int i = 0; bool r = false;
-    if (!PyArg_ParseTuple(args, "s#|i:getseq", &key, &klen, &i))
+    const char *key; uint32_t klen; int seq = 0; bool r = false;
+    if (!PyArg_ParseTuple(args, "s#|i:getseq", &key, &klen, &seq))
         return NULL;
 
     if (mcdb_findstart(&self->m, key, klen))
-        while (i-- >= 0)
-            r = mcdb_findnext(&self->m, key, klen);
+        while ((r = mcdb_findnext(&self->m, key, klen)) && seq--)
+            ;
 
     return r             /*save keyptr in self->findkey for findnext()*/
       ? (self->findkey = mcdb_keyptr(&self->m, (self->findklen = klen)),
@@ -586,6 +586,16 @@ mcdbpy_make_repr (struct mcdbpy_make * const restrict self)
     return Py_INCREF(self->fname), self->fname;
 }
 
+static PyObject *
+mcdbpy_make_cancel(struct mcdbpy_make * const restrict self)
+{
+    mcdb_make_destroy(&self->m);
+    mcdb_makefn_cleanup(&self->m);
+    Py_XDECREF(self->fname);
+    self->fname = NULL;
+    return mcdbpy_Py_None();
+}
+
 static void
 mcdbpy_make_dealloc(struct mcdbpy_make * const restrict self)
 {
@@ -666,7 +676,7 @@ mcdbpy_hash_djb(PyTypeObject * const type, PyObject * const args)
  */
 
 
-static const char * const restrict mcdbpy_module_doc =
+static const char mcdbpy_module_doc[] =
   "\n"
   "Python interface to create and read mcdb constant databases.\n"
   "\n"
@@ -827,6 +837,10 @@ static PyMethodDef mcdbpy_make_methods[] = {
   {"finish",       (PyCFunction)mcdbpy_make_finish,     METH_NOARGS,
    "mk.finish() generates and writes the mcdb hash tables,\n"
    "flushes all data to disk, and atomically installs mcdb.\n"
+   "Returns None."
+  },
+  {"cancel",       (PyCFunction)mcdbpy_make_cancel,     METH_NOARGS,
+   "mk.cancel() cancels and discards the mcdb being created.\n"
    "Returns None."
   },
   { NULL, NULL, 0, NULL }

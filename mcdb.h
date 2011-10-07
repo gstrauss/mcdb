@@ -197,6 +197,43 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
 #define MCDB_PAD_MASK (MCDB_PAD_ALIGN-1)
 
 
+/* alias symbols with hidden visibility for use in DSO linking static mcdb.o
+ * (Reference: "How to Write Shared Libraries", by Ulrich Drepper)
+ * (optimization)
+ * The aliases below are not a complete set of mcdb symbols,
+ * but instead are the most common used in libnss_mcdb.so.2 */
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+HIDDEN extern __typeof (mcdb_findtagstart)
+                        mcdb_findtagstart_h;
+HIDDEN extern __typeof (mcdb_findtagnext)
+                        mcdb_findtagnext_h;
+HIDDEN extern __typeof (mcdb_iter)
+                        mcdb_iter_h;
+HIDDEN extern __typeof (mcdb_iter_init)
+                        mcdb_iter_init_h;
+HIDDEN extern __typeof (mcdb_mmap_create)
+                        mcdb_mmap_create_h;
+HIDDEN extern __typeof (mcdb_mmap_destroy)
+                        mcdb_mmap_destroy_h;
+HIDDEN extern __typeof (mcdb_mmap_refresh_check)
+                        mcdb_mmap_refresh_check_h;
+HIDDEN extern __typeof (mcdb_mmap_thread_registration)
+                        mcdb_mmap_thread_registration_h;
+HIDDEN extern __typeof (mcdb_mmap_reopen_threadsafe)
+                        mcdb_mmap_reopen_threadsafe_h;
+#else
+#define mcdb_findtagstart_h              mcdb_findtagstart
+#define mcdb_findtagnext_h               mcdb_findtagnext
+#define mcdb_iter_h                      mcdb_iter
+#define mcdb_iter_init_h                 mcdb_iter_init
+#define mcdb_mmap_create_h               mcdb_mmap_create
+#define mcdb_mmap_destroy_h              mcdb_mmap_destroy
+#define mcdb_mmap_refresh_check_h        mcdb_mmap_refresh_check
+#define mcdb_mmap_thread_registration_h  mcdb_mmap_thread_registration 
+#define mcdb_mmap_reopen_threadsafe_h    mcdb_mmap_reopen_threadsafe
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -458,7 +458,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
                 (void) fcntl(map->dfd, F_SETFD, FD_CLOEXEC);
         }
         else {
-            mcdb_mmap_destroy(map);
+            mcdb_mmap_destroy_h(map);
             return NULL;
         }
     }
@@ -468,7 +468,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
         if (sizeof(map->fnamebuf) >= dlen+flen+2)
             fbuf = map->fnamebuf;
         else if ((fbuf = fn_malloc(dlen+flen+2) == NULL)) {
-            mcdb_mmap_destroy(map);
+            mcdb_mmap_destroy_h(map);
             return NULL;
         }
         memcpy(fbuf, dname, dlen);
@@ -481,7 +481,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
         if (sizeof(map->fnamebuf) > flen)
             fbuf = map->fnamebuf;
         else if ((fbuf = fn_malloc(flen+1)) == NULL) {
-            mcdb_mmap_destroy(map);
+            mcdb_mmap_destroy_h(map);
             return NULL;
         }
         memcpy(fbuf, fname, flen+1);
@@ -493,7 +493,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
         return map;
     }
     else {
-        mcdb_mmap_destroy(map);
+        mcdb_mmap_destroy_h(map);
         return NULL;
     }
 }
@@ -591,9 +591,45 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
             MCDB_REGISTER_USE_INCR
           | MCDB_REGISTER_MUTEX_UNLOCK_HOLD
           | MCDB_REGISTER_MUTEX_LOCK_HOLD;
-        rc = mcdb_mmap_thread_registration(mapptr, mcdb_flags_hold_lock);
+        rc = mcdb_mmap_thread_registration_h(mapptr, mcdb_flags_hold_lock);
     }
 
     pthread_mutex_unlock(&mcdb_global_mutex);
     return rc;
 }
+
+
+/* alias symbols with hidden visibility for use in DSO linking static mcdb.o
+ * (Reference: "How to Write Shared Libraries", by Ulrich Drepper)
+ * (optimization)
+ * The aliases below are not a complete set of mcdb symbols,
+ * but instead are the most common used in libnss_mcdb.so.2 */
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+HIDDEN extern __typeof (mcdb_findtagstart)
+                        mcdb_findtagstart_h
+  __attribute__((alias ("mcdb_findtagstart")));
+HIDDEN extern __typeof (mcdb_findtagnext)
+                        mcdb_findtagnext_h
+  __attribute__((alias ("mcdb_findtagnext")));
+HIDDEN extern __typeof (mcdb_iter)
+                        mcdb_iter_h
+  __attribute__((alias ("mcdb_iter")));
+HIDDEN extern __typeof (mcdb_iter_init)
+                        mcdb_iter_init_h
+  __attribute__((alias ("mcdb_iter_init")));
+HIDDEN extern __typeof (mcdb_mmap_create)
+                        mcdb_mmap_create_h
+  __attribute__((alias ("mcdb_mmap_create")));
+HIDDEN extern __typeof (mcdb_mmap_destroy)
+                        mcdb_mmap_destroy_h
+  __attribute__((alias ("mcdb_mmap_destroy")));
+HIDDEN extern __typeof (mcdb_mmap_refresh_check)
+                        mcdb_mmap_refresh_check_h
+  __attribute__((alias ("mcdb_mmap_refresh_check")));
+HIDDEN extern __typeof (mcdb_mmap_thread_registration)
+                        mcdb_mmap_thread_registration_h
+  __attribute__((alias ("mcdb_mmap_thread_registration")));
+HIDDEN extern __typeof (mcdb_mmap_reopen_threadsafe)
+                        mcdb_mmap_reopen_threadsafe_h
+  __attribute__((alias ("mcdb_mmap_reopen_threadsafe")));
+#endif

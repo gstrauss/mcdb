@@ -271,8 +271,8 @@ mcdb_make_addend(struct mcdb_make * const restrict m)
 
 void  inline
 mcdb_make_addrevert(struct mcdb_make * const restrict m)
-{
-    m->pos = m->hp.p;
+{   /* e.g. discard in-progress incremental addbuf, or immediately prior add */
+    m->pos = m->hp.p;  /* addrevert can be used up until next add or addbegin */
 }
 
 int

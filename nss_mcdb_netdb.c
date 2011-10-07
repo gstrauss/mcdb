@@ -26,9 +26,6 @@
 
 #include "nss_mcdb_netdb.h"
 #include "nss_mcdb.h"
-#include "mcdb.h"
-#include "uint32.h"
-#include "code_attributes.h"
 
 #include <errno.h>
 #include <string.h>
@@ -611,7 +608,7 @@ nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
     if (type != 0) {
         const char *atyp = dptr+NSS_H_ADDRTYPE; /*netwk byte order; big-endian*/
         while (type != ((atyp[0]<<24)|(atyp[1]<<16)|(atyp[2]<<8)|atyp[3])) {
-            if (mcdb_findtagnext(m, v->key, v->klen, v->tagc)) {
+            if (mcdb_findtagnext_h(m, v->key, v->klen, v->tagc)) {
                 dptr = (char *)mcdb_dataptr(m);
                 atyp = dptr+NSS_H_ADDRTYPE;
             }
@@ -776,7 +773,7 @@ nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
         const size_t protolen = 1 + strlen(buf);
         while (dptr[NSS_SE_HDRSZ] != *buf  /* s_proto  e.g. "tcp" vs "udp" */
                || memcmp(dptr+NSS_SE_HDRSZ, buf, protolen) != 0) {
-            if (mcdb_findtagnext(m, v->key, v->klen, v->tagc))
+            if (mcdb_findtagnext_h(m, v->key, v->klen, v->tagc))
                 dptr = (char *)mcdb_dataptr(m);
             else {
                 *v->errnop = errno = ENOENT;

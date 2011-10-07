@@ -28,9 +28,6 @@
 #include "nss_mcdb_netdb.h"
 #include "nss_mcdb_make.h"
 
-#include "uint32.h"
-#include "code_attributes.h"
-
 #include <errno.h>
 #include <limits.h>
 #include <string.h>

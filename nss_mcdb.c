@@ -20,9 +20,6 @@
  */
 
 #include "nss_mcdb.h"
-#include "mcdb.h"
-#include "uint32.h"
-#include "code_attributes.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -71,8 +68,11 @@
 #define NSS_MCDB_DBPATH "/etc/mcdb/"
 #endif
 
-/* NOTE: path to db must match up to enum nss_dbtype index */
-static const char * const restrict _nss_dbnames[] = {
+/* NOTE: path to db must match up to enum nss_dbtype index
+ * (static two-dimensional array instead of ptrs to reduce num DSO relocations)
+ * (+14 for longest name, e.g. "protocols.mcdb") */
+static const char
+  _nss_dbnames[NSS_DBTYPE_SENTINEL][sizeof(NSS_MCDB_DBPATH)+14] = {
     NSS_MCDB_DBPATH"aliases.mcdb",
     NSS_MCDB_DBPATH"ethers.mcdb",
     NSS_MCDB_DBPATH"group.mcdb",
@@ -87,7 +87,7 @@ static const char * const restrict _nss_dbnames[] = {
     NSS_MCDB_DBPATH"shadow.mcdb"
 };
 
-#define _nss_num_dbs (sizeof(_nss_dbnames)/sizeof(char *))
+#define _nss_num_dbs NSS_DBTYPE_SENTINEL
 
 static struct mcdb_mmap _nss_mcdb_mmap_st[_nss_num_dbs];
 static struct mcdb_mmap *_nss_mcdb_mmap[_nss_num_dbs];
@@ -104,7 +104,7 @@ static void _nss_mcdb_atexit(void)
     for (uintptr_t i = 0; i < _nss_num_dbs; ++i) {
         map = &_nss_mcdb_mmap_st[i];
         if (map->ptr || map->fname)
-            mcdb_mmap_destroy(map);
+            mcdb_mmap_destroy_h(map);
     }
 }
 #endif
@@ -151,8 +151,8 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
      * (not using openat(), fstatat() where someone might close dfd on us)
      * use static storage for initial struct mcdb_mmap for each dbtype
      * and therefore pass custom _nss_mcdb_mmap_fn_free() to not free statics */
-    if ((rc = (NULL != mcdb_mmap_create(map, NULL, _nss_dbnames[dbtype],
-                                        malloc, _nss_mcdb_mmap_fn_free)))) {
+    if ((rc = (NULL != mcdb_mmap_create_h(map, NULL, _nss_dbnames[dbtype],
+                                          malloc, _nss_mcdb_mmap_fn_free)))) {
         /*(ought to be preceded by StoreStore memory barrier)*/
         _nss_mcdb_mmap[dbtype] = map;
     }
@@ -172,7 +172,7 @@ static bool _nss_mcdb_stayopen = true;
 
 /* release shared mcdb_mmap */
 #define _nss_mcdb_db_relshared(map,flags) \
-  mcdb_mmap_thread_registration(&(map),(flags))
+  mcdb_mmap_thread_registration_h(&(map),(flags))
 
 /* get shared mcdb_mmap */
 static struct mcdb_mmap *
@@ -196,19 +196,24 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
           case NSS_DBTYPE_PROTOCOLS:
           case NSS_DBTYPE_RPC:
           case NSS_DBTYPE_SERVICES: if (_nss_mcdb_stayopen) break;
-          default: (void) mcdb_mmap_refresh_threadsafe(&_nss_mcdb_mmap[dbtype]);
-                   break;
+          default:
+            /*(void)mcdb_mmap_refresh_threadsafe(&_nss_mcdb_mmap[dbtype]);*/
+            (void)(__builtin_expect(
+               mcdb_mmap_refresh_check_h(_nss_mcdb_mmap[dbtype]), true)
+               ||  __builtin_expect(
+               mcdb_mmap_reopen_threadsafe_h(&_nss_mcdb_mmap[dbtype]), true));
+            break;
         }
     }
     else if (!_nss_mcdb_db_openshared(dbtype))
         return NULL;
 
-    return mcdb_mmap_thread_registration(&_nss_mcdb_mmap[dbtype], mcdb_flags)
+    return mcdb_mmap_thread_registration_h(&_nss_mcdb_mmap[dbtype], mcdb_flags)
       ? _nss_mcdb_mmap[dbtype]
       : NULL;  /* (fails if obtaining mutex fails, i.e. EAGAIN) */
 }
 
-nss_status_t  __attribute_noinline__  /*(skip inline into _nss_mcdb_getent)*/
+INTERNAL nss_status_t  __attribute_noinline__ /*(skip _nss_mcdb_getent inline)*/
 nss_mcdb_setent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
@@ -221,7 +226,7 @@ nss_mcdb_setent(const enum nss_dbtype dbtype)
     return NSS_STATUS_UNAVAIL;
 }
 
-nss_status_t
+INTERNAL nss_status_t
 nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
@@ -235,7 +240,7 @@ nss_mcdb_endent(const enum nss_dbtype dbtype)
 }
 
 /* mcdb get*ent() walks db returning successive keys with '=' tag char */
-nss_status_t
+INTERNAL nss_status_t
 nss_mcdb_getent(const enum nss_dbtype dbtype,
                 const struct nss_mcdb_vinfo * const restrict v)
 {
@@ -246,9 +251,9 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
         *v->errnop = errno;
         return NSS_STATUS_UNAVAIL;
     }
-    mcdb_iter_init(&iter, m);
+    mcdb_iter_init_h(&iter, m);
     iter.ptr = (unsigned char *)m->hpos;
-    while (mcdb_iter(&iter)) {
+    while (mcdb_iter_h(&iter)) {
         if (mcdb_iter_keyptr(&iter)[0] == (unsigned char)'=') {
             m->hpos = (uintptr_t)iter.ptr;
             /* valid data for mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
@@ -262,7 +267,7 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
     return NSS_STATUS_NOTFOUND;
 }
 
-nss_status_t
+INTERNAL nss_status_t
 nss_mcdb_get_generic(const enum nss_dbtype dbtype,
                      const struct nss_mcdb_vinfo * const restrict v)
 {
@@ -281,8 +286,8 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
         return NSS_STATUS_UNAVAIL;
     }
 
-    if (  __builtin_expect( mcdb_findtagstart(&m, v->key, v->klen, v->tagc), 1)
-        && __builtin_expect( mcdb_findtagnext(&m, v->key, v->klen, v->tagc), 1))
+    if (  __builtin_expect( mcdb_findtagstart_h(&m,v->key,v->klen,v->tagc), 1)
+        && __builtin_expect( mcdb_findtagnext_h(&m,v->key,v->klen,v->tagc), 1))
         status = v->decode(&m, v);
     else {
         status = NSS_STATUS_NOTFOUND;
@@ -301,7 +306,7 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
     return status;
 }
 
-nss_status_t
+INTERNAL nss_status_t
 nss_mcdb_buf_decode(struct mcdb * const restrict m,
                     const struct nss_mcdb_vinfo * const restrict v)
 {   /* generic; simply copy data into target buffer and NIL terminate string */
@@ -319,5 +324,5 @@ bool
 nss_mcdb_refresh_check(const enum nss_dbtype dbtype)
 {
     return (0 <= dbtype && dbtype < NSS_DBTYPE_SENTINEL)
-        && mcdb_mmap_refresh_check(&_nss_mcdb_mmap_st[dbtype]);
+        && mcdb_mmap_refresh_check_h(&_nss_mcdb_mmap_st[dbtype]);
 }

@@ -27,9 +27,6 @@
 #include "nss_mcdb_misc_make.h"
 #include "nss_mcdb_misc.h"
 
-#include "uint32.h"
-#include "code_attributes.h"
-
 #include <errno.h>
 #include <string.h>
 #include <aliases.h>

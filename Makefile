@@ -28,13 +28,14 @@ $(PIC_OBJS): CFLAGS+= -fpic
 
 # (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
 libnss_mcdb.so.2: mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
-	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-O,1 \
-          -Wl,-soname,$(@F) -Wl,--version-script,nss_mcdb.map \
+	$(CC) -o $@ $(LDFLAGS) -shared -fpic \
+          -Wl,-O,1 -Wl,--hash-style,gnu -Wl,-soname,$(@F) \
+          -Wl,--version-script,nss_mcdb.map \
           $^
 
 libmcdb.so: mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o
-	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-O,1 \
-          -Wl,-soname,mcdb \
+	$(CC) -o $@ $(LDFLAGS) -shared -fpic \
+          -Wl,-O,1 -Wl,--hash-style,gnu -Wl,-soname,mcdb \
           $^
 
 libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
@@ -111,14 +112,15 @@ $(LIB32_PIC_OBJS): CFLAGS+= -fpic
 lib32/libnss_mcdb.so.2: ABI_FLAGS=-m32
 lib32/libnss_mcdb.so.2: $(addprefix lib32/, \
   mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o)
-	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-O,1 \
-          -Wl,-soname,$(@F) -Wl,--version-script,nss_mcdb.map \
+	$(CC) -o $@ $(LDFLAGS) -shared -fpic \
+          -Wl,-O,1 -Wl,--hash-style,gnu -Wl,-soname,$(@F) \
+          -Wl,--version-script,nss_mcdb.map \
           $^
 lib32/libmcdb.so: ABI_FLAGS=-m32
 lib32/libmcdb.so: $(addprefix lib32/, \
   mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o)
-	$(CC) -o $@ $(LDFLAGS) -shared -fpic -Wl,-O,1 \
-          -Wl,-soname,mcdb \
+	$(CC) -o $@ $(LDFLAGS) -shared -fpic \
+          -Wl,-O,1 -Wl,--hash-style,gnu -Wl,-soname,mcdb \
           $^
 
 /lib/libnss_mcdb.so.2: lib32/libnss_mcdb.so.2

@@ -21,9 +21,6 @@
 
 #include "nss_mcdb_acct.h"
 #include "nss_mcdb.h"
-#include "mcdb.h"
-#include "uint32.h"
-#include "code_attributes.h"
 
 #include <errno.h>
 #include <string.h>
