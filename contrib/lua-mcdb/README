@@ -1,0 +1,44 @@
+lua-mcdb 0.01
+
+
+Lua interface to create and read mcdb constant databases.
+
+The lua-mcdb extension module wraps interfaces in libmcdb.so
+See https://github.com/gstrauss/mcdb/ for latest info on mcdb.
+mcdb is based on D. J. Bernstein's constant database package
+(see http://cr.yp.to/cdb.html).
+
+
+Install
+-------
+
+mcdb must be built and installed before you can build lua-mcdb.
+lua-devel package must be installed (e.g. Redhat Fedora lua-devel)
+  (or build lua from src and update lua-mcdb Makefile to add -I for lua headers)
+
+Build mcdb.so and mcdb_make.so
+  $ make
+  $ make test
+
+Install mcdb.so and mcdb_make.so in your LUA_CPATH
+
+
+Sample and Documentation
+------------------------
+
+See mcdblua.t for some sample usage.
+Please be forewarned that lua is very new to me.
+Feedback on Lua-isms is welcomed.
+
+
+Questions, comments, suggestions, and bug reports:
+https://github.com/gstrauss/mcdb/issues or email <code()gluelogic.com>
+
+
+License and Copyright
+---------------------
+lua-mcdb is open source software, as is mcdb itself.
+
+lua-mcdb is licensed under the GNU Lesser GPL version 2.1 or later,
+and is Copyright 2011, Glue Logic LLC.  lua-mcdb is based on mcdb,
+also licensed under GNU Lesser GPL version 2.1 or later.
