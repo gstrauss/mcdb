@@ -569,13 +569,17 @@ mcdbpy_make_add(struct mcdbpy_make * const self, PyObject * const args)
 }
 
 static PyObject *
-mcdbpy_make_finish(struct mcdbpy_make * const self)
+mcdbpy_make_finish(struct mcdbpy_make * const self, PyObject * const args)
 {
     struct mcdb_make * const restrict m = &self->m;
-    int rc = mcdb_make_finish(m); /*(calls PyMem_Malloc(), PyMem_Free())*/
+    int do_fsync = true;
+    int rc;
+    if (!PyArg_ParseTuple(args, "|i:finish", &do_fsync)) /*exception on error*/
+        return mcdbpy_Py_None();
+    rc = mcdb_make_finish(m); /*(calls PyMem_Malloc(), PyMem_Free())*/
     Py_BEGIN_ALLOW_THREADS
     if (rc == 0)
-        rc = mcdb_makefn_finish(m, true);
+        rc = mcdb_makefn_finish(m, do_fsync != 0);
     Py_END_ALLOW_THREADS
     return rc == 0 ? mcdbpy_Py_None() : PyErr_SetFromErrno(PyExc_IOError);
 }
@@ -606,30 +610,30 @@ mcdbpy_make_dealloc(struct mcdbpy_make * const restrict self)
 }
 
 static int
-mcdbpy_make_init_obj(struct mcdbpy_make * const restrict self,
-                   PyObject * const fname)
-{
-    if (!PyString_Check(fname)) {
-        PyErr_SetString(PyExc_TypeError,"__init__(): expected filename string");
-        return -1;
-    }
-    self->fname = fname;
-    Py_INCREF(self->fname);
-    return mcdb_makefn_start(&self->m, PyString_AS_STRING(self->fname),
-                             PyMem_Malloc, PyMem_Free) == 0
-        && mcdb_make_start(&self->m, self->m.fd, PyMem_Malloc, PyMem_Free) == 0
-      ? 0
-      : (PyErr_SetFromErrno(PyExc_IOError), -1);
-}
-
-static int
 mcdbpy_make_init(struct mcdbpy_make * const restrict self,
                  PyObject * const args, PyObject * const kwds)
 {
     PyObject *fname;
-    return PyArg_ParseTuple(args, "O:__init__", &fname)
-      ? mcdbpy_make_init_obj(self, fname)
-      : -1;
+    int st_mode = ~0;
+    if (PyArg_ParseTuple(args, "O|i:__init__", &fname, &st_mode)) {
+        if (!PyString_Check(fname)) {
+            PyErr_SetString(PyExc_TypeError,
+                            "__init__(): expected filename string");
+            return -1;
+        }
+        self->fname = fname;
+        Py_INCREF(self->fname);
+        if (mcdb_makefn_start(&self->m, PyString_AS_STRING(self->fname),
+                              PyMem_Malloc, PyMem_Free) == 0
+            && mcdb_make_start(&self->m, self->m.fd,
+                               PyMem_Malloc, PyMem_Free) == 0) {
+            if (st_mode != ~0)
+                self->m.st_mode = (mode_t)st_mode; /* optional mcdb perm mode */
+            return 0;
+        }
+        PyErr_SetFromErrno(PyExc_IOError);
+    }
+    return -1;
 }
 
 static PyObject *
@@ -647,11 +651,11 @@ mcdbpy_make_new(PyTypeObject * const type,
 }
 
 static PyObject *
-mcdbpy_make_ctor(PyTypeObject * const type, PyObject * const restrict fname)
+mcdbpy_make_ctor(PyTypeObject * const type, PyObject * const args)
 {
     struct mcdbpy_make * const restrict self =
       (struct mcdbpy_make *)mcdbpy_make_new(&mcdbpy_make_Type, NULL, NULL);
-    if (self && mcdbpy_make_init_obj(self, fname) == 0)
+    if (self && mcdbpy_make_init(self, args, NULL) == 0)
         return (PyObject *)self;
     Py_XDECREF(self);
     return NULL;
@@ -733,7 +737,7 @@ static PyMethodDef mcdbpy_module_funcs[] = {
   {"read_init",    (PyCFunction)mcdbpy_read_ctor,       METH_O,
    "m = mcdb.read_init(f) opens mcdb with filename f, initializes mcdb object"
   },
-  {"make_init",    (PyCFunction)mcdbpy_make_ctor,       METH_O,
+  {"make_init",    (PyCFunction)mcdbpy_make_ctor,       METH_VARARGS,
    "mk= mcdb.make_init('data.mcdb') begins making new mcdb 'data.mcdb'."
   },
   {"hash",         (PyCFunction)mcdbpy_hash_djb,        METH_O,
@@ -834,7 +838,7 @@ static PyMethodDef mcdbpy_make_methods[] = {
    "mk.add(key, data) writes (key,data) tuple into mcdb being created.\n"
    "Returns None."
   },
-  {"finish",       (PyCFunction)mcdbpy_make_finish,     METH_NOARGS,
+  {"finish",       (PyCFunction)mcdbpy_make_finish,     METH_VARARGS,
    "mk.finish() generates and writes the mcdb hash tables,\n"
    "flushes all data to disk, and atomically installs mcdb.\n"
    "Returns None."

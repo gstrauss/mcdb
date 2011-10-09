@@ -91,7 +91,10 @@ mcdblua_make_finish(lua_State * const restrict L)
 {
     struct mcdb_make * const restrict mk = mcdblua_make_struct(L);
     int rv;
-    if (mcdb_make_finish(mk) == 0 && mcdb_makefn_finish(mk, true) == 0)
+    bool do_fsync = true;
+    if (lua_gettop(L) > 1)
+        do_fsync = lua_tonumber(L, 2) != 0; /* optional control fsync */
+    if (mcdb_make_finish(mk) == 0 && mcdb_makefn_finish(mk, do_fsync) == 0)
         rv = 0;
     else {
         lua_pushstring(L, strerror(errno));
@@ -132,6 +135,8 @@ mcdblua_make_init(lua_State * const restrict L)
         && mcdb_make_start(&mk, mk.fd, malloc, free) == 0) {
         struct mcdb_make * const restrict mklua =
           lua_newuserdata(L, sizeof(struct mcdb_make));
+        if (lua_gettop(L) > 2) /*(lua_newuserdata() added element to stack)*/
+            mk.st_mode = lua_tonumber(L, 2); /* optional mcdb perm mode */
         memcpy(mklua, &mk, sizeof(struct mcdb_make));
         luaL_getmetatable(L, MCDBLUA_MAKE);
 

@@ -268,15 +268,19 @@ mcdbxs_make_insert(mk, ...)
     }
 
 struct mcdb_make *
-mcdbxs_make_new(CLASS, fname)
+mcdbxs_make_new(CLASS, fname, ...)
     char * CLASS;
     char * fname;
   PREINIT:
     struct mcdb_make *mk;
   CODE:
     RETVAL = Newx(mk, 1, struct mcdb_make);
-    if (mcdb_makefn_start(mk, fname, mcdbxs_malloc, mcdbxs_free) != 0
-        || mcdb_make_start(mk, mk->fd, mcdbxs_malloc, mcdbxs_free) != 0) {
+    if (mcdb_makefn_start(mk, fname, mcdbxs_malloc, mcdbxs_free) == 0
+        && mcdb_make_start(mk, mk->fd, mcdbxs_malloc, mcdbxs_free) == 0) {
+        if (items >= 3)
+            mk->st_mode = SvIV(ST(2)); /* optional mcdb perm mode */
+    }
+    else {
         mcdbxs_make_destroy(mk);
         XSRETURN_UNDEF;
     }
@@ -291,10 +295,14 @@ mcdbxs_make_DESTROY(sv)
         mcdbxs_make_destroy((struct mcdb_make *)SvIV(SvRV(sv)));
 
 void
-mcdbxs_make_finish(mk)
+mcdbxs_make_finish(mk, ...)
     struct mcdb_make * mk;
+  PREINIT:
+    bool do_fsync = true;
   CODE:
-    if (mcdb_make_finish(mk) != 0 || mcdb_makefn_finish(mk, true) != 0) {
+    if (items >= 2)
+        do_fsync = SvIV(ST(1)) != 0; /* optional control fsync */
+    if (mcdb_make_finish(mk) != 0 || mcdb_makefn_finish(mk, do_fsync) != 0) {
         /*mcdb_make_destroy(mk);*//* already called in mcdb_make_finish() */
         mcdb_makefn_cleanup(mk);
         croak("MCDB_File::Make::finish: %s", Strerror(errno));
