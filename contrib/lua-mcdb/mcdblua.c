@@ -34,6 +34,12 @@
 #include "lua.h"
 #include "lauxlib.h"
 
+#if 0  /* requires access to lua internals (and internal headers) */
+#include "lstate.h"  /* NOTE: not part of public API; reaching into internals */
+#include "lobject.h" /* NOTE: not part of public API; reaching into internals */
+static GCObject *mcdblua_gcobj;
+#endif /* see mcdblua_struct() routine */
+
 #include <mcdb/mcdb.h>
 
 #define MCDBLUA "mcdb"
@@ -44,10 +50,28 @@ struct mcdblua {
     uint32_t findklen;        /* used by findnext() */
 };
 
+static inline void *
+mcdblua_struct(lua_State * const restrict L)
+{
+  #if 0
+    /* There should be a clean and inexpensive way to validate mcdblua object.
+     * The code below requires knowledge of internal lstate.h and lobject.h.
+     * First, validate that argument is present and is userdata
+     * Then, compare metatable to the metatable set in luaopen_mcdb() */
+    void * const restrict v = lua_touserdata(L, 1);
+    return v != NULL && (GCObject *)uvalue(L->base)->metatable == mcdblua_gcobj
+      ? v
+      : (void *)luaL_typerror(L, 1, MCDBLUA); /* throws exception */
+  #else /* requires access to lua internals (and internal headers) */
+    /* lua arg checking overhead is expensive compared to rest of mcdblua code*/
+    return luaL_checkudata(L, 1, MCDBLUA);
+  #endif
+}
+
 static int
 mcdblua_size(lua_State * const restrict L)
 {
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     lua_pushnumber(L, (int)mcdb_numrecs(m));
     return 1;
 }
@@ -56,7 +80,7 @@ static int
 mcdblua_contains(lua_State * const restrict L)
 {
     size_t klen;
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     const char * const restrict k = lua_tolstring(L, 2, &klen);
     if (mcdb_find(m, k, klen)) {
         lua_pushnil(L);
@@ -69,7 +93,7 @@ static int
 mcdblua_get(lua_State * const restrict L)
 {
     size_t klen;
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     const char * const restrict k = luaL_checklstring(L, 2, &klen);
     mcdb_find(m, k, klen)
       ? lua_pushlstring(L, (char *)mcdb_dataptr(m), mcdb_datalen(m))
@@ -81,7 +105,7 @@ static int
 mcdblua_find(lua_State * const restrict L)
 {
     size_t klen;
-    struct mcdblua * const restrict mlua = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdblua * const restrict mlua = mcdblua_struct(L);
     const char * const restrict k = luaL_checklstring(L, 2, &klen);
     mlua->findkey = NULL;
     if (mcdb_find(&mlua->m, k, klen)) {
@@ -96,7 +120,7 @@ mcdblua_find(lua_State * const restrict L)
 static int
 mcdblua_findnext(lua_State * const restrict L)
 {
-    struct mcdblua * const restrict mlua = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdblua * const restrict mlua = mcdblua_struct(L);
     if (mlua->findkey
         && mcdb_findnext(&mlua->m, mlua->findkey, mlua->findklen)) {
         lua_pushlstring(L, (char *)mcdb_dataptr(&mlua->m),
@@ -118,7 +142,7 @@ static int
 mcdblua_findall(lua_State * const restrict L)
 {
     size_t klen;
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     const char * const restrict k = luaL_checklstring(L, 2, &klen);
     int n = 0;
     if (mcdb_findstart(m, k, klen)) {
@@ -135,7 +159,7 @@ static int
 mcdblua_getseq(lua_State * const restrict L)
 {
     size_t klen;
-    struct mcdblua * const restrict mlua = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdblua * const restrict mlua = mcdblua_struct(L);
     const char * const restrict k = luaL_checklstring(L, 2, &klen);
     int seq = luaL_optint(L, 3, 0);
     bool rc;
@@ -169,7 +193,7 @@ mcdblua_iterkeys_closure(lua_State * const restrict L)
 static int
 mcdblua_iterkeys(lua_State * const restrict L)
 {
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     struct mcdb_iter * const restrict iter =
       lua_newuserdata(L, sizeof(struct mcdb_iter));
     mcdb_iter_init(iter, m);
@@ -193,7 +217,7 @@ mcdblua_itervalues_closure(lua_State * const restrict L)
 static int
 mcdblua_itervalues(lua_State * const restrict L)
 {
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     struct mcdb_iter * const restrict iter =
       lua_newuserdata(L, sizeof(struct mcdb_iter));
     mcdb_iter_init(iter, m);
@@ -219,7 +243,7 @@ mcdblua_iteritems_closure(lua_State * const restrict L)
 static int
 mcdblua_iteritems(lua_State * const restrict L)
 {
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     struct mcdb_iter * const restrict iter =
       lua_newuserdata(L, sizeof(struct mcdb_iter));
     mcdb_iter_init(iter, m);
@@ -232,7 +256,7 @@ mcdblua_keys(lua_State * const restrict L)
 {
     /* table returned is unsorted array
      * keys duplicated in mcdb are duplicated in table */
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     struct mcdb_iter iter;
     int n = 0;
     lua_createtable(L, mcdb_numrecs(m), 0);
@@ -249,7 +273,7 @@ static int
 mcdblua_values(lua_State * const restrict L)
 {
     /* table returned is unsorted array of all values in mcdb */
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     struct mcdb_iter iter;
     int n = 0;
     lua_createtable(L, mcdb_numrecs(m), 0);
@@ -269,7 +293,7 @@ mcdblua_items(lua_State * const restrict L)
      * Associative array contains only one value per key
      * Note: keys duplicated in mcdb have all but last (key,value) discarded
      * (Use iteritems() to iterate over all (key,value) pairs in mcdb) */
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     struct mcdb_iter iter;
     lua_createtable(L, 0, mcdb_numrecs(m));
     mcdb_iter_init(&iter, m);
@@ -286,7 +310,7 @@ mcdblua_items(lua_State * const restrict L)
 static int
 mcdblua_name(lua_State * const restrict L)
 {
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     lua_pushstring(L, m->map ? m->map->fname : "<mcdb not open>");
     return 1;
 }
@@ -294,7 +318,7 @@ mcdblua_name(lua_State * const restrict L)
 static int
 mcdblua_tostring(lua_State * const restrict L)
 {
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     lua_pushfstring(L, "mcdb %p", m);
     return 1;
 }
@@ -302,7 +326,7 @@ mcdblua_tostring(lua_State * const restrict L)
 static int
 mcdblua_free(lua_State * const restrict L)
 {
-    struct mcdb * const restrict m = luaL_checkudata(L, 1, MCDBLUA);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     if (m->map) {
         mcdb_mmap_destroy(m->map);
         m->map = NULL;
@@ -389,6 +413,9 @@ luaopen_mcdb(lua_State * const restrict L)
     lua_newtable(L);
     luaL_register(L, NULL, mcdblua_meta);
     luaL_newmetatable(L, MCDBLUA);
+  #if 0  /* requires access to lua internals (and internal headers) */
+    mcdblua_gcobj = gcvalue(L->top - 1);
+  #endif /* see mcdblua_struct() routine */
     luaL_register(L, MCDBLUA, mcdblua_methods);
     lua_pushliteral(L, "__metatable");
     lua_pushvalue(L, -2);

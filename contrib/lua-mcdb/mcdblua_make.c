@@ -34,15 +34,39 @@
 #include "lua.h"
 #include "lauxlib.h"
 
+#if 0  /* requires access to lua internals (and internal headers) */
+#include "lstate.h"  /* NOTE: not part of public API; reaching into internals */
+#include "lobject.h" /* NOTE: not part of public API; reaching into internals */
+static GCObject *mcdblua_make_gcobj;
+#endif /* see mcdblua_make_struct() routine */
+
 #include <mcdb/mcdb_make.h>
 #include <mcdb/mcdb_makefn.h>
 
 #define MCDBLUA_MAKE "mcdb_make"
 
+static inline void *
+mcdblua_make_struct(lua_State * const restrict L)
+{
+  #if 0
+    /* There should be a clean and inexpensive way to validate mcdblua object.
+     * The code below requires knowledge of internal lstate.h and lobject.h.
+     * First, validate that argument is present and is userdata
+     * Then, compare metatable to the metatable set in luaopen_mcdb() */
+    void * const restrict v = lua_touserdata(L, 1);
+    return v!=NULL && (GCObject *)uvalue(L->base)->metatable==mcdblua_make_gcobj
+      ? v
+      : (void *)luaL_typerror(L, 1, MCDBLUA_MAKE); /* throws exception */
+  #else /* requires access to lua internals (and internal headers) */
+    /* lua arg checking overhead is expensive compared to rest of mcdblua code*/
+    return luaL_checkudata(L, 1, MCDBLUA_MAKE);
+  #endif
+}
+
 static int
 mcdblua_make_add(lua_State * const restrict L)
 {
-    struct mcdb_make * const restrict mk = luaL_checkudata(L, 1, MCDBLUA_MAKE);
+    struct mcdb_make * const restrict mk = mcdblua_make_struct(L);
     size_t klen, dlen;
     const char * const k = luaL_checklstring(L, 2, &klen);
     const char * const d = luaL_checklstring(L, 3, &dlen);
@@ -65,7 +89,7 @@ mcdblua_make_newindex(lua_State * const restrict L)
 static int
 mcdblua_make_finish(lua_State * const restrict L)
 {
-    struct mcdb_make * const restrict mk = luaL_checkudata(L, 1, MCDBLUA_MAKE);
+    struct mcdb_make * const restrict mk = mcdblua_make_struct(L);
     int rv;
     if (mcdb_make_finish(mk) == 0 && mcdb_makefn_finish(mk, true) == 0)
         rv = 0;
@@ -83,7 +107,7 @@ mcdblua_make_finish(lua_State * const restrict L)
 static int
 mcdblua_make_gc(lua_State * const restrict L)
 {
-    struct mcdb_make * const restrict mk = luaL_checkudata(L, 1, MCDBLUA_MAKE);
+    struct mcdb_make * const restrict mk = mcdblua_make_struct(L);
     mcdb_make_destroy(mk);
     mcdb_makefn_cleanup(mk);
     lua_pushnil(L);
@@ -94,7 +118,7 @@ mcdblua_make_gc(lua_State * const restrict L)
 static int
 mcdblua_make_tostring(lua_State * const restrict L)
 {
-    struct mcdb_make * const restrict mk = luaL_checkudata(L, 1, MCDBLUA_MAKE);
+    struct mcdb_make * const restrict mk = mcdblua_make_struct(L);
     lua_pushfstring(L, "mcdb_make %p", mk);
     return 1;
 }
@@ -152,6 +176,9 @@ luaopen_mcdb_make(lua_State * const restrict L)
     lua_newtable(L);
     luaL_register(L, NULL, mcdblua_make_meta);
     luaL_newmetatable(L, MCDBLUA_MAKE);
+  #if 0  /* requires access to lua internals (and internal headers) */
+    mcdblua_make_gcobj = gcvalue(L->top - 1);
+  #endif /* see mcdblua_make_struct() routine */
     luaL_register(L, MCDBLUA_MAKE, mcdblua_make_methods);
     lua_pushliteral(L, "__metatable");
     lua_pushvalue(L, -2);
