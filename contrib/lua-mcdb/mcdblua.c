@@ -46,8 +46,8 @@ static GCObject *mcdblua_gcobj;
 
 struct mcdblua {
     struct mcdb m;            /* must be first element for our implicit casts */
-    const char *findkey;      /* used by findnext() */
-    uint32_t findklen;        /* used by findnext() */
+    const unsigned char *findkey;  /* used by findnext() */
+    uint32_t findklen;             /* used by findnext() */
 };
 
 static inline void *
@@ -109,7 +109,7 @@ mcdblua_find(lua_State * const restrict L)
     const char * const restrict k = luaL_checklstring(L, 2, &klen);
     mlua->findkey = NULL;
     if (mcdb_find(&mlua->m, k, klen)) {
-        mlua->findkey = (char *)mcdb_keyptr(&mlua->m, (mlua->findklen = klen));
+        mlua->findkey = mcdb_keyptr(&mlua->m, (mlua->findklen = klen));
         lua_pushlstring(L, (char *)mcdb_dataptr(&mlua->m),
                                    mcdb_datalen(&mlua->m));
         return 1;
@@ -121,21 +121,12 @@ static int
 mcdblua_findnext(lua_State * const restrict L)
 {
     struct mcdblua * const restrict mlua = mcdblua_struct(L);
-    if (mlua->findkey
-        && mcdb_findnext(&mlua->m, mlua->findkey, mlua->findklen)) {
-        lua_pushlstring(L, (char *)mcdb_dataptr(&mlua->m),
-                                   mcdb_datalen(&mlua->m));
-        return 1;
-    }
-    else {
-        if (mlua->findkey) {
-            mlua->findkey = NULL;
-            return 0;
-        }
-        else
-            return
-              luaL_error(L, "findnext() called without first calling find()");
-    }
+    struct mcdb * const m = &mlua->m;
+    return mlua->findkey
+      ? mcdb_findnext(m, (const char *)mlua->findkey, mlua->findklen)
+          ? (lua_pushlstring(L, (char *)mcdb_dataptr(m), mcdb_datalen(m)), 1)
+          : (mlua->findkey = NULL, 0)
+      : luaL_error(L, "findnext() called without first calling find()");
 }
 
 static int
@@ -167,7 +158,7 @@ mcdblua_getseq(lua_State * const restrict L)
         while ((rc = mcdb_findnext(&mlua->m, k, klen)) && seq--)
             ;
         if (rc) {
-            mlua->findkey = (char *)mcdb_keyptr(&mlua->m,(mlua->findklen=klen));
+            mlua->findkey = mcdb_keyptr(&mlua->m, (mlua->findklen = klen));
             lua_pushlstring(L, (char *)mcdb_dataptr(&mlua->m),
                                        mcdb_datalen(&mlua->m));
             return 1;
