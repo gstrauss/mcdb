@@ -58,6 +58,8 @@ References
 ----------
   Dan Bernstein's (djb) reference implementation of cdb (public domain)
     http://cr.yp.to/cdb.html
+  How To Write Shared Libraries, by Ulrich Drepper
+    http://www.akkadia.org/drepper/dsohowto.pdf
 
 
 

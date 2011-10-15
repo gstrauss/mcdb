@@ -39,6 +39,8 @@ Sample usage.  See sample.rb.
 Please be forewarned that Ruby is very new to me.
 Feedback on Ruby-isms is welcomed.
 
+sample.rb has been run under Ruby 1.8.7 and Ruby 1.9.1 on Linux (Fedora Core 14)
+
   $ RUBYLIB="$PWD" ruby sample.rb
 
 

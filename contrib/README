@@ -1,0 +1,25 @@
+contrib/README
+--------------
+This directory (contrib/) contains extension modules to various interpreters.
+The extension modules attempt to provide mcdb interfaces to each interpreted
+language in ways (paradigms) familiar to users of each language.
+
+However, besides being just another Perl hacker, this coder's knowledge
+of Python, Ruby, and Lua is limited, so please send questions, comments,
+suggestions, and bug reports to:
+https://github.com/gstrauss/mcdb/issues or email <code()gluelogic.com>
+
+MCDB_File/      Perl   interface to create and read mcdb constant databases
+lua-mcdb/       Lua    interface to create and read mcdb constant databases
+python-mcdb/    Python interface to create and read mcdb constant databases
+ruby-mcdb/      Ruby   interface to create and read mcdb constant databases
+
+See */README in each package for more information, including installation info.
+Packages require that mcdb be installed prior to running package install steps.
+(To do otherwise requires minor changes to add -I, -L, -R rules to each build.)
+
+
+
+Note to self:
+probably should have named the extension modules with "mcdb-" prefix
+(will probably rename if these are ever split to separate git repos)

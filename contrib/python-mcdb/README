@@ -12,7 +12,7 @@ mcdb is based on D. J. Bernstein's constant database package
 Install
 -------
 
-  $ tar zxf python-mcdb-$VERSION.tgz
+  $ tar xzf python-mcdb-$VERSION.tgz
   $ cd python-mcdb-$VERSION
   $ python setup.py build
   $ python setup.py install
