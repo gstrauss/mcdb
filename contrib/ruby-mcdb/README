@@ -1,0 +1,208 @@
+ruby-mcdb
+
+
+Ruby interface to create and read mcdb constant databases.
+
+The ruby-mcdb extension module wraps interfaces in libmcdb.so
+See https://github.com/gstrauss/mcdb/ for latest info on mcdb.
+mcdb is based on D. J. Bernstein's constant database package
+(see http://cr.yp.to/cdb.html).
+
+
+Install
+-------
+
+  $ tar xzf ruby-mcdb-$VERSION.tgz
+  $ cd ruby-mcdb-$VERSION
+  $ ruby extconf.rb
+  $ make
+  $ su root -c 'make site-install'
+
+
+Questions, comments, suggestions, and bug reports:
+https://github.com/gstrauss/mcdb/issues or email <code()gluelogic.com>
+
+
+License and Copyright
+---------------------
+ruby-mcdb is open source software, as is mcdb itself.
+
+ruby-mcdb is licensed under the GNU Lesser GPL version 2.1 or later,
+and is Copyright 2011, Glue Logic LLC.  ruby-mcdb is based on mcdb,
+also licensed under GNU Lesser GPL version 2.1 or later.
+
+
+Sample and Documentation
+------------------------
+
+Sample usage.  See sample.rb.
+Please be forewarned that Ruby is very new to me.
+Feedback on Ruby-isms is welcomed.
+
+  $ RUBYLIB="$PWD" ruby sample.rb
+
+
+  class MCDB
+  ----------
+
+  MCDB.open(file) {|obj| .. }
+    same as:
+      obj = MCDB.open(file)
+      begin
+        ..
+      ensure
+        obj.close
+      end
+
+  obj = MCDB.open(file)
+    open read-only mcdb file
+    return MCDB object instance
+
+  obj.close
+    close mcdb file
+
+  obj[key]
+  obj.findkey(key)
+    query mcdb for key
+    return first data associated with <key>; see also obj.fetch, obj.get
+    key not found returns nil
+  obj.findnext(key)
+    return next data associated with multi-valued <key>; see also obj.each(key)
+    key not found or no additional values returns nil
+    obj[key], obj.findkey(), or obj.getseq() must be called first
+  obj.findall(key)
+    return array of all data associated with multi-valued <key>
+    key not found returns empty array
+
+  obj.getseq(key, seq = 0)
+    return data associated with 'seq' number for multi-valued <key> 
+    same as obj[key], obj.findkey(key) when seq = 0
+    key not found returns nil
+
+  obj.fetch(key, ifnone = nil)
+  obj.fetch(key) {|k| .. }
+  obj.get(key, ifnone = nil)
+  obj.get(key) {|k| .. }
+    query mcdb for key
+    return first data associated with <key>; see also obj[key], obj.findkey
+    key not found yields key to block if block provided, otherwise:
+    key not found returns ifnone, if provided, or throws exception
+
+  obj.key?(key)
+  obj.has_key?(key)
+  obj.include(key)
+  obj.member(key)
+    query mcdb for existence of key
+    return true/false
+
+  obj.value?(value)
+  obj.has_value?(value)
+    query mcdb for existence of value; see also obj.index(value)
+    iterates over entire mcdb until value is found (can be expensive)
+    return true/false
+
+  obj.index(value)
+    query mcdb for value
+    iterates over entire mcdb until value is found (can be expensive)
+    return first key associated with <value>
+    value not found returns nil
+
+  obj.empty?
+    query mcdb for existence of any data (or if empty)
+    return true/false
+
+  obj.size
+  obj.length
+    query mcdb for number of records
+    return number of records
+
+  obj.count
+  obj.count(key)
+  obj.count {|key, data| .. }
+    query mcdb for record count
+    same as obj.size, obj.length if no key provided and no block provided
+    For key, return number of records for multi-valued key
+    For block, iterates over mcdb key,data pairs and return number of records
+      for which block returns true
+
+  obj.each {|key, data| .. }
+  obj.each_entry {|key, data| .. }
+  obj.each_pair {|key, data| .. }
+    iterate over mcdb key,data pairs
+  obj.each_key {|key| .. }
+    iterate over mcdb keys (keys repeated, not ordered, for multi-valued keys)
+  obj.each_value {|value| .. }
+    iterate over mcdb values
+
+  obj.each(key) {|data| .. }
+    iterate over mcdb data associated with <key>; see obj.findkey, obj.findnext
+
+  obj.values_at(key, ..)
+    return array of values for list of provided key(s)
+    array contains all values of multi-valued keys; see also obj.findall(key)
+
+  obj.select {|key, data| .. }
+    iterate over mcdb
+    return array of key,data pairs for which block returns true
+
+  obj.reject {|key, data| .. }
+    iterate over mcdb
+    return array of key,data pairs for which block returns false
+      (nil is not considered false)
+
+  obj.keys
+    iterate over mcdb
+    return array of mcdb keys
+      (keys repeated, not ordered, for multi-valued keys)
+
+  obj.values
+    iterate over mcdb
+    return array of mcdb values
+      (values can be repeated)
+
+  obj.pairs
+  obj.entries
+  obj.to_a
+    iterate over mcdb
+    return array of mcdb key,data pairs
+
+  obj.to_hash
+    iterate over mcdb
+    return hash of mcdb key => data
+    note: multi-valued keys are lost, only last value for a key is retained
+
+  obj.invert
+    iterate over mcdb
+    return hash of mcdb data => key
+    note: multi-key values are lost, only last key for a value is retained
+
+
+  class MCDBmake
+  --------------
+
+  MCDBmake.open(file, mode = 0400) {|obj| .. }
+    open write-only mcdb <file>, <mode> is permission mode set on mcdb <file>
+
+  MCDBmake.create(file, mode = 0644) {|obj| .. }
+    same as:
+      MCDBmake.open(file, mode = 0644) {|obj|
+        ..
+        obj.finish
+      }
+
+  obj = MCDBmake.open(file, mode = 0400)
+    open write-only mcdb <file>, <mode> is permission mode set on mcdb <file>
+    (same as MCDBmake.open() above, but without block provided)
+
+  obj[key] = data
+  obj.add(key, data)
+    store <data> under <key> in the database.  Note that multiple
+    calls with the same <key> are added to database multiple times;
+    multiple calls with the same <key> DO NOT replace existing data
+
+  obj.finish(do_fsync = true)
+  obj.close(do_fsync = true)
+    generate mcdb index, optionally fsync to disk, and close mcdb file
+
+  obj.cancel
+    cancel mcdb creation (instead of committing with obj.finish)
