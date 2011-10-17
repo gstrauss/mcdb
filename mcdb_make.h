@@ -97,6 +97,19 @@ extern void
 mcdb_make_addrevert(struct mcdb_make * restrict)
   __attribute_nonnull__;
 
+
+/* alias symbols with hidden visibility for use in DSO linking static mcdb.o
+ * (Reference: "How to Write Shared Libraries", by Ulrich Drepper)
+ * (optimization)
+ * The aliases below are not a complete set of mcdb_make symbols */
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+HIDDEN extern __typeof (mcdb_make_add)
+                        mcdb_make_add_h;
+#else
+#define mcdb_make_add_h                  mcdb_make_add
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif

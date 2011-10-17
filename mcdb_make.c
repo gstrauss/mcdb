@@ -466,3 +466,14 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
     }
     return rc;
 }
+
+
+/* alias symbols with hidden visibility for use in DSO linking static mcdb.o
+ * (Reference: "How to Write Shared Libraries", by Ulrich Drepper)
+ * (optimization)
+ * The aliases below are not a complete set of mcdb_make symbols */
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+HIDDEN extern __typeof (mcdb_make_add)
+                        mcdb_make_add_h
+  __attribute__((alias ("mcdb_make_add")));
+#endif
