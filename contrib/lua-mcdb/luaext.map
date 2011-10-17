@@ -1,0 +1,7 @@
+# linker (ld) symbol map file to control symbol visibility in shared object
+{
+  global:
+    luaopen_*;
+  local:
+    *;
+};

@@ -4,5 +4,6 @@ README
 VERSION
 extconf.rb
 mcdbrb.c
+rubyext.map
 sample.rb
 lib/mcdb.rb

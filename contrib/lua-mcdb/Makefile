@@ -1,6 +1,9 @@
 CC=gcc -pipe
 CFLAGS+=-Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3 -g
 
+# compile using local mcdb headers
+CFLAGS+=-I ../../..
+
 %.o: %.c
 	$(CC) -o $@ $(CFLAGS) -c $<
 
@@ -8,10 +11,12 @@ CFLAGS+=-Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3 -g
 all: mcdb.so mcdb_make.so
 
 mcdb.so: mcdblua.o
-	$(CC) -o $@ -shared $^ -lmcdb
+#	$(CC) -o $@ -shared $^ -lmcdb
+	$(CC) -o $@ -shared $^ ../../libmcdb.a -Wl,--version-script,luaext.map
 
 mcdb_make.so: mcdblua_make.o
-	$(CC) -o $@ -shared $^ -lmcdb
+#	$(CC) -o $@ -shared $^ -lmcdb
+	$(CC) -o $@ -shared $^ ../../libmcdb.a -Wl,--version-script,luaext.map
 
 .PHONY: clean-mcdb clean test
 test: mcdb.so mcdb_make.so

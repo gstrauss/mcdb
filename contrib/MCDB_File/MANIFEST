@@ -6,7 +6,7 @@ INSTALL
 MANIFEST
 Makefile.PL
 README
+perlext.map
 t/01main.t
 t/02last.t
 typemap
-META.yml                                 Module meta-data (added by MakeMaker)

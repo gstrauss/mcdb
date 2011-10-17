@@ -14,12 +14,30 @@ lua-mcdb/       Lua    interface to create and read mcdb constant databases
 python-mcdb/    Python interface to create and read mcdb constant databases
 ruby-mcdb/      Ruby   interface to create and read mcdb constant databases
 
-See */README in each package for more information, including installation info.
-Packages require that mcdb be installed prior to running package install steps.
-(To do otherwise requires minor changes to add -I, -L, -R rules to each build.)
+See */README in each package for more information.
 
+
+Technical note:
+For ease in standalone installation, default builds of packages require GNU ld
+and link against static libmcdb.a although each package build system includes
+comments about how to compile and link against libmcdb.so installed in reusable
+location in the filesystem.  (GNU ld is used with a map file to avoid exposure
+of libmcdb.a symbols.  If this is not a concern, minor changes can be made to
+configuration files so that extension modules can be linked with system ld, or
+the system ld can be configured to use a map file, if supported.)
+
+Preparation for building extension modules:
+  $ git clone https://github.com/gstrauss/mcdb
+  $ cd mcdb
+  $ make
+Then see contrib/*/README in each package for build and install instructions.
 
 
 Note to self:
-probably should have named the extension modules with "mcdb-" prefix
-(will probably rename if these are ever split to separate git repos)
+- probably should have named the extension modules with "mcdb-" prefix
+  (will probably rename if these are ever split to separate git repos)
+- interpreted languages are very useful, but are not the most performant.
+  If each extension module is built with static libmcdb.a, then it would be
+  slightly more performant for extension modules to use the interfaces with
+  hidden linkage visibility.  This is not currently done for extension modules,
+  though it is used in nss_mcdb.
