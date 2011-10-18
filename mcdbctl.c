@@ -201,7 +201,8 @@ static int
 mcdbctl_stats(struct mcdb * const restrict m)
 {
     struct mcdb_iter iter;
-    unsigned char *p;
+    uintptr_t iter_dpos;
+    char *k;
     unsigned char *j = m->map->ptr + MCDB_HEADER_SZ + (1u << 25);/* add 32 MB */
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
@@ -217,10 +218,11 @@ mcdbctl_stats(struct mcdb * const restrict m)
          * Technically, passing m (which contains m->map->ptr) and an
          * alias into the map (p+8) as key is in violation of C99 restrict
          * pointers, but is inconsequential since it is all read-only */
-        p = mcdb_iter_keyptr(&iter);
-        if ((rc = mcdb_findstart(m, (char *)p, mcdb_iter_keylen(&iter)))) {
-            do { rc = mcdb_findnext(m, (char *)p, mcdb_iter_keylen(&iter));
-            } while (rc && mcdb_dataptr(m) != mcdb_iter_dataptr(&iter));
+        k = (char *)mcdb_iter_keyptr(&iter);
+        iter_dpos = mcdb_iter_datapos(&iter);
+        if ((rc = mcdb_findstart(m, k, mcdb_iter_keylen(&iter)))) {
+            do { rc = mcdb_findnext(m, k, mcdb_iter_keylen(&iter));
+            } while (rc && mcdb_datapos(m) != iter_dpos);
         }
         if (!rc) return MCDB_ERROR_READFORMAT;
         ++numd[ ((m->loop < 11) ? m->loop - 1 : 10) ];
