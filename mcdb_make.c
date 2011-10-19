@@ -476,4 +476,16 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
 HIDDEN extern __typeof (mcdb_make_add)
                         mcdb_make_add_h
   __attribute__((alias ("mcdb_make_add")));
+HIDDEN extern __typeof (mcdb_make_addbegin)
+                        mcdb_make_addbegin_h
+  __attribute__((alias ("mcdb_make_addbegin")));
+HIDDEN extern __typeof (mcdb_make_addbuf_data)
+                        mcdb_make_addbuf_data_h
+  __attribute__((alias ("mcdb_make_addbuf_data")));
+HIDDEN extern __typeof (mcdb_make_addbuf_key)
+                        mcdb_make_addbuf_key_h
+  __attribute__((alias ("mcdb_make_addbuf_key")));
+HIDDEN extern __typeof (mcdb_make_addend)
+                        mcdb_make_addend_h
+  __attribute__((alias ("mcdb_make_addend")));
 #endif

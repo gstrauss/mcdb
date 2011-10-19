@@ -221,10 +221,10 @@ mcdb_bufread_rec (struct mcdb_make * const restrict m,
                   const size_t klen, const size_t dlen,
                   struct mcdb_input * const restrict b)
 {
-    return (   mcdb_bufread_str(b, klen, m, mcdb_make_addbuf_key)
+    return (   mcdb_bufread_str(b, klen, m, mcdb_make_addbuf_key_h)
             && (b->datasz - b->pos >= 2 || mcdb_bufread_xchars(b, 2))
                && b->buf[b->pos++] == '-' && b->buf[b->pos++] == '>'
-            && mcdb_bufread_str(b, dlen, m, mcdb_make_addbuf_data)
+            && mcdb_bufread_str(b, dlen, m, mcdb_make_addbuf_data_h)
             && (b->datasz - b->pos != 0 || mcdb_bufread_xchars(b, 1))
                && b->buf[b->pos++] == '\n'   );
 }
@@ -266,15 +266,15 @@ mcdb_makefmt_fdintofd (const int inputfd,
         if (klen + dlen + 3 <= b.datasz - b.pos) {
             const char * const p = b.buf + b.pos;
             if (p[klen] == '-' && p[klen+1] == '>' && p[klen+2+dlen] == '\n') {
-                if (mcdb_make_add(&m, p, klen, p+klen+2, dlen) == 0)
+                if (mcdb_make_add_h(&m, p, klen, p+klen+2, dlen) == 0)
                     b.pos += klen + dlen + 3;
                 else { rv = MCDB_ERROR_WRITE;      break; }
             } else {   rv = MCDB_ERROR_READFORMAT; break; }
         }
         else { /* entire data line is not buffered; handle in parts */
-            if (mcdb_make_addbegin(&m, klen, dlen) == 0) {
+            if (mcdb_make_addbegin_h(&m, klen, dlen) == 0) {
                 if (mcdb_bufread_rec(&m, klen, dlen, &b))
-                    mcdb_make_addend(&m);
+                    mcdb_make_addend_h(&m);
                 else { rv = MCDB_ERROR_READFORMAT; break; }
             } else {   rv = MCDB_ERROR_WRITE;      break; }
         }

@@ -105,8 +105,20 @@ mcdb_make_addrevert(struct mcdb_make * restrict)
 #if defined(__GNUC__) && (__GNUC__ >= 4)
 HIDDEN extern __typeof (mcdb_make_add)
                         mcdb_make_add_h;
+HIDDEN extern __typeof (mcdb_make_addbegin)
+                        mcdb_make_addbegin_h;
+HIDDEN extern __typeof (mcdb_make_addbuf_data)
+                        mcdb_make_addbuf_data_h;
+HIDDEN extern __typeof (mcdb_make_addbuf_key)
+                        mcdb_make_addbuf_key_h;
+HIDDEN extern __typeof (mcdb_make_addend)
+                        mcdb_make_addend_h;
 #else
 #define mcdb_make_add_h                  mcdb_make_add
+#define mcdb_make_addbegin_h             mcdb_make_addbegin
+#define mcdb_make_addbuf_data_h          mcdb_make_addbuf_data
+#define mcdb_make_addbuf_key_h           mcdb_make_addbuf_key
+#define mcdb_make_addend_h               mcdb_make_addend
 #endif
 
 

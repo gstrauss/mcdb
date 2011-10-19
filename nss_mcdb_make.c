@@ -141,11 +141,11 @@ nss_mcdb_make_mcdbctl_write(struct nss_mcdb_make_winfo * const restrict w)
     /* write data record into mcdb if struct mcdb_make * is provided */
     struct nss_mcdb_make_wbuf * const restrict wbuf = &w->wbuf;
     struct mcdb_make * const restrict m = wbuf->m;
-    if (mcdb_make_addbegin(m, w->klen+1, w->dlen) == 0) {
-        mcdb_make_addbuf_key(m, &w->tagc, 1);
-        mcdb_make_addbuf_key(m, w->key, w->klen);
-        mcdb_make_addbuf_data(m, w->data, w->dlen);
-        mcdb_make_addend(m);
+    if (mcdb_make_addbegin_h(m, w->klen+1, w->dlen) == 0) {
+        mcdb_make_addbuf_key_h(m, &w->tagc, 1);
+        mcdb_make_addbuf_key_h(m, w->key, w->klen);
+        mcdb_make_addbuf_data_h(m, w->data, w->dlen);
+        mcdb_make_addend_h(m);
         return true;
     }
     return false;
