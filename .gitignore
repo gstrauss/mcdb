@@ -1,0 +1,9 @@
+*.a
+*.o
+*.so
+libnss_mcdb.so.2
+mcdbctl
+nss_mcdbctl
+t/testmcdbmake
+t/testmcdbrand
+t/testzero
