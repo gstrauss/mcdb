@@ -58,6 +58,8 @@ References
 ----------
   Dan Bernstein's (djb) reference implementation of cdb (public domain)
     http://cr.yp.to/cdb.html
+  Michael Tokarev's TinyCDB implementation of cdb (public domain)
+    http://www.corpit.ru/mjt/tinycdb.html
   How To Write Shared Libraries, by Ulrich Drepper
     http://www.akkadia.org/drepper/dsohowto.pdf
 
@@ -168,3 +170,19 @@ a program crash upon first access to slot and hash tables in mcdb.  Programs
 that pass an invalid file (not an mcdb) to mcdb_mmap_create() will likely crash
 upon first access into that invalid mcdb, unless the mcdb is first checked with
 a call to mcdb_validate_slots().
+
+mcdb unique keys
+----------------
+mcdb supports multi-valued keys, where the same key is in the mcdb more than
+once, each time with another value.  If there is a need to have unique keys in
+the mcdb, then mcdb creator has a few options: keep track of the keys already
+entered in the database and check before adding another, create a hash table of
+keys and then use that to create the mcdb, or post-process the mcdb.  The first
+two options work well for small mcdb, but might be expensive for large mcdb.
+mcdbctl provides an easy way to accomplish the third option, post-processing the
+mcdb.  Given an mcdb, mcdbctl uniq file.mcdb will create a new mcdb with unique
+keys, using the first key,value found for each key.  If the optional parameter
+"last" is given (mcdbctl uniq file.mcdb "last"), mcdbctl will do the same, but
+will use the last (final) value found for each key.  In both cases, a new mcdb
+is only created (and then renamed into the original mcdb) if a multi-valued key
+is detected in the original.

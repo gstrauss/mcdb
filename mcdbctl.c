@@ -47,6 +47,7 @@
 
 #include "mcdb.h"
 #include "mcdb_makefmt.h"
+#include "mcdb_makefn.h"
 #include "mcdb_error.h"
 #include "nointr.h"
 #include "uint32.h"
@@ -63,6 +64,19 @@
 #include <sys/uio.h> /* writev() */
 #include <libgen.h>  /* basename() */
 #include <limits.h>  /* SSIZE_MAX */
+
+
+/* macros to hint to release memory pages every 32 MB (1u << 25) */
+#define mcdb_madv_initmark(ptr) ((ptr) + (1u << 25))
+#define mcdb_madv_dontneed(ptr, mark)                                          \
+  do {                                                                         \
+    if (__builtin_expect( ((ptr) >= (mark)), 0)) {                             \
+      do {                                                                     \
+        posix_madvise((mark) - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);   \
+        (mark) += (1u << 25);                                                  \
+      } while (__builtin_expect( ((ptr) >= (mark)), 0));                       \
+    }                                                                          \
+  } while (0)
 
 static bool
 writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
@@ -101,7 +115,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     struct mcdb_iter iter;
     uint32_t klen;
     uint32_t dlen;
-    unsigned char *p = m->map->ptr + (1u << 25); /* add 32 MB */
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr);
     int    iovcnt = 0;
     size_t iovlen = 0;
     size_t buflen = 0;
@@ -115,13 +129,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     while (mcdb_iter(&iter)) {
 
-        /* hint to release memory pages every 32 MB */
-        if (__builtin_expect( (iter.ptr >= p), 0)) {
-            do {
-                posix_madvise(p - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
-                p += (1u << 25); /* add 32 MB */
-            } while (__builtin_expect( (iter.ptr >= p), 0));
-        }
+        mcdb_madv_dontneed(iter.ptr, mark);  /* hint to release memory pages */
 
         klen = mcdb_iter_keylen(&iter);
         dlen = mcdb_iter_datalen(&iter);
@@ -203,7 +211,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
     struct mcdb_iter iter;
     uintptr_t iter_dpos;
     char *k;
-    unsigned char *j = m->map->ptr + MCDB_HEADER_SZ + (1u << 25);/* add 32 MB */
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ);
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
@@ -216,7 +224,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
     while (mcdb_iter(&iter)) {
         /* Search for key,data and track number of tries before found.
          * Technically, passing m (which contains m->map->ptr) and an
-         * alias into the map (p+8) as key is in violation of C99 restrict
+         * alias into the map (k) as key is in violation of C99 restrict
          * pointers, but is inconsequential since it is all read-only */
         k = (char *)mcdb_iter_keyptr(&iter);
         iter_dpos = mcdb_iter_datapos(&iter);
@@ -227,13 +235,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
         if (!rc) return MCDB_ERROR_READFORMAT;
         ++numd[ ((m->loop < 11) ? m->loop - 1 : 10) ];
         ++nrec;
-        /* hint to release memory pages every 32 MB */
-        if (__builtin_expect( (iter.ptr >= j), 0)) {
-            do {
-                posix_madvise(j - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);
-                j += (1u << 25); /* add 32 MB */
-            } while (__builtin_expect( (iter.ptr >= j), 0));
-        }
+        mcdb_madv_dontneed(iter.ptr, mark);  /* hint to release memory pages */
     }
     printf("records %lu\n", nrec);
     for (rv = 0; rv < 10; ++rv)
@@ -309,11 +311,11 @@ mcdbctl_query(const int argc, char ** restrict argv)
     /* open mcdb */
     fd = nointr_open(argv[2], O_RDONLY, 0);  /* fname = argv[2] */
     if (fd == -1) return MCDB_ERROR_READ;
-    memset(&map, '\0', sizeof(map));
+    memset(&map, '\0', sizeof(map));  /*(init fn_free, fname)*/
     rv = mcdb_mmap_init(&map, fd);
     (void) nointr_close(fd);
     if (!rv) return MCDB_ERROR_READ;
-    memset(&m, '\0', sizeof(m));
+    memset(&m, '\0', sizeof(m));      /*(not strictly necessary)*/
     m.map = &map;
 
     /* run query */
@@ -359,8 +361,134 @@ mcdbctl_make(const int argc, char ** const restrict argv)
     return rv;
 }
 
+static int
+mcdbctl_has_unique_keys(struct mcdb * const restrict m)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+static int
+mcdbctl_has_unique_keys(struct mcdb * const restrict m)
+{
+    struct mcdb_iter iter;
+    char *k;
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ);
+    posix_madvise(m->map->ptr, m->map->size,
+                  POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+    if (!mcdb_validate_slots(m))
+        return MCDB_ERROR_READFORMAT;
+    mcdb_iter_init(&iter, m);
+    while (mcdb_iter(&iter)) {
+        /* Technically, passing m (which contains m->map->ptr) and an
+         * alias into the map (k) as key is in violation of C99 restrict
+         * pointers, but is inconsequential since it is all read-only */
+        k = (char *)mcdb_iter_keyptr(&iter);
+        if (mcdb_find(m, k, mcdb_iter_keylen(&iter))) {
+            if (mcdb_findnext(m, k, mcdb_iter_keylen(&iter)))
+                return false; /*keys not unique; bail on first dup encountered*/
+        }
+        else
+            return MCDB_ERROR_READFORMAT;
+        mcdb_madv_dontneed(iter.ptr, mark);  /* hint to release memory pages */
+    }
+    return true;  /*keys are unique in mcdb*/
+}
+
+static int
+mcdbctl_make_unique_keys(struct mcdb * const restrict m, const bool first)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+static int
+mcdbctl_make_unique_keys(struct mcdb * const restrict m, const bool first)
+{
+    struct mcdb_iter iter;
+    struct mcdb_make mk;
+    char *k, *data;
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ);
+    uint32_t dlen;
+    int rv = EXIT_SUCCESS;
+    posix_madvise(m->map->ptr, m->map->size,
+                  POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+    if (!mcdb_validate_slots(m))
+        return MCDB_ERROR_READFORMAT;
+    if (mcdb_makefn_start(&mk, m->map->fname, malloc, free) == 0
+        && mcdb_make_start(&mk, mk.fd, malloc, free) == 0) {
+        mcdb_iter_init(&iter, m);
+        while (mcdb_iter(&iter) && rv == EXIT_SUCCESS) {
+            /* Technically, passing m (which contains m->map->ptr) and an
+             * alias into the map (k) as key is in violation of C99 restrict
+             * pointers, but is inconsequential since it is all read-only */
+            data = (char *)mcdb_iter_dataptr(&iter);
+            dlen = mcdb_iter_datalen(&iter);
+            k = (char *)mcdb_iter_keyptr(&iter);
+            if (mcdb_find(m, k, mcdb_iter_keylen(&iter))) {
+                if (data == (char *)mcdb_dataptr(m)) { /*first value for key*/
+                    if (!first) {  /*!first: find last (final) value for key*/
+                        while (mcdb_findnext(m, k, mcdb_iter_keylen(&iter))) {
+                            data = (char *)mcdb_dataptr(m);
+                            dlen = mcdb_datalen(m);
+                        }
+                    }
+                    rv = mcdb_make_add_h(&mk, k, mcdb_iter_keylen(&iter),
+                                         data, dlen);
+                    if (__builtin_expect( (rv != 0), 0)) {
+                        rv = MCDB_ERROR_WRITE;
+                        break;
+                    }
+                }
+            }
+            else {
+                rv = MCDB_ERROR_READFORMAT;
+                break;
+            }
+            mcdb_madv_dontneed(iter.ptr, mark); /*hint to release memory pages*/
+        }
+        if (rv == EXIT_SUCCESS) {
+            if (mcdb_make_finish(&mk) != 0 || mcdb_makefn_finish(&mk,true) != 0)
+                rv = MCDB_ERROR_WRITE;
+        }
+    }
+    else
+        rv = MCDB_ERROR_WRITE;
+
+    mcdb_make_destroy(&mk);
+    mcdb_makefn_cleanup(&mk);
+    return rv;
+}
+
+static int
+mcdbctl_uniq(const int argc, char ** const restrict argv)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+static int
+mcdbctl_uniq(const int argc, char ** const restrict argv)
+{
+    /* assert(argc == 3 || argc == 4); */      /* must be checked by caller */
+    /* assert(0 == strcmp(argv[1], "uniq")); *//* must be checked by caller */
+    struct mcdb m;
+    int rv;
+    bool first = true;
+    if (argc == 4) {
+        if (0 == strcmp(argv[3], "first"))
+            first = true;
+        else if (0 == strcmp(argv[3], "last"))
+            first = false;
+        else
+            return MCDB_ERROR_USAGE;
+    }
+
+    m.map = mcdb_mmap_create(NULL,NULL,argv[2],malloc,free); /*fname=argv[2]*/
+    if (m.map == NULL)
+        return MCDB_ERROR_READ;
+
+    rv = mcdbctl_has_unique_keys(&m);
+    if (rv == true)
+        rv = EXIT_SUCCESS;
+    else if (rv == false)
+        rv = mcdbctl_make_unique_keys(&m, first);
+
+    mcdb_mmap_destroy(m.map);
+    return rv;
+}
+
 static const char * const restrict mcdb_usage =
    "mcdbctl make  <fname.mcdb> <datafile|->\n"
+   "         mcdbctl uniq  <fname.mcdb> [\"first\"|\"last\"]\n"
    "         mcdbctl dump  <fname.mcdb>\n"
    "         mcdbctl stats <fname.mcdb>\n"
    "         mcdbctl get   <fname.mcdb> <key> [seq]\n";
@@ -370,6 +498,7 @@ static const char * const restrict mcdb_usage =
  * mcdbctl dump  <mcdb>
  * mcdbctl stats <mcdb>
  * mcdbctl make  <mcdb> <input-file>
+ * mcdbctl uniq  <mcdb> ["first"|"last"]
  *
  * mcdbctl tools require mcdb filename be specified on the command line.
  * djb cdb tools take cdb on stdin, since able to mmap stdin backed by file.
@@ -377,9 +506,13 @@ static const char * const restrict mcdb_usage =
 int
 main(const int argc, char ** const restrict argv)
 {
-    const int rv = (argc == 4 && 0 == strcmp(argv[1], "make"))
-      ? mcdbctl_make(argc, argv)
-      : mcdbctl_query(argc, argv);
+    int rv;
+    if (argc == 4 && 0 == strcmp(argv[1], "make"))
+        rv = mcdbctl_make(argc, argv);
+    else if ((argc == 3 || argc == 4) && 0 == strcmp(argv[1], "uniq"))
+        rv = mcdbctl_uniq(argc, argv);
+    else
+        rv = mcdbctl_query(argc, argv);
 
     return rv == EXIT_SUCCESS
       ? EXIT_SUCCESS
