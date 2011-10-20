@@ -50,21 +50,21 @@ libnss_mcdb_make.a: nss_mcdb_make.o nss_mcdb_acct_make.o nss_mcdb_netdb_make.o
 	$(AR) -r $@ $^
 
 mcdbctl: mcdbctl.o libmcdb.a
-	$(CC) -o $@ $(LDFLAGS) $^
+	$(CC) -o $@ $(LDFLAGS) -Wl,-z,noexecstack $^
 
 t/%.o: CFLAGS+=-I$(CURDIR)
 
 t/testmcdbmake: t/testmcdbmake.o libmcdb.a
-	$(CC) -o $@ $(LDFLAGS) $^
+	$(CC) -o $@ $(LDFLAGS) -Wl,-z,noexecstack $^
 
 t/testmcdbrand: t/testmcdbrand.o libmcdb.a
-	$(CC) -o $@ $(LDFLAGS) $^
+	$(CC) -o $@ $(LDFLAGS) -Wl,-z,noexecstack $^
 
 t/testzero: t/testzero.o libmcdb.a
-	$(CC) -o $@ $(LDFLAGS) $^
+	$(CC) -o $@ $(LDFLAGS) -Wl,-z,noexecstack $^
 
 nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
-	$(CC) -o $@ $(LDFLAGS) $^
+	$(CC) -o $@ $(LDFLAGS) -Wl,-z,noexecstack $^
 
 # (update library atomically (important to avoid crashing running programs))
 # (could use /usr/bin/install if available)
