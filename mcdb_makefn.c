@@ -117,6 +117,11 @@ mcdb_makefn_finish (struct mcdb_make * const restrict m, const bool sync)
         && (m->fd = -2, rename(m->fntmp, m->fname) == 0) /*(fd=-2 flag closed)*/
       ? (m->fd = -1, EXIT_SUCCESS)
       : -1;
+    /* mcdb_makefn_cleanup() is not called unconditionally here since fsync
+     * may take a long time and contrib/python-mcdb/ releases a global lock
+     * around call to mcdb_makefn_finish().  However, Python global lock must
+     * be held when PyMem_Free() is called, and m->fn_free() is PyMem_Free(),
+     * so mcdb_makefn_cleanup() must not be called here */
 }
 
 int
