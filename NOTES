@@ -186,3 +186,18 @@ keys, using the first key,value found for each key.  If the optional parameter
 will use the last (final) value found for each key.  In both cases, a new mcdb
 is only created (and then renamed into the original mcdb) if a multi-valued key
 is detected in the original.
+
+mcdb limit of a billion keys (on that order of magnitude)
+----------------------------
+(See "Limitations" above)
+Just came across https://github.com/pcarrier/cdb64, which changes all structures
+in cdb to 64-bit, including the hash function, so that it can handle billions of
+keys.  By comparison, mcdb uses 32-bit structures in select places, and changes
+some 32-bit structures to 64-bit only when the data exceeds 4 GB.  Doing this
+in mcdb makes mcdb much smaller and faster than cdb64 in the vast majority of
+use cases.  However, if there is a need for billions of keys, then cdb64 might
+be considered, though at that point it is probably advisable to write custom
+code to handle the specific data set, including a replacement for the djb hash
+function.  (mcdb code could be easily tweaked to support 64-bit hslots and
+64-bit hash values, but the on-disk format would be incompatible with mcdb.)
+
