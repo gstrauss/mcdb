@@ -84,13 +84,13 @@ mcdb_make_destroy(struct mcdb_make * restrict)
 extern int
 mcdb_make_addbegin(struct mcdb_make * restrict, size_t, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-extern inline void
+extern void
 mcdb_make_addbuf_key(struct mcdb_make * restrict,const char * restrict,size_t)
   __attribute_nonnull__;
-extern inline void
+extern void
 mcdb_make_addbuf_data(struct mcdb_make * restrict,const char * restrict,size_t)
   __attribute_nonnull__;
-extern inline void
+extern void
 mcdb_make_addend(struct mcdb_make * restrict)
   __attribute_nonnull__;
 extern void
