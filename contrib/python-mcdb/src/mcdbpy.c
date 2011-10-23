@@ -171,8 +171,6 @@ struct mcdbpy {
     struct mcdbpy *origin;
     struct mcdb_iter iter;
     uint32_t itertype;
-    uint32_t findklen;            /* used by findnext() */
-    const unsigned char *findkey; /* used by findnext() */
 };
 
 staticforward PyTypeObject mcdbpy_Type;
@@ -204,19 +202,19 @@ mcdbpy_find(struct mcdbpy * const self, PyObject * const args)
     const char *key; uint32_t klen;
     return mcdbpy_PyObject_to_buf(args, &key, &klen)
       ? mcdb_find(&self->m, key, klen)
-          ? (self->findkey = mcdb_keyptr(&self->m, (self->findklen = klen)),
-             mcdbpy_read_data(&self->m))    /*save findkey for findnext()*/
-          : (self->findkey = NULL, mcdbpy_Py_None())
+          ? mcdbpy_read_data(&self->m)
+          : mcdbpy_Py_None()
       : NULL;
 }
 
 static PyObject *
 mcdbpy_findnext(struct mcdbpy * const self)
 {
-    return self->findkey != NULL
-      ? mcdb_findnext(&self->m, (const char *)self->findkey, self->findklen)
+    return self->m.loop != 0
+      ? mcdb_findnext(&self->m, (const char *)mcdb_keyptr(&self->m),
+                                              mcdb_keylen(&self->m))
           ? mcdbpy_read_data(&self->m)
-          : (self->findkey = NULL, mcdbpy_Py_None())
+          : mcdbpy_Py_None()
       : (PyErr_SetString(PyExc_TypeError, 
                          "findnext() called without first calling find()"),
          NULL);
@@ -256,10 +254,9 @@ mcdbpy_getseq(struct mcdbpy * const self, PyObject * const args)
         while ((r = mcdb_findnext(&self->m, key, klen)) && seq--)
             ;
 
-    return r             /*save keyptr in self->findkey for findnext()*/
-      ? (self->findkey = mcdb_keyptr(&self->m, (self->findklen = klen)),
-         mcdbpy_read_data(&self->m))
-      : (self->findkey = NULL, mcdbpy_Py_None());
+    return r
+      ? mcdbpy_read_data(&self->m)
+      : mcdbpy_Py_None();
 }
 
 static PyObject *
@@ -479,7 +476,7 @@ mcdbpy_init_obj(struct mcdbpy * const restrict self, PyObject * const fname)
     Py_INCREF(fname);
     self->fname   = fname;
     self->origin  = NULL;
-    self->findkey = NULL;
+    self->m.loop  = 0;
     /* (mcdb_mmap_create() is not wrapped in
      *  Py_BEGIN_ALLOW_THREADS/Py_END_ALLOW_THREADS
      *  since it uses PyMem_Malloc(), PyMem_Free()) */
@@ -509,7 +506,6 @@ mcdbpy_new(PyTypeObject * const type,
         self->fname   = NULL;
         self->m.map   = NULL;
         self->origin  = NULL;
-        self->findkey = NULL;
     }
     return (PyObject *)self;
 }

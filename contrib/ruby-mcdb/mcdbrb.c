@@ -128,12 +128,6 @@ mcdbrb_raise_error(const VALUE obj)
  * class MCDB
  */
 
-struct mcdbrb {
-    struct mcdb m;            /* must be first element for our implicit casts */
-    const unsigned char *findkey;  /* used by findnext() */
-    uint32_t findklen;             /* used by findnext() */
-};
-
 static VALUE
 mcdbrb_has_key (const VALUE obj, VALUE key)
 {
@@ -174,34 +168,25 @@ mcdbrb_findkey (const VALUE obj, VALUE v_key)
     /* mcdb 'find' is the traditional name, but Ruby Enumerable provides
      * a 'find' with different functionality (and different arguments),
      * so the interface to Ruby for the traditional mcdb find is 'findkey' */
-    struct mcdbrb * const restrict mrb =
-      (struct mcdbrb *)mcdbrb_Data_Cast_Struct(obj, struct mcdb); /*two casts*/
-    struct mcdb * const m = &mrb->m;
+    struct mcdb * const restrict m = mcdbrb_Data_Cast_Struct(obj, struct mcdb);
     const char *key; uint32_t klen;
     mcdbrb_convert_T_STRING(v_key);
     key  = RSTRING_PTR(v_key);
     klen = (uint32_t)RSTRING_LEN(v_key);
-    if (mcdb_find(m, key, klen)) {
-        mrb->findkey = mcdb_keyptr(m, (mrb->findklen = klen));
-        return mcdbrb_str_new(mcdb_dataptr(m), mcdb_datalen(m));
-    }
-    else {
-        mrb->findkey = NULL;
-        return Qnil;
-    }
+    return mcdb_find(m, key, klen)
+      ? mcdbrb_str_new(mcdb_dataptr(m), mcdb_datalen(m))
+      : Qnil;
 }
 
 static VALUE
 mcdbrb_findnext (const VALUE obj)
 {
-    struct mcdbrb * const restrict mrb =
-      (struct mcdbrb *)mcdbrb_Data_Cast_Struct(obj, struct mcdb); /*two casts*/
-    struct mcdb * const m = &mrb->m;
+    struct mcdb * const restrict m = mcdbrb_Data_Cast_Struct(obj, struct mcdb);
     mcdbrb_check_open(m);
-    return mrb->findkey
-      ? mcdb_findnext(m, (const char *)mrb->findkey, mrb->findklen)
+    return m->loop != 0
+      ? mcdb_findnext(m, (const char *)mcdb_keyptr(m), mcdb_keylen(m))
           ? mcdbrb_str_new(mcdb_dataptr(m), mcdb_datalen(m))
-          : (mrb->findkey = NULL, Qnil)
+          : Qnil
       : (rb_raise(rb_eArgError,
                   "findnext() called without first calling findkey()"), Qnil);
 }
@@ -226,9 +211,7 @@ static VALUE
 mcdbrb_getseq (const int argc, VALUE * const restrict argv, const VALUE obj)
 {
     const char *key; uint32_t klen; int seq = 0; bool r = false;
-    struct mcdbrb * const restrict mrb =
-      (struct mcdbrb *)mcdbrb_Data_Cast_Struct(obj, struct mcdb); /*two casts*/
-    struct mcdb * const m = &mrb->m;
+    struct mcdb * const restrict m = mcdbrb_Data_Cast_Struct(obj, struct mcdb);
     VALUE v_key, v_seq;
     if (argc == 1)
         seq = 0;
@@ -244,9 +227,8 @@ mcdbrb_getseq (const int argc, VALUE * const restrict argv, const VALUE obj)
             ;
     }
     return r
-      ? (mrb->findkey = mcdb_keyptr(m, (mrb->findklen = klen)),
-         mcdbrb_str_new(mcdb_dataptr(m), mcdb_datalen(m)))
-      : (mrb->findkey = NULL, Qnil);
+      ? mcdbrb_str_new(mcdb_dataptr(m), mcdb_datalen(m))
+      : Qnil;
 }
 
 static VALUE
@@ -573,26 +555,25 @@ mcdbrb_dtor (struct mcdb * const restrict m)
 static VALUE
 mcdbrb_open (const VALUE klass, VALUE fname)
 {
-    struct mcdbrb * restrict mrb;
+    struct mcdb * restrict m;
     char *fnptr;
     mcdbrb_convert_T_STRING(fname);
     if ((fnptr = RSTRING_PTR(fname))[RSTRING_LEN(fname)] != '\0') {
         StringValueCStr(fname);
         fnptr = RSTRING_PTR(fname);
     }
-    mrb = xmalloc(sizeof(struct mcdbrb));
-    if (mrb == NULL) rb_sys_fail(0);
-    mrb->findkey = NULL;
-    mrb->m.map = mcdb_mmap_create(NULL, NULL, fnptr,
-                                  (void *(*)(size_t))xmalloc, xfree);
-    if (mrb->m.map != NULL) {
-        const VALUE v = Data_Wrap_Struct(klass, 0, mcdbrb_dtor, mrb);
+    m = xmalloc(sizeof(struct mcdb));
+    if (m == NULL) rb_sys_fail(0);
+    m->loop = 0;
+    m->map = mcdb_mmap_create(NULL,NULL,fnptr,(void *(*)(size_t))xmalloc,xfree);
+    if (m->map != NULL) {
+        const VALUE v = Data_Wrap_Struct(klass, 0, mcdbrb_dtor, m);
         return rb_block_given_p()
           ? rb_ensure(rb_yield, v, mcdbrb_close, v)
           : v;
     }
     else {
-        mcdbrb_dtor((struct mcdb *)mrb);
+        mcdbrb_dtor(m);
         rb_sys_fail(0);
         return Qnil;
     }

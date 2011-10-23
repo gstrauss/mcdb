@@ -64,6 +64,7 @@ struct mcdb {
   uintptr_t hpos;  /* initialized if mcdb_findtagstart() returns true */
   uintptr_t dpos;  /* initialized if mcdb_findtagnext() returns true */
   uint32_t dlen;   /* initialized if mcdb_findtagnext() returns true */
+  uint32_t klen;   /* initialized if mcdb_findtagnext() returns true */
   uint32_t khash;  /* initialized by call to mcdb_findtagstart() */
 };
 
@@ -96,7 +97,8 @@ mcdb_validate_slots(struct mcdb * restrict)
 #define mcdb_datapos(m)      ((m)->dpos)
 #define mcdb_datalen(m)      ((m)->dlen)
 #define mcdb_dataptr(m)      ((m)->map->ptr+(m)->dpos)
-#define mcdb_keyptr(m,klen)  ((m)->map->ptr+(m)->dpos-(klen))
+#define mcdb_keyptr(m)       ((m)->map->ptr+(m)->dpos-(m)->klen)
+#define mcdb_keylen(m)       ((m)->klen)
 
 struct mcdb_iter {
   unsigned char *ptr;

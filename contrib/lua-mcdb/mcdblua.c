@@ -44,12 +44,6 @@ static GCObject *mcdblua_gcobj;
 
 #define MCDBLUA "mcdb"
 
-struct mcdblua {
-    struct mcdb m;            /* must be first element for our implicit casts */
-    const unsigned char *findkey;  /* used by findnext() */
-    uint32_t findklen;             /* used by findnext() */
-};
-
 static inline void *
 mcdblua_struct(lua_State * const restrict L)
 {
@@ -105,27 +99,21 @@ static int
 mcdblua_find(lua_State * const restrict L)
 {
     size_t klen;
-    struct mcdblua * const restrict mlua = mcdblua_struct(L);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     const char * const restrict k = luaL_checklstring(L, 2, &klen);
-    mlua->findkey = NULL;
-    if (mcdb_find(&mlua->m, k, klen)) {
-        mlua->findkey = mcdb_keyptr(&mlua->m, (mlua->findklen = klen));
-        lua_pushlstring(L, (char *)mcdb_dataptr(&mlua->m),
-                                   mcdb_datalen(&mlua->m));
-        return 1;
-    }
-    return 0;
+    return mcdb_find(m, k, klen)
+      ? (lua_pushlstring(L, (char *)mcdb_dataptr(m), mcdb_datalen(m)), 1)
+      : 0;
 }
 
 static int
 mcdblua_findnext(lua_State * const restrict L)
 {
-    struct mcdblua * const restrict mlua = mcdblua_struct(L);
-    struct mcdb * const m = &mlua->m;
-    return mlua->findkey
-      ? mcdb_findnext(m, (const char *)mlua->findkey, mlua->findklen)
+    struct mcdb * const restrict m = mcdblua_struct(L);
+    return m->loop != 0
+      ? mcdb_findnext(m, (const char *)mcdb_keyptr(m), mcdb_keylen(m))
           ? (lua_pushlstring(L, (char *)mcdb_dataptr(m), mcdb_datalen(m)), 1)
-          : (mlua->findkey = NULL, 0)
+          : 0
       : luaL_error(L, "findnext() called without first calling find()");
 }
 
@@ -150,22 +138,17 @@ static int
 mcdblua_getseq(lua_State * const restrict L)
 {
     size_t klen;
-    struct mcdblua * const restrict mlua = mcdblua_struct(L);
+    struct mcdb * const restrict m = mcdblua_struct(L);
     const char * const restrict k = luaL_checklstring(L, 2, &klen);
     int seq = luaL_optint(L, 3, 0);
-    bool rc;
-    if (mcdb_findstart(&mlua->m, k, klen)) {
-        while ((rc = mcdb_findnext(&mlua->m, k, klen)) && seq--)
+    bool rc = false;
+    if (mcdb_findstart(m, k, klen))
+        while ((rc = mcdb_findnext(m, k, klen)) && seq--)
             ;
-        if (rc) {
-            mlua->findkey = mcdb_keyptr(&mlua->m, (mlua->findklen = klen));
-            lua_pushlstring(L, (char *)mcdb_dataptr(&mlua->m),
-                                       mcdb_datalen(&mlua->m));
-            return 1;
-        }
-    }
-    mlua->findkey = NULL;
-    return 0;
+
+    return rc
+      ? (lua_pushlstring(L, (char *)mcdb_dataptr(m), mcdb_datalen(m)), 1)
+      : 0;
 }
 
 static int
@@ -333,10 +316,9 @@ mcdblua_init(lua_State * const restrict L)
     const char * const restrict fn = luaL_checkstring(L, 1);
     struct mcdb_mmap * restrict map;
     if ((map = mcdb_mmap_create(NULL, NULL, fn, malloc, free))) {
-        struct mcdblua * const restrict mlua = 
-          lua_newuserdata(L, sizeof(struct mcdblua));
-        mlua->m.map = map;
-        mlua->findkey = NULL;
+        struct mcdb * const restrict m = lua_newuserdata(L,sizeof(struct mcdb));
+        m->map = map;
+        m->loop = 0;
         luaL_getmetatable(L, MCDBLUA);
 
       #if 0  /* disable custom __index */

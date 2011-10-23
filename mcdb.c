@@ -104,6 +104,7 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     ptr = m->map->ptr + ((khash & MCDB_SLOT_MASK) << 4);
     m->hpos  = uint64_strunpack_bigendian_aligned_macro(ptr);
     m->hslots= uint32_strunpack_bigendian_aligned_macro(ptr+8);
+    m->loop  = 0;
     if (__builtin_expect((!m->hslots), 0))
         return false;
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
@@ -112,7 +113,6 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     __builtin_prefetch(ptr,0,2);    /*prefetch for mcdb_findtagnext()*/
     __builtin_prefetch(ptr+64,0,2); /*prefetch for mcdb_findtagnext()*/
     uint32_strpack_bigendian_aligned_macro(&m->khash, khash);/*store bigendian*/
-    m->loop  = 0;
     return true;
 }
 
@@ -125,7 +125,7 @@ mcdb_findtagnext(struct mcdb * const restrict m,
     const unsigned char * const restrict mptr = m->map->ptr;
     const uintptr_t hslots_end= m->hpos + (((uintptr_t)m->hslots) << m->map->b);
     uintptr_t vpos;
-    uint32_t khash, len;
+    uint32_t khash;
 
     if (m->map->b == 3) {
         while (m->loop < m->hslots) {
@@ -138,14 +138,14 @@ mcdb_findtagnext(struct mcdb * const restrict m,
             ptr  = mptr + vpos;
             __builtin_prefetch((char *)ptr, 0, 1);
             if (__builtin_expect((!vpos), 0))
-                return false;
+                break;
             ++m->loop;
             if (khash == m->khash) {
                 ptr = mptr + vpos + 8;
-                len = uint32_strunpack_bigendian_macro(ptr-8);
+                m->klen = uint32_strunpack_bigendian_macro(ptr-8);
                 m->dlen = uint32_strunpack_bigendian_macro(ptr-4);
-                m->dpos = vpos + 8 + len;
-                if (len == klen+(tagc!=0)
+                m->dpos = vpos + 8 + m->klen;
+                if (m->klen == klen+(tagc!=0)
                     && (tagc == 0 || tagc == *ptr++) && memcmp(key,ptr,klen)==0)
                     return true;
             }
@@ -157,15 +157,15 @@ mcdb_findtagnext(struct mcdb * const restrict m,
             m->kpos += 16;
             if (__builtin_expect((m->kpos == hslots_end), 0))
                 m->kpos = m->hpos;
-            khash= *(uint32_t *)ptr; /* m->khash stored bigendian */
-            len  = uint32_strunpack_bigendian_aligned_macro(ptr+4);
-            vpos = uint64_strunpack_bigendian_aligned_macro(ptr+8);
+            khash   = *(uint32_t *)ptr; /* m->khash stored bigendian */
+            m->klen = uint32_strunpack_bigendian_aligned_macro(ptr+4);
+            vpos    = uint64_strunpack_bigendian_aligned_macro(ptr+8);
             __builtin_prefetch((char *)mptr+vpos+4, 0, 1);
             if (__builtin_expect((!vpos), 0))
-                return false;
+                break;
             ++m->loop;
-            if (khash == m->khash && len == klen+(tagc!=0)) {
-                m->dpos = vpos + 8 + len;
+            if (khash == m->khash && m->klen == klen+(tagc!=0)) {
+                m->dpos = vpos + 8 + m->klen;
                 ptr = mptr + vpos + 8;
                 m->dlen = uint32_strunpack_bigendian_macro(ptr-4);
                 if ((tagc == 0 || tagc == *ptr++) && memcmp(key,ptr,klen) == 0)
@@ -173,7 +173,7 @@ mcdb_findtagnext(struct mcdb * const restrict m,
             }
         }
     }
-    return false;
+    return (m->loop = false);
 }
 
 /* read value from mmap const db into buffer and return pointer to buffer
