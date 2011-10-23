@@ -5,7 +5,7 @@ mcdb enhancements to cdb (on which mcdb is based; see References section below)
 - optimized for mmap access to constant db (and avoid double buffering)
 - redesigned for use in threaded programs (thread-safe interface available)
 - convenience routines to check for updated constant db and to refresh mmap
-- support cdb > 4 GB with 64-bit program (required to mmap() mcdb > 4 GB)
+- support mcdb > 4 GB with 64-bit program (required to mmap() mcdb > 4 GB)
 - 64-bit safe (for use in 64-bit programs)
 
 Advantages over external database
@@ -30,7 +30,7 @@ Incompatibilities with djb cdb
 - padding added at the end of key,value data to 16-byte align hash tables
   (incompatible with djb cdbdump)
 - initial table and hash tables have 8-byte values instead of 4-byte values
-  in order to support cdb > 4 GB.  cdb uses 24 bytes per record plus 2048,
+  in order to support mcdb > 4 GB.  cdb uses 24 bytes per record plus 2048,
   whereas mcdb uses 24 bytes per record plus 4096 when data section < 4 GB,
   and mcdb uses 40 bytes per record plus 4096 when data section >= 4 GB.
 - packing of integral lengths into char strings is done big-endian for
@@ -43,7 +43,7 @@ Incompatibilities with djb cdb
 Limitations
 - 2 billion keys
   As long as djb hash is 32-bit, mcdb_make.c limits number of hash keys to
-  2 billion.  cdb handles hash collisions, but there is a small expense each
+  2 billion.  mcdb handles hash collisions, but there is a small expense each
   collision.  As the key space becomes denser within the 2 billion, there is
   greater chance of collisions.  Input strings also affect this probability,
   as do the sizes of the hash tables.

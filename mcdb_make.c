@@ -37,7 +37,7 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
-/* large file support needed for mmap() offset,ftruncate() on cdb > 2 GB */
+/* large file support needed for mmap() offset,ftruncate() on mcdb > 2 GB */
 #if defined(_AIX)
 #ifndef _LARGE_FILES
 #define _LARGE_FILES

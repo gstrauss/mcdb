@@ -228,6 +228,7 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
 
 
 #if 0  /* implemented, but not enabling by default; often used only with NIS+ */
+       /* Note: setnetgrent(const char *netgroup) is not implemented properly */
 
 void _nss_mcdb_setnetgrent(void) { nss_mcdb_setent(NSS_DBTYPE_NETGROUP);  }
 void _nss_mcdb_endnetgrent(void) { nss_mcdb_endent(NSS_DBTYPE_NETGROUP);  }
@@ -256,6 +257,9 @@ _nss_mcdb_getnetgrent_r(char ** const restrict host,
         *host   = buf;
         *user   = (char *)memchr(buf,   '\0', bufsz) + 1;
         *domain = (char *)memchr(*user, '\0', bufsz - (*user - buf)) + 1;
+        if (!**host)   *host   = NULL;
+        if (!**user)   *user   = NULL;
+        if (!**domain) *domain = NULL;
     }
     return status;
 }

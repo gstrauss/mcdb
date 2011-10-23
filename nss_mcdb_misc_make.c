@@ -61,7 +61,7 @@ nss_mcdb_misc_make_aliasent_datastr(char * restrict buf, const size_t bufsz,
 	    && __builtin_expect((ae_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** ae_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
-	     *  entries at cdb create time rather than in query at runtime) */
+	     *  entries at mcdb create time rather than in query at runtime) */
 
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */

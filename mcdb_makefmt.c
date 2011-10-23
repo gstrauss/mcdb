@@ -340,7 +340,7 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
         || ((x = mmap(0,st.st_size,PROT_READ,MAP_SHARED,fd,0)) == MAP_FAILED))
         errsave = errno;
 
-    /* close fd after mmap (no longer needed),check mmap succeeded,create cdb */
+    /* close fd after mmap (no longer needed),check mmap succeeded,create mcdb*/
     if (nointr_close(fd) == 0 && x != MAP_FAILED) {
         posix_madvise(x, st.st_size, POSIX_MADV_SEQUENTIAL|POSIX_MADV_WILLNEED);
         /* pass entire map and size as params; fd -1 elides read()/remaps */

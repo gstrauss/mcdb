@@ -418,7 +418,7 @@ nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
 	    && __builtin_expect((gr_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** gr_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
-	     *  entries at cdb create time rather than in query at runtime) */
+	     *  entries at mcdb create time rather than in query at runtime) */
 
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */

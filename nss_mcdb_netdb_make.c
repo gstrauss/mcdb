@@ -95,7 +95,7 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
                                 <= bufsz-dlen, 1)) {
 	    /* verify space in string for (2) 8-aligned char ** array + NULL
 	     * (not strictly necessary, but best to catch excessively long
-	     *  entries at cdb create time rather than in query at runtime) */
+	     *  entries at mcdb create time rather than in query at runtime) */
 
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
@@ -136,7 +136,7 @@ nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 	    && __builtin_expect((ne_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** ne_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
-	     *  entries at cdb create time rather than in query at runtime) */
+	     *  entries at mcdb create time rather than in query at runtime) */
 
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
@@ -175,7 +175,7 @@ nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 	    && __builtin_expect((pe_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** pe_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
-	     *  entries at cdb create time rather than in query at runtime) */
+	     *  entries at mcdb create time rather than in query at runtime) */
 
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
@@ -214,7 +214,7 @@ nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
 	    && __builtin_expect((re_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** re_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
-	     *  entries at cdb create time rather than in query at runtime) */
+	     *  entries at mcdb create time rather than in query at runtime) */
 
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
@@ -255,7 +255,7 @@ nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 	    && __builtin_expect((se_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
 	    /* verify space in string for 8-aligned char ** se_mem array + NULL
 	     * (not strictly necessary, but best to catch excessively long
-	     *  entries at cdb create time rather than in query at runtime) */
+	     *  entries at mcdb create time rather than in query at runtime) */
 
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
