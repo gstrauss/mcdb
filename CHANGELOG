@@ -1,5 +1,17 @@
 mcdb change log
 
+mcdb v0.03 (2011.10.23)
+- extend struct mcdb to store klen, and vp (void *) for user extension data
+  Note: struct change is incompatible with prior releases;
+        do not mix code built against multiple versions of mcdb.h
+- mcdb - add some sanity checks to attempt to detect incorrect API use
+- mcdb_make - reliably detect No space left on device
+- mcdbctl uniq - mode to remake mcdb with unique keys
+- contrib/lua-mcdb    extension for Lua
+- contrib/ruby-mcdb   extension for Ruby
+- compiler and linker flags to optimize DSO (.so)
+- build and test contrib/* extensions against static libmcdb.a
+
 mcdb v0.02 (2011.09.23)
 - mcdb_iter iterator interface
 - mcdb_make - ~10% faster writing large mcdb on multi-core 64-bit
