@@ -66,6 +66,8 @@ struct mcdb {
   uint32_t dlen;   /* initialized if mcdb_findtagnext() returns true */
   uint32_t klen;   /* initialized if mcdb_findtagnext() returns true */
   uint32_t khash;  /* initialized by call to mcdb_findtagstart() */
+  uint32_t pad0;   /* padding */
+  void *vp;        /* user-provided extension data */
 };
 
 extern bool
