@@ -132,13 +132,10 @@ uint32_hash_djb(uint32_t, const void *, size_t)
 uint32_t  C99INLINE
 uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
 {
-    /* TODO: test if better code is generated with:
-     *    while (sz--) h = (h + (h << 5)) ^ *buf++; */
-    /* Note: if size_t is signed type, then overflow is undefined behavior */
-    const unsigned char * const restrict buf = (const unsigned char *)vbuf;
-    size_t i = SIZE_MAX;  /* (size_t)-1; will wrap around to 0 with first ++i */
-    while (++i < sz)
-        h = (h + (h << 5)) ^ buf[i];
+    const unsigned char * restrict buf = (const unsigned char *)vbuf;
+    const unsigned char * const e = (const unsigned char *)vbuf + sz;
+    for (; __builtin_expect( (buf < e), 1); ++buf)
+        h = uint32_hash_djb_uchar(h,*buf);
     return h;
 }
 #endif
