@@ -2,7 +2,6 @@ MCDB_File.pm
 MCDB_File.xs
 COPYRIGHT
 ChangeLog
-INSTALL
 MANIFEST
 Makefile.PL
 README
