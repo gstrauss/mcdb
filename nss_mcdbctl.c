@@ -202,8 +202,12 @@ int main(void)
         /* preserve permission modes if previous mcdb exists; else read-only
          * (since mcdb is *constant* -- not modified -- after creation) */
         rc = false;
-        if (stat(fdb[i].file, &st) != 0)
-            break;
+        if (stat(fdb[i].file, &st) != 0) {
+            if (errno == ENOENT)
+                continue; /* skip dbs that do not exist; leave existing mcdb */
+            else
+                break;
+        }
         mtime = st.st_mtime;
         if (stat(fdb[i].mcdbfile, &st) != 0) {
             st.st_mtime = 0;
