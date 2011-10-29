@@ -1,12 +1,32 @@
+# mcdb
 
 .PHONY: all
 all: mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero \
      libmcdb.so libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
 
+PREFIX?=/usr/local
+ifneq (,$(PREFIX))
+PREFIX_USR?=$(PREFIX)
+else
+PREFIX_USR?=/usr
+endif
+
+ifeq (i686,$(TARGET_CPU))
+  CFLAGS+=-m32
+  LDFLAGS+=-m32
+endif
+ifeq (x86_64,$(TARGET_CPU))
+  ABI_BITS=64
+  CFLAGS+=-m64
+  LDFLAGS+=-m64
+endif
+
+ifeq (,$(TARGET_CPU))
 _HAS_LIB64:=$(wildcard /lib64)
 ifneq (,$(_HAS_LIB64))
   ABI_BITS=64
   ABI_FLAGS=-m64
+endif
 endif
 
 CC=gcc -pipe
@@ -22,6 +42,9 @@ _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
+
+nss_mcdb.o:       CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
+lib32/nss_mcdb.o: CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
 
 PIC_OBJS:= mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
            nointr.o uint32.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_netdb.o
@@ -66,38 +89,60 @@ t/testzero: t/testzero.o libmcdb.a
 nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 	$(CC) -o $@ $(LDFLAGS) -Wl,-z,noexecstack $^
 
+$(PREFIX)/lib$(ABI_BITS) $(PREFIX)/sbin:
+	/bin/mkdir -p -m 0755 $@
+ifneq (,$(ABI_BITS))
+$(PREFIX)/lib $(PREFIX_USR)/lib:
+	/bin/mkdir -p -m 0755 $@
+endif
+ifneq ($(PREFIX_USR),$(PREFIX))
+$(PREFIX_USR)/lib$(ABI_BITS) $(PREFIX_USR)/bin:
+	/bin/mkdir -p -m 0755 $@
+$(PREFIX_USR)/lib$(ABI_BITS)/libnss_mcdb.so.2: \
+  $(PREFIX)/lib$(ABI_BITS)/libnss_mcdb.so.2 $(PREFIX_USR)/lib$(ABI_BITS)
+	[ -L $@ ] || /bin/ln -s ../../lib/$(<F) $@
+endif
+
 # (update library atomically (important to avoid crashing running programs))
 # (could use /usr/bin/install if available)
-/lib$(ABI_BITS)/libnss_mcdb.so.2: libnss_mcdb.so.2
+$(PREFIX)/lib$(ABI_BITS)/libnss_mcdb.so.2: libnss_mcdb.so.2 \
+                                           $(PREFIX)/lib$(ABI_BITS)
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-/usr/lib$(ABI_BITS)/libnss_mcdb.so.2: /lib$(ABI_BITS)/libnss_mcdb.so.2
-	[ -L $@ ] || /bin/ln -s $< $@
-
-/usr/lib$(ABI_BITS)/libmcdb.so: libmcdb.so
+$(PREFIX_USR)/lib$(ABI_BITS)/libmcdb.so: libmcdb.so \
+                                         $(PREFIX_USR)/lib$(ABI_BITS)
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-/bin/mcdbctl: mcdbctl
+$(PREFIX_USR)/bin/mcdbctl: mcdbctl $(PREFIX_USR)/bin
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-/bin/nss_mcdbctl: nss_mcdbctl
+$(PREFIX)/sbin/nss_mcdbctl: nss_mcdbctl $(PREFIX)/sbin
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-.PHONY: install-headers install
+.PHONY: install-headers install install-doc
 install-headers: mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h mcdb_makefn.h \
                  code_attributes.h nointr.h uint32.h
-	/bin/mkdir -p -m 0755 /usr/include/mcdb
-	umask 333; /bin/cp -f --preserve=timestamps $^ /usr/include/mcdb/
-install: /lib$(ABI_BITS)/libnss_mcdb.so.2 /usr/lib$(ABI_BITS)/libnss_mcdb.so.2 \
-         /usr/lib$(ABI_BITS)/libmcdb.so /bin/mcdbctl /bin/nss_mcdbctl \
+	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb
+	umask 333; \
+	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/
+install-doc: CHANGELOG COPYING FAQ INSTALL NOTES README
+	/bin/mkdir -p -m 0755 $(PREFIX_USR)/share/doc/mcdb
+	umask 333; \
+	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/share/doc/mcdb
+install: $(PREFIX)/lib$(ABI_BITS)/libnss_mcdb.so.2 \
+         $(PREFIX_USR)/lib$(ABI_BITS)/libnss_mcdb.so.2 \
+         $(PREFIX_USR)/lib$(ABI_BITS)/libmcdb.so \
+         $(PREFIX_USR)/bin/mcdbctl $(PREFIX)/sbin/nss_mcdbctl \
          install-headers
+	/bin/mkdir -p -m 0755 $(PREFIX)/etc/mcdb
 
 
 # also create 32-bit libraries for /lib on systems with /lib and /lib64
+ifeq (,$(TARGET_CPU))
 ifneq (,$(_HAS_LIB64))
 ifneq (,$(ABI_BITS))
 ifeq (,$(wildcard lib32))
@@ -124,20 +169,25 @@ lib32/libmcdb.so: $(addprefix lib32/, \
           $(LDFLAGS) \
           $^
 
-/lib/libnss_mcdb.so.2: lib32/libnss_mcdb.so.2
+ifneq ($(PREFIX_USR),$(PREFIX))
+$(PREFIX_USR)/lib/libnss_mcdb.so.2: $(PREFIX)/lib/libnss_mcdb.so.2 \
+                                    $(PREFIX_USR)/lib
+	[ -L $@ ] || /bin/ln -s ../../lib/$(<F) $@
+endif
+
+$(PREFIX)/lib/libnss_mcdb.so.2: lib32/libnss_mcdb.so.2 $(PREFIX)/lib
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-/usr/lib/libnss_mcdb.so.2: /lib/libnss_mcdb.so.2
-	[ -L $@ ] || /bin/ln -s $< $@
-
-/usr/lib/libmcdb.so: lib32/libmcdb.so
+$(PREFIX_USR)/lib/libmcdb.so: lib32/libmcdb.so $(PREFIX_USR)/lib
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
 all: lib32/libnss_mcdb.so.2
 
-install: /lib/libnss_mcdb.so.2 /usr/lib/libnss_mcdb.so.2 /usr/lib/libmcdb.so
+install: $(PREFIX)/lib/libnss_mcdb.so.2 $(PREFIX_USR)/lib/libnss_mcdb.so.2 \
+         $(PREFIX_USR)/lib/libmcdb.so
+endif
 endif
 endif
 
@@ -154,9 +204,14 @@ test: mcdbctl t/testzero
 	$(RM) -r t/scratch
 
 
+usr_bin_id:=$(wildcard /usr/xpg4/bin/id)
+ifeq (,$(usr_bin_id))
+usr_bin_id:=/usr/bin/id
+endif
+
 .PHONY: clean
 clean:
-	! [ "$$(/usr/bin/id -u)" = "0" ]
+	! [ "$$($(usr_bin_id) -u)" = "0" ]
 	$(RM) *.o t/*.o
 	$(RM) -r lib32
 	$(RM) libmcdb.a libnss_mcdb.a libnss_mcdb_make.a

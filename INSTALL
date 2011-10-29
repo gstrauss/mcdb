@@ -1,9 +1,10 @@
 mcdb installation
 
-  $ make
-  $ make install
+  $ make PREFIX=
+  $ make install PREFIX=
   $ make test
 
+(Install defaults to under PREFIX=/usr/local if PREFIX= is not specified)
 
 Using mcdb for nsswitch databases: (optional)
 
@@ -24,6 +25,11 @@ Using mcdb for nsswitch databases: (optional)
   $ getent group root
   root:x:0:root
 
+On systems that can run both 32-bit and 64-bit executables, it is important
+to install both 32-bit and 64-bit libnss_mcdb.so.2 libraries.  This is done
+by default with 'make install', but if installing RPMs on a multilib system,
+then two sets of RPMs need to be installed, e.g. mcdb-libs for x86_64 and i686.
+
 Please note that changes to any databases require re-running nss_mcdbctl.
 While I have been running the above configuration on my laptop for > 1 year,
 nss_mcdbctl still needs to be run for changes made by other users to passwd,
@@ -38,3 +44,23 @@ You may choose to disable nscd and test if performance increases.
 
 See NOTES for more technical (and probably less readable) details and features.
 See Makefile for various overrides, such as alternate installation location.
+
+
+Building an RPM
+  ##(fill in correct version)
+  $ version=0.03
+  ##(set up RPM build environment, if not already configured)
+  $ echo %_topdir $HOME/rpm >> $HOME/.rpmmacros
+  $ cd $HOME && mkdir -p rpm/BUILD rpm/RPMS rpm/SOURCES rpm/SPECS rpm/SRPMS
+  ##(begin with mcdb-$version.tar.gz) or create tarball from source
+  $ rsync -avu --exclude=.git --delete /path/to/mcdb/ mcdb-$version
+  $ tar cvzf mcdb-$version.tar.gz mcdb-$version
+  $ rpmbuild -tb mcdb-$version.tar.gz
+  ##(multilib platforms need both 32-bit and 64-bit mcdb-libs RPM for nss_mcdb)
+  #$rpmbuild -tb mcdb-$version.tar.gz --target=i686
+  #$rpmbuild -tb mcdb-$version.tar.gz --target=x86_64
+  ##(RPM for binary install now located in rpm/RPMS/<arch>/mcdb-$version-*.rpm)
+  $ rpm -Uvh rpm/RPMS/*/mcdb-$version-*.rpm
+  ##(some clean up)
+  $ rm -rf mcdb-$version
+  $ rm -f mcdb-$version.tar.gz
