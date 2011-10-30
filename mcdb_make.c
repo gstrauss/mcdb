@@ -312,7 +312,8 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
                    fn_malloc(sizeof(struct mcdb_hplist) * MCDB_SLOTS);
     memset(m->count, 0, MCDB_SLOTS * sizeof(uint32_t));
     /* do not modify m->fname, m->fntmp, m->st_mode; may already have been set*/
-    if (m->head[0] != NULL && mcdb_mmap_upsize(m, MCDB_MMAP_SZ)) {
+    /* (defer mcdb_mmap_upsize() if fd==-1 to allow caller to set custom map) */
+    if (m->head[0] != NULL && (fd == -1 || mcdb_mmap_upsize(m, MCDB_MMAP_SZ))) {
         for (uint32_t u = 0; u < MCDB_SLOTS; ++u) {
             m->head[u] = m->head[0]+u;
             m->head[u]->num  = 0;

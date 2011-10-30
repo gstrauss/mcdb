@@ -139,11 +139,30 @@ filesystem.  Then, caller must create mmap large enough for all keys and data
   /* preallocated mcdb mmap to proper full size; (msz+15) & ~15 for alignment */
   msz = (MCDB_HEADER_SZ + nkeys*8 + total_klen + total_dlen + 15) & ~15;
   msz+= (msz < UINT_MAX ? nkeys*16 : nkeys*32);
-  m.fsz = m.msz = (msz = (msz + ~m.pgalign) & m.pgalign); /*align to page size*/
+  m.msz = (msz = (msz + ~m.pgalign) & m.pgalign); /*align to page size*/
+  /*(mmap or malloc or other mem alloc scheme, but must be sufficiently sized)*/
   m.map = (char *)mmap(0, msz, PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
   if (m.map == MAP_FAILED) return false;
   /* ... loop and mcdb_make_add(), then mcdb_make_finish() */
   /* ... when finished using the mmap, then munmap(m.map, m.msz) */
+If caller is keeping track of size using the formula above, then caller could
+resize the map, copy the existing data ([0,m.pos)) and set new m.map and m.msz.
+Either way, this technique could be used to create an mcdb, which is then added
+as a value to a larger mcdb (an mcdb where the values are also mcdbs).  Upon
+retrieving such a value, code could manually initialize struct mcdb_mmap and
+then query it, though take care not to destroy or reopen it since the mcdb will
+not be backed by the filesystem.  Initializing struct mcdb_mmap after querying
+an example larger_mcdb:
+  struct mcdb m;
+  struct mcdb_mmap map;
+  memset(&map, '\0', sizeof(struct mcdb_mmap));
+  map.ptr  = mcdb_dataptr(larger_mcdb);
+  map.size = mcdb_datalen(larger_mcdb);
+  map->b   = map.size < UINT_MAX || *(uint32_t *)map.ptr == 0 ? 3 : 4;
+  map->n   = ~0;
+  m.map = &map;
+  /* ... mcdb_find(&m, str, len) ... */
+
 
 compiler intrinsics/builtins not (yet) tested on all platforms
 --------------------------------------------------------------
