@@ -168,6 +168,9 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
     const size_t offset = m->pos & m->pgalign; /* mmap offset must be aligned */
     size_t msz;
 
+    /*(caller should check size and not call upsize unless resize needed)*/
+    /*(avoid overhead of less-frequently called subroutine; marked noinline)*/
+
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
     /* limit max size of mcdb to (4 GB - pagesize) */
     if (sz > (UINT_MAX & m->pgalign)) { errno = EOVERFLOW; return false; }
@@ -219,7 +222,7 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     char *p;
     const size_t pos = m->pos;
     const size_t len = 8 + keylen + datalen;/* arbitrary ~2 GB limit for lens */
-    if (m->map == MAP_FAILED)                 return mcdb_make_err(NULL,EPERM);
+    if (m->map == MAP_FAILED && m->fd != -1)  return mcdb_make_err(NULL,EPERM);
     if (m->hp.l== ~0 && !mcdb_hplist_alloc(m))return mcdb_make_err(NULL,errno);
     m->hp.p = pos;
     m->hp.h = UINT32_HASH_DJB_INIT;

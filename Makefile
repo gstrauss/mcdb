@@ -31,7 +31,7 @@ endif
 
 CC=gcc -pipe
 CFLAGS+=$(ABI_FLAGS) -Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3
-CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector
+CFLAGS+=-g -D_FORTIFY_SOURCE=2 -fstack-protector
 LDFLAGS+=-Wl,-O,1 -Wl,--hash-style,gnu -Wl,-z,relro,-z,now $(ABI_FLAGS)
 # To disable uint32 and nointr C99 inline functions:
 #   -DNO_C99INLINE
