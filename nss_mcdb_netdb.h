@@ -78,15 +78,15 @@ enum {
 
 #include <netdb.h>
 
-void _nss_mcdb_sethostent(void);
+void _nss_mcdb_sethostent(int);
 void _nss_mcdb_endhostent(void);
-void _nss_mcdb_setnetent(void);
+void _nss_mcdb_setnetent(int);
 void _nss_mcdb_endnetent(void);
-void _nss_mcdb_setprotoent(void);
+void _nss_mcdb_setprotoent(int);
 void _nss_mcdb_endprotoent(void);
-void _nss_mcdb_setrpcent(void);
+void _nss_mcdb_setrpcent(int);
 void _nss_mcdb_endrpcent(void);
-void _nss_mcdb_setservent(void);
+void _nss_mcdb_setservent(int);
 void _nss_mcdb_endservent(void);
 
 nss_status_t
@@ -114,7 +114,8 @@ _nss_mcdb_gethostbyaddr_r(const void * restrict, socklen_t, int,
 
 #if 0  /* implemented, but not enabling by default; often used only with NIS+ */
 
-void _nss_mcdb_setnetgrent(void);
+int _nss_mcdb_setnetgrent(const char * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 void _nss_mcdb_endnetgrent(void);
 
 nss_status_t

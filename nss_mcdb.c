@@ -214,7 +214,8 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
 }
 
 INTERNAL nss_status_t  __attribute_noinline__ /*(skip _nss_mcdb_getent inline)*/
-nss_mcdb_setent(const enum nss_dbtype dbtype)
+nss_mcdb_setent(const enum nss_dbtype dbtype,
+                const int stayopen  __attribute_unused__)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     const enum mcdb_flags mcdb_flags = MCDB_REGISTER_USE_INCR;
@@ -245,9 +246,9 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
                 const struct nss_mcdb_vinfo * const restrict v)
 {
     struct mcdb_iter iter;
-    struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
+    struct mcdb * const m = &_nss_mcdb_st[dbtype];
     if (__builtin_expect(m->map == NULL, false)
-        && nss_mcdb_setent(dbtype) != NSS_STATUS_SUCCESS) {
+        && nss_mcdb_setent(dbtype,0) != NSS_STATUS_SUCCESS) {
         *v->errnop = errno;
         return NSS_STATUS_UNAVAIL;
     }
@@ -266,6 +267,48 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
     *v->errnop = errno = ENOENT;
     return NSS_STATUS_NOTFOUND;
 }
+
+#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
+INTERNAL nss_status_t
+nss_mcdb_getentstart(const enum nss_dbtype dbtype,
+                     const struct nss_mcdb_vinfo * const restrict v)
+{
+    struct mcdb * const m = &_nss_mcdb_st[dbtype];
+    if (__builtin_expect( nss_mcdb_setent(dbtype,0) != NSS_STATUS_SUCCESS, 0)) {
+        *v->errnop = errno;
+        return NSS_STATUS_UNAVAIL;
+    }
+    /* query for key; subsequent calls to nss_mcdb_getentnext() reuse keyptr */
+    if (  __builtin_expect( mcdb_findtagstart_h(m,v->key,v->klen,v->tagc), 1)
+        && __builtin_expect( mcdb_findtagnext_h(m,v->key,v->klen,v->tagc), 1))
+        return NSS_STATUS_SUCCESS;
+    *v->errnop = errno = ENOENT;
+    return NSS_STATUS_NOTFOUND;
+}
+
+INTERNAL nss_status_t
+nss_mcdb_getentnext(const enum nss_dbtype dbtype,
+                    const struct nss_mcdb_vinfo * const restrict v)
+{
+    struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
+    if (__builtin_expect(m->map == NULL, false)) { /* db must already be open */
+        *v->errnop = errno;
+        return NSS_STATUS_UNAVAIL;
+    }
+    if (m->loop != 0) {                   /* prior search must have succeeded */
+        nss_status_t status = v->decode(m, v); /* decode previous found entry */
+        if (status != NSS_STATUS_SUCCESS)
+            return status;
+        /*(safe to use keyptr since mcdb is held open during getent iteration)*/
+        status = mcdb_findtagnext_h(m, (char *)mcdb_keyptr(m),
+                                               mcdb_keylen(m), v->tagc);
+        /*(ignore status until next call; m->loop == 0 if not found)*/
+        return NSS_STATUS_SUCCESS;
+    }
+    *v->errnop = errno = ENOENT;
+    return NSS_STATUS_NOTFOUND;
+}
+#endif
 
 INTERNAL nss_status_t
 nss_mcdb_get_generic(const enum nss_dbtype dbtype,

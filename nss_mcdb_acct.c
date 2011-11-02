@@ -61,12 +61,12 @@ nss_mcdb_acct_spwd_decode(struct mcdb * restrict,
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
-void _nss_mcdb_setpwent(void) { nss_mcdb_setent(NSS_DBTYPE_PASSWD); }
-void _nss_mcdb_endpwent(void) { nss_mcdb_endent(NSS_DBTYPE_PASSWD); }
-void _nss_mcdb_setgrent(void) { nss_mcdb_setent(NSS_DBTYPE_GROUP);  }
-void _nss_mcdb_endgrent(void) { nss_mcdb_endent(NSS_DBTYPE_GROUP);  }
-void _nss_mcdb_setspent(void) { nss_mcdb_setent(NSS_DBTYPE_SHADOW); }
-void _nss_mcdb_endspent(void) { nss_mcdb_endent(NSS_DBTYPE_SHADOW); }
+void _nss_mcdb_setpwent(void) { nss_mcdb_setent(NSS_DBTYPE_PASSWD,0); }
+void _nss_mcdb_endpwent(void) { nss_mcdb_endent(NSS_DBTYPE_PASSWD);   }
+void _nss_mcdb_setgrent(void) { nss_mcdb_setent(NSS_DBTYPE_GROUP,0);  }
+void _nss_mcdb_endgrent(void) { nss_mcdb_endent(NSS_DBTYPE_GROUP);    }
+void _nss_mcdb_setspent(void) { nss_mcdb_setent(NSS_DBTYPE_SHADOW,0); }
+void _nss_mcdb_endspent(void) { nss_mcdb_endent(NSS_DBTYPE_SHADOW);   }
 
 
 nss_status_t

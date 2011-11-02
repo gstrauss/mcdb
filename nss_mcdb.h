@@ -25,17 +25,44 @@
 #include "mcdb.h"
 #include "code_attributes.h"
 
-#ifdef __linux
-#include <nss.h>    /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
-typedef enum nss_status nss_status_t;
+#if defined(__linux)
+  #include <nss.h>   /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
+  typedef enum nss_status nss_status_t;
+#elif defined(__sun) || defined(__hpux)
+  #ifdef __sun
+    #include <nss_common.h> /* NSS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
+    #include <nss_dbdefs.h>
+  #endif
+  #ifdef __hpux
+    #include <nsswitch/hp_nss_common.h>
+    #include <nsswitch/hp_nss_dbdefs.h>
+  #endif
+  #define NSS_STATUS_SUCCESS  NSS_SUCCESS
+  #define NSS_STATUS_NOTFOUND NSS_NOTFOUND
+  #define NSS_STATUS_TRYAGAIN NSS_TRYAGAIN
+  #define NSS_STATUS_UNAVAIL  NSS_UNAVAIL
+  #define NSS_STATUS_RETURN   NSS_NOTFOUND
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+  #include <nsswitch.h>
+  typedef enum nss_status {
+    NSS_STATUS_TRYAGAIN = NS_TRYAGAIN,
+    NSS_STATUS_UNAVAIL  = NS_UNAVAIL,
+    NSS_STATUS_NOTFOUND = NS_NOTFOUND,
+    NSS_STATUS_SUCCESS  = NS_SUCCESS,
+    NSS_STATUS_RETURN   = NS_RETURN
+  } nss_status_t;
+  /* TODO: FreeBSD: create wrapper interfaces that catch return value
+   * and translate NSS_STATUS_TRYAGAIN to NS_RETURN when errno == ERANGE
+   * See FreeBSD /usr/include/nss.h: __nss_compat_result(rv, err)
+   * Register the wrapper interfaces with FreeBSD nss_module_register(). */
 #else
-#include <nss_common.h> /* NSS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
-#include <nss_dbdefs.h>
-#define NSS_STATUS_SUCCESS  NSS_SUCCESS
-#define NSS_STATUS_NOTFOUND NSS_NOTFOUND
-#define NSS_STATUS_TRYAGAIN NSS_TRYAGAIN
-#define NSS_STATUS_UNAVAIL  NSS_UNAVAIL
-#define NSS_STATUS_RETURN   NSS_NOTFOUND
+  typedef enum nss_status {
+    NSS_STATUS_TRYAGAIN = -2,
+    NSS_STATUS_UNAVAIL  = -1,
+    NSS_STATUS_NOTFOUND =  0,
+    NSS_STATUS_SUCCESS  =  1,
+    NSS_STATUS_RETURN   =  0
+  } nss_status_t;
 #endif
 
 /* enum nss_dbtype index must match path in nss_mcdb.c char *_nss_dbnames[] */
@@ -81,20 +108,33 @@ struct nss_mcdb_vinfo {
 
 
 INTERNAL nss_status_t
-nss_mcdb_setent(enum nss_dbtype)
+nss_mcdb_setent(enum nss_dbtype, int)
   __attribute_nonnull__;
 
 INTERNAL nss_status_t
 nss_mcdb_endent(enum nss_dbtype)
   __attribute_nonnull__;
 
-/* mcdb get*ent() walks db returning successive keys with '=' tag char */
+/* _nss_mcdb_get*ent() walks db returning successive keys with '=' tag char */
 INTERNAL nss_status_t
 nss_mcdb_getent(enum nss_dbtype,
                 const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
+#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
+/* similar to mcdb_findstart and mcdb_findnext; used for netdb netgroups */
+INTERNAL nss_status_t
+nss_mcdb_getentstart(enum nss_dbtype,
+                     const struct nss_mcdb_vinfo * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
 
+INTERNAL nss_status_t
+nss_mcdb_getentnext(enum nss_dbtype,
+                    const struct nss_mcdb_vinfo * restrict)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+#endif
+
+/* _nss_mcdb_get*by*() generic queries */
 INTERNAL nss_status_t
 nss_mcdb_get_generic(enum nss_dbtype,
                      const struct nss_mcdb_vinfo * restrict)

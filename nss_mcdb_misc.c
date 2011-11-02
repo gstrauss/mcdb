@@ -63,10 +63,10 @@ nss_mcdb_misc_ether_addr_decode(struct mcdb * restrict,
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
-void _nss_mcdb_setaliasent(void) { nss_mcdb_setent(NSS_DBTYPE_ALIASES); }
-void _nss_mcdb_endaliasent(void) { nss_mcdb_endent(NSS_DBTYPE_ALIASES); }
-void _nss_mcdb_setetherent(void) { nss_mcdb_setent(NSS_DBTYPE_ETHERS);  }
-void _nss_mcdb_endetherent(void) { nss_mcdb_endent(NSS_DBTYPE_ETHERS);  }
+void _nss_mcdb_setaliasent(void) { nss_mcdb_setent(NSS_DBTYPE_ALIASES,0); }
+void _nss_mcdb_endaliasent(void) { nss_mcdb_endent(NSS_DBTYPE_ALIASES);   }
+void _nss_mcdb_setetherent(void) { nss_mcdb_setent(NSS_DBTYPE_ETHERS,0);  }
+void _nss_mcdb_endetherent(void) { nss_mcdb_endent(NSS_DBTYPE_ETHERS);    }
 
 
 nss_status_t

@@ -129,16 +129,25 @@ nss_mcdb_netdb_gethost_filladdr(const void * const restrict addr,
   __attribute_nonnull__;
 
 
-void _nss_mcdb_sethostent(void)  { nss_mcdb_setent(NSS_DBTYPE_HOSTS);     }
-void _nss_mcdb_endhostent(void)  { nss_mcdb_endent(NSS_DBTYPE_HOSTS);     }
-void _nss_mcdb_setnetent(void)   { nss_mcdb_setent(NSS_DBTYPE_NETWORKS);  }
-void _nss_mcdb_endnetent(void)   { nss_mcdb_endent(NSS_DBTYPE_NETWORKS);  }
-void _nss_mcdb_setprotoent(void) { nss_mcdb_setent(NSS_DBTYPE_PROTOCOLS); }
-void _nss_mcdb_endprotoent(void) { nss_mcdb_endent(NSS_DBTYPE_PROTOCOLS); }
-void _nss_mcdb_setrpcent(void)   { nss_mcdb_setent(NSS_DBTYPE_RPC);       }
-void _nss_mcdb_endrpcent(void)   { nss_mcdb_endent(NSS_DBTYPE_RPC);       }
-void _nss_mcdb_setservent(void)  { nss_mcdb_setent(NSS_DBTYPE_SERVICES);  }
-void _nss_mcdb_endservent(void)  { nss_mcdb_endent(NSS_DBTYPE_SERVICES);  }
+void _nss_mcdb_sethostent(const int op)  
+                                 { nss_mcdb_setent(NSS_DBTYPE_HOSTS,op);     }
+void _nss_mcdb_endhostent(void)  { nss_mcdb_endent(NSS_DBTYPE_HOSTS);        }
+
+void _nss_mcdb_setnetent(const int op)   
+                                 { nss_mcdb_setent(NSS_DBTYPE_NETWORKS,op);  }
+void _nss_mcdb_endnetent(void)   { nss_mcdb_endent(NSS_DBTYPE_NETWORKS);     }
+
+void _nss_mcdb_setprotoent(const int op) 
+                                 { nss_mcdb_setent(NSS_DBTYPE_PROTOCOLS,op); }
+void _nss_mcdb_endprotoent(void) { nss_mcdb_endent(NSS_DBTYPE_PROTOCOLS);    }
+
+void _nss_mcdb_setrpcent(const int op)   
+                                 { nss_mcdb_setent(NSS_DBTYPE_RPC,op);       }
+void _nss_mcdb_endrpcent(void)   { nss_mcdb_endent(NSS_DBTYPE_RPC);          }
+
+void _nss_mcdb_setservent(const int op)  
+                                 { nss_mcdb_setent(NSS_DBTYPE_SERVICES,op);  }
+void _nss_mcdb_endservent(void)  { nss_mcdb_endent(NSS_DBTYPE_SERVICES);     }
 
 
 /* POSIX.1-2001 marks gethostbyaddr() and gethostbyname() obsolescent.
@@ -228,9 +237,25 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
 
 
 #if 0  /* implemented, but not enabling by default; often used only with NIS+ */
-       /* Note: setnetgrent(const char *netgroup) is not implemented properly */
 
-void _nss_mcdb_setnetgrent(void) { nss_mcdb_setent(NSS_DBTYPE_NETGROUP);  }
+/* netgroup setent, getent, endent differ from other netdb *ent routines:
+ * setnetgrent() requires netgroup parameter which limits getnetgrent() results
+ * instead of getnetgrent() iterating over entries in entire netgroup database*/
+
+/* Note: netgroup creation in nss_mcdb_netdb_make not implemented yet,
+ * so implementation below might change, if needed */
+
+int
+_nss_mcdb_setnetgrent(const char * const restrict netgroup)
+{
+    int errnum;
+    const struct nss_mcdb_vinfo v = { .errnop  = &errnum,
+                                      .key     = netgroup,
+                                      .klen    = strlen(netgroup),
+                                      .tagc    = 0 };
+    return nss_mcdb_getentstart(NSS_DBTYPE_NETGROUP, &v);
+}
+
 void _nss_mcdb_endnetgrent(void) { nss_mcdb_endent(NSS_DBTYPE_NETGROUP);  }
 
 nss_status_t
@@ -240,18 +265,13 @@ _nss_mcdb_getnetgrent_r(char ** const restrict host,
                         char * const restrict buf, const size_t bufsz,
                         int * const restrict errnop)
 {
-    /* man setnetgrent() documents param const char *netgroup and subsequent
-     * queries are limited to that netgroup.  When implementing setnetgrent()
-     * and innetgr() might detect if query in progress and return next entry.
-     * (This routine might be a departure from typical get*ent() routines.)
-     * (depends how we structure keys/values in mcdb)
-     * (might store current netgroup in thread-local storage) */
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_buf_decode,
                                       .vstruct = NULL,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
-                                      .errnop  = errnop };
-    const nss_status_t status = nss_mcdb_getent(NSS_DBTYPE_NETGROUP, &v);
+                                      .errnop  = errnop,
+                                      .tagc    = 0 };
+    const nss_status_t status = nss_mcdb_getentnext(NSS_DBTYPE_NETGROUP, &v);
     if (status == NSS_STATUS_SUCCESS) {
         /* success ensures valid data (so that memchr will not return NULL) */
         *host   = buf;
