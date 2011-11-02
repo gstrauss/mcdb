@@ -435,9 +435,9 @@ mcdbpy_dict_items(struct mcdbpy * const self)
     if (key && data && tuple)
         return r;
     else {
-        if (key   && key   != Py_None) Py_DECREF(key);
-        if (data  && data  != Py_None) Py_DECREF(data);
-        if (tuple && tuple != Py_None) Py_DECREF(tuple);
+        if (key   && key   != Py_None) { Py_DECREF(key); }
+        if (data  && data  != Py_None) { Py_DECREF(data); }
+        if (tuple && tuple != Py_None) { Py_DECREF(tuple); }
         Py_DECREF(r);
         return NULL;
     }
