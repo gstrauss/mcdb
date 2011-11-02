@@ -36,7 +36,7 @@
 #ifndef _LARGE_FILES
 #define _LARGE_FILES
 #endif
-#else /*#elif defined(__linux) || defined(__sun) || defined(__hpux)*/
+#else /*#elif defined(__linux__) || defined(__sun) || defined(__hpux)*/
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif
@@ -364,7 +364,7 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
     bool rc;
 
     const int oflags = O_RDONLY | O_NONBLOCK | O_CLOEXEC;
-  #if defined(__linux) || defined(__sun)
+  #if defined(__linux__) || defined(__sun)
     if (map->dfd != -1) {
         if ((fd = nointr_openat(map->dfd, map->fname, oflags, 0)) == -1)
             return false;
@@ -387,7 +387,7 @@ mcdb_mmap_refresh_check(const struct mcdb_mmap * const restrict map)
     struct stat st;
     return (map->ptr == NULL
             || ( (
-                  #if defined(__linux) || defined(__sun)
+                  #if defined(__linux__) || defined(__sun)
                     map->dfd != -1
                       ? fstatat(map->dfd, map->fname, &st, 0) == 0
                       :
@@ -449,7 +449,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
     map->dfd       = -1;
     flen           = strlen(fname);
 
-  #if defined(__linux) || defined(__sun)
+  #if defined(__linux__) || defined(__sun)
     if (dname != NULL) {
         /* caller must have open STDIN, STDOUT, STDERR */
         map->dfd = nointr_open(dname, O_RDONLY|O_CLOEXEC, 0);

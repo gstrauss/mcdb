@@ -53,7 +53,7 @@ extern "C" {
  * Attributes exist at above URL that are not listed below
  */
 
-#ifdef __linux
+#ifdef __linux__
 #include <features.h>
 #endif
 

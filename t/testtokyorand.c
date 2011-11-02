@@ -36,7 +36,7 @@
 #ifndef _LARGE_FILES
 #define _LARGE_FILES
 #endif
-#else /*#elif defined(__linux) || defined(__sun) || defined(__hpux)*/
+#else /*#elif defined(__linux__) || defined(__sun) || defined(__hpux)*/
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif

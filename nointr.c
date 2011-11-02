@@ -60,7 +60,7 @@ extern inline
 ssize_t nointr_write(int, const char * restrict, size_t);
 ssize_t nointr_write(int, const char * restrict, size_t);
 
-#if defined(__linux) || defined(__sun)
+#if defined(__linux__) || defined(__sun)
 extern inline
 int nointr_openat(int, const char * restrict, int, mode_t);
 int nointr_openat(int, const char * restrict, int, mode_t);

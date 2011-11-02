@@ -25,7 +25,7 @@
 #include "mcdb.h"
 #include "code_attributes.h"
 
-#if defined(__linux)
+#if defined(__linux__)
   #include <nss.h>   /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
   typedef enum nss_status nss_status_t;
 #elif defined(__sun) || defined(__hpux)
