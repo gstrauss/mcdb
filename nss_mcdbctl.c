@@ -20,7 +20,7 @@
  */
 
 #ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 #endif
 /* _BSD_SOURCE or _SVID_SOURCE for struct rpcent on Linux */
 #ifndef _BSD_SOURCE
@@ -46,8 +46,12 @@
 #include "nss_mcdb_make.h"
 #include "nss_mcdb_acct.h"
 #include "nss_mcdb_acct_make.h"
+#include "nss_mcdb_authn.h"
+#include "nss_mcdb_authn_make.h"
+#if 0  /* implemented, but not enabling by default; little benefit */
 #include "nss_mcdb_misc.h"
 #include "nss_mcdb_misc_make.h"
+#endif
 #include "nss_mcdb_netdb.h"
 #include "nss_mcdb_netdb_make.h"
 #include "mcdb_makefn.h"
@@ -98,8 +102,8 @@ int main(void)
         { "/etc/shadow",
           "/etc/mcdb/shadow.mcdb",
           NSS_SP_HDRSZ+(size_t)sc_getpw_r_size_max,
-          nss_mcdb_acct_make_shadow_parse,
-          nss_mcdb_acct_make_spwd_encode,
+          nss_mcdb_authn_make_shadow_parse,
+          nss_mcdb_authn_make_spwd_encode,
           NULL },
         { "/etc/passwd",
           "/etc/mcdb/passwd.mcdb",
@@ -211,7 +215,7 @@ int main(void)
         mtime = st.st_mtime;
         if (stat(fdb[i].mcdbfile, &st) != 0) {
             st.st_mtime = 0;
-            st.st_mode = (0 != strcmp("/etc/shadow", fdb[i].file))
+            st.st_mode = (0 != strcmp(fdb[i].file, "/etc/shadow"))
               ? S_IRUSR | S_IRGRP | S_IROTH    /* default read-only */
               : S_IRUSR;  /* default root read-only for /etc/shadow */
             if (errno != ENOENT)
@@ -287,7 +291,7 @@ nss_mcdb_##dbgr##_make_##dbname##_ents(                                    \
 #if 0
 
 #ifndef _XOPEN_SOURCE /* setpwent() getpwent() endpwent() */
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 #endif
 /* _BSD_SOURCE or _SVID_SOURCE for struct ether_addr, struct rpcent on Linux */
 #ifndef _BSD_SOURCE
@@ -297,10 +301,13 @@ nss_mcdb_##dbgr##_make_##dbname##_ents(                                    \
 #include <errno.h>
 #include <pwd.h>
 #include <grp.h>
-#include <shadow.h>
-#include <aliases.h>
-#include <netinet/ether.h>
+#include <shadow.h>         /* not present on AIX */
+#include <aliases.h>        /* not portable; see nss_mcdb_misc.h */
+#include <netinet/ether.h>  /* not portable; see nss_mcdb_misc.h */
 #include <netdb.h>
+#ifdef __sun
+#include <rpc/rpcent.h>
+#endif
 
 db_set_get_end_ent(acct,  passwd,    passwd,   pw,    /**/)
 db_set_get_end_ent(acct,  group,     group,    gr,    /**/)

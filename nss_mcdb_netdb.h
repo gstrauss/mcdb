@@ -77,6 +77,16 @@ enum {
 #include "code_attributes.h"
 
 #include <netdb.h>
+#ifdef __sun
+#include <rpc/rpcent.h>
+#endif
+#ifdef __hpux
+struct rpcent {
+  char *r_name;
+  char **r_aliases;
+  int r_number;
+};
+#endif
 
 void _nss_mcdb_sethostent(int);
 void _nss_mcdb_endhostent(void);

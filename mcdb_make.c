@@ -71,6 +71,17 @@
 #include <stdint.h>  /* uint32_t uintptr_t */
 #include <limits.h>  /* UINT_MAX, INT_MAX */
 
+/*(posix_madvise, defines not provided in Solaris 10, even w/ __EXTENSIONS__)*/
+#if (defined(__sun) || defined(__hpux)) && !defined(POSIX_MADV_NORMAL)
+extern int madvise(caddr_t, size_t, int);
+#define posix_madvise(addr,len,advice)  madvise((caddr_t)(addr),(len),(advice))
+#define POSIX_MADV_NORMAL      0
+#define POSIX_MADV_RANDOM      1
+#define POSIX_MADV_SEQUENTIAL  2
+#define POSIX_MADV_WILLNEED    3
+#define POSIX_MADV_DONTNEED    4
+#endif
+
 #define MCDB_HPLIST 250
 
 struct mcdb_hplist {
@@ -130,6 +141,72 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
     }
 }
 
+#if !defined(__GLIBC__)
+/* emulate posix_fallocate() with statvfs() and pwrite(); all POSIX.1-2001 std */
+/* (_XOPEN_SOURCE 600 (posix_fallocate), _XOPEN_SOURCE 500 (pwrite)) */
+#include <sys/statvfs.h>
+static int  __attribute_noinline__
+mcdb_make_fallocate(const int fd, off_t offset, off_t len)
+  __attribute_warn_unused_result__;
+static int
+mcdb_make_fallocate(const int fd, off_t offset, off_t len)
+{
+    /* Assumptions:
+     * - off_t is sizeof(long) or else is sizeof(long long) w/ 32-bit + largefile
+     * - (struct statvfs).f_bsize is power of 2
+     * Contract: modifies file only within given range [offset,offset+len)
+     * Note: most efficient use is allocating file with multiple of block size */
+    struct statvfs stvfs;
+    struct stat st;
+    off_t st_size;
+    int buf;
+
+    if (offset < 0 || len <= 0)
+        return EINVAL;
+
+    if (fstatvfs(fd, &stvfs) != 0 || fstat(fd, &st) != 0)
+        return errno;
+
+  #if (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS-0 == 64)  \
+   || defined(_LARGEFILE_SOURCE) || defined(_LARGEFILE64_SOURCE) \
+   || defined(_LARGE_FILES)
+    if (len <= LLONG_MAX-(stvfs.f_bsize-1)  /* check for integer overflow */
+        && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1)) <= LLONG_MAX-offset)
+  #else
+    if (len <= LONG_MAX-(stvfs.f_bsize-1)   /* check for integer overflow */
+        && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1)) <= LONG_MAX-offset)
+  #endif
+        len += offset;
+    else
+        return EFBIG;
+
+    st_size = st.st_size < len ? st.st_size : len;
+    while (offset < st_size
+           && pread(fd,&buf,1,offset) != -1 && pwrite(fd,&buf,1,offset) != -1)
+        offset += stvfs.f_bsize;
+
+    if (offset < st_size || (st.st_size != len && ftruncate(fd, len) != 0))
+        return errno;
+
+    buf = 0;
+
+    /* one-off to not overwrite part of partial block before end-of-file */
+    if (offset < len && offset == st_size && (offset & (stvfs.f_bsize-1))) {
+        if (pwrite(fd,&buf,1,offset) != -1)
+            offset += stvfs.f_bsize;
+        else
+            return errno;
+    }
+
+    offset &= ~(stvfs.f_bsize-1); /*set offset to beginning of filesystem block*/
+
+    while (offset < len && pwrite(fd,&buf,1,offset) != -1)
+        offset += stvfs.f_bsize;
+
+    return offset >= len ? 0 : errno;
+}
+#endif
+
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
                  char header[MCDB_HEADER_SZ])
@@ -187,8 +264,20 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
     /* increase file size by at least msz (prefer multiple of disk block size)*/
     if (m->fd != -1 && m->fsz < offset + msz) {
         m->fsz = (offset + msz + (MCDB_BLOCK_SZ-1)) & ~(MCDB_BLOCK_SZ-1);
-        if ((errno =
-             posix_fallocate(m->fd, (off_t)m->osz, (off_t)(m->fsz-m->osz)))==0)
+      #if defined(__GLIBC__)/* glibc emulates if not natively supported by fs */
+        if ((errno = posix_fallocate(m->fd, (off_t)m->osz,
+                                     (off_t)(m->fsz-m->osz))) == 0)
+      #elif defined(_AIX)/* AIX errno=ENOTSUP if not natively supported by fs */\
+         || defined(__SunOS_5_11)  /*not sure about Solaris 11 emulation*/
+        if ((errno = posix_fallocate(m->fd, (off_t)m->osz,
+                                     (off_t)(m->fsz-m->osz))) == 0
+            || (errno != ENOSPC
+                && (errno = mcdb_make_fallocate(m->fd, (off_t)m->osz,
+                                                (off_t)(m->fsz-m->osz))) == 0))
+      #else /* emulate posix_fallocate() on earlier __sun, on __hpux and others*/
+        if ((errno = mcdb_make_fallocate(m->fd, (off_t)m->osz,
+                                         (off_t)(m->fsz-m->osz))) == 0)
+      #endif
             m->osz = m->fsz;
         else
             return false;

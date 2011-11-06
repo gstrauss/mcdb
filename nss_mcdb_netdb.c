@@ -533,13 +533,12 @@ static nss_status_t  __attribute_noinline__
 nss_mcdb_netdb_gethost_fill_h_errnop(const nss_status_t status,
                                      int * const restrict h_errnop)
 {
-    switch (status) {
-      case NSS_STATUS_TRYAGAIN: *h_errnop = TRY_AGAIN; break;
-      case NSS_STATUS_UNAVAIL:  *h_errnop = NO_RECOVERY; break;
-      case NSS_STATUS_NOTFOUND: *h_errnop = HOST_NOT_FOUND; break;
-      case NSS_STATUS_SUCCESS:  break;
-      case NSS_STATUS_RETURN:   *h_errnop = NO_RECOVERY; break;
-    }
+    if (NSS_STATUS_TRYAGAIN == status)
+        *h_errnop = TRY_AGAIN;
+    else if (NSS_STATUS_NOTFOUND == status)
+        *h_errnop = HOST_NOT_FOUND;
+    else if (NSS_STATUS_SUCCESS != status)
+        *h_errnop = NO_RECOVERY;/*NSS_STATUS_UNAVAIL, NSS_STATUS_RETURN, other*/
     return status;
 }
 

@@ -25,7 +25,8 @@
 #include "nss_mcdb_make.h"
 #include "code_attributes.h"
 
-#include <aliases.h>
+/*#include <aliases.h>*/    /* not portable; see nss_mcdb_misc.h */
+#include "nss_mcdb_misc.h"  /* (centralize misc headers between platforms) */
 
 /* buf size 1K + NSS_AE_HDRSZ is probably reasonable */
 size_t

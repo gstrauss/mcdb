@@ -1,5 +1,5 @@
 /*
- * nss_mcdb_acct_make - mcdb of passwd, group, shadow nsswitch.conf databases
+ * nss_mcdb_acct_make - mcdb of passwd, group nsswitch.conf databases
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -27,7 +27,6 @@
 
 #include <pwd.h>
 #include <grp.h>
-#include <shadow.h>
 
 /* buf size passed should be _SC_GETPW_R_SIZE_MAX + NSS_PW_HDRSZ (not checked)*/
 size_t
@@ -39,12 +38,6 @@ nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
 size_t
 nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
 			         const struct group * const restrict gr)
-  __attribute_nonnull__;
-
-/* buf size passed should be _SC_GETPW_R_SIZE_MAX + NSS_SP_HDRSZ (not checked)*/
-size_t
-nss_mcdb_acct_make_spwd_datastr(char * restrict buf, const size_t bufsz,
-				const struct spwd * const restrict sp)
   __attribute_nonnull__;
 
 
@@ -148,12 +141,6 @@ nss_mcdb_acct_make_passwd_encode(
 
 bool
 nss_mcdb_acct_make_group_encode(
-  struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
-  __attribute_nonnull__;
-
-bool
-nss_mcdb_acct_make_spwd_encode(
   struct nss_mcdb_make_winfo * const restrict w,
   const void * const restrict entp)
   __attribute_nonnull__;

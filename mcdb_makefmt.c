@@ -26,7 +26,7 @@
 #define _POSIX_C_SOURCE 200112L
 #endif
 #ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 #endif
 /* large file support needed for stat(),fstat() input file > 2 GB */
 #if defined(_AIX)
@@ -62,6 +62,17 @@
 #include <string.h>    /* memcpy(), memmove(), memchr() */
 #include <stdint.h>    /* SIZE_MAX */
 #include <unistd.h>    /* read() */
+
+/*(posix_madvise, defines not provided in Solaris 10, even w/ __EXTENSIONS__)*/
+#if (defined(__sun) || defined(__hpux)) && !defined(POSIX_MADV_NORMAL)
+extern int madvise(caddr_t, size_t, int);
+#define posix_madvise(addr,len,advice)  madvise((caddr_t)(addr),(len),(advice))
+#define POSIX_MADV_NORMAL      0
+#define POSIX_MADV_RANDOM      1
+#define POSIX_MADV_SEQUENTIAL  2
+#define POSIX_MADV_WILLNEED    3
+#define POSIX_MADV_DONTNEED    4
+#endif
 
 /* const db input line format: "+nnnn,mmmm:xxxx->yyyy\n"
  *   nnnn = key len

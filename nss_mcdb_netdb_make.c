@@ -33,6 +33,7 @@
 #include <string.h>
 #include <stdlib.h>     /* strtol() */
 #include <netdb.h>
+#include <sys/socket.h> /* AF_INET */
 #include <arpa/inet.h>  /* inet_pton() ntohl() ntohs() htons() */
 
 /* (similar to code nss_mcdb_acct_make.c:nss_mcdb_acct_make_group_datastr()) */
@@ -624,7 +625,7 @@ nss_mcdb_netdb_make_networks_parse(
             return false;
         *p = '\0';
         if (inet_pton(AF_INET, b, &in_addr) > 0) {
-            ne.n_net = ntohl(*(uint32_t *)&in_addr);
+            ne.n_net = ntohl((uint32_t)in_addr.s_addr);
             ne.n_addrtype = AF_INET;
         }
         else                            /* error: invalid or unsupported addr */

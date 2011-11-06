@@ -25,6 +25,11 @@
 #ifndef _POSIX_C_SOURCE /* 200112L for XSI-compliant sterror_r() */
 #define _POSIX_C_SOURCE 200112L
 #endif
+#ifdef __hpux
+#ifndef _XOPEN_SOURCE /* strerror_r() */
+#define _XOPEN_SOURCE 600
+#endif
+#endif
 
 #include "mcdb_error.h"
 

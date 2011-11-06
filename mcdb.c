@@ -82,6 +82,16 @@ static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define O_CLOEXEC 0
 #endif
 
+/*(posix_madvise, defines not provided in Solaris 10, even w/ __EXTENSIONS__)*/
+#if (defined(__sun) || defined(__hpux)) && !defined(POSIX_MADV_NORMAL)
+extern int madvise(caddr_t, size_t, int);
+#define posix_madvise(addr,len,advice)  madvise((caddr_t)(addr),(len),(advice))
+#define POSIX_MADV_NORMAL      0
+#define POSIX_MADV_RANDOM      1
+#define POSIX_MADV_SEQUENTIAL  2
+#define POSIX_MADV_WILLNEED    3
+#define POSIX_MADV_DONTNEED    4
+#endif
 
 /* Note: tagc of 0 ('\0') is reserved to indicate no tag */
 
@@ -467,7 +477,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
         const size_t dlen = strlen(dname);
         if (sizeof(map->fnamebuf) >= dlen+flen+2)
             fbuf = map->fnamebuf;
-        else if ((fbuf = fn_malloc(dlen+flen+2) == NULL)) {
+        else if ((fbuf = fn_malloc(dlen+flen+2)) == NULL) {
             mcdb_mmap_destroy_h(map);
             return NULL;
         }

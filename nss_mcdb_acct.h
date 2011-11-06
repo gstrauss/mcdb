@@ -1,5 +1,5 @@
 /*
- * nss_mcdb_acct - query mcdb of passwd, group, shadow nsswitch.conf databases
+ * nss_mcdb_acct - query mcdb of passwd, group nsswitch.conf databases
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -28,7 +28,6 @@
 #include <sys/types.h>  /* (gid_t) */
 #include <pwd.h>        /* (struct passwd) */
 #include <grp.h>        /* (struct group) */
-#include <shadow.h>     /* (struct spwd) */
 
 enum {
   NSS_PW_PASSWD  =  0,
@@ -64,18 +63,6 @@ enum {
 enum {
   NSS_GL_NGROUPS =  0,
   NSS_GL_HDRSZ   =  4   /*(must be multiple of 4)*/
-};
-
-enum {
-  NSS_SP_LSTCHG  =  0,
-  NSS_SP_MIN     =  4,
-  NSS_SP_MAX     =  8,
-  NSS_SP_WARN    = 12,
-  NSS_SP_INACT   = 16,
-  NSS_SP_EXPIRE  = 20,
-  NSS_SP_FLAG    = 24,
-  NSS_SP_PWDP    = 28,
-  NSS_SP_HDRSZ   = 32   /*(must be multiple of 4; round up)*/
 };
 
 /* ngroups_max reasonable value used in sizing some data structures
@@ -122,17 +109,6 @@ _nss_mcdb_getgrnam_r(const char * restrict,
 nss_status_t
 _nss_mcdb_getgrgid_r(const gid_t gid,
                      struct group * restrict, char * restrict, size_t,
-                     int * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-
-nss_status_t
-_nss_mcdb_getspent_r(struct spwd * restrict, char * restrict, size_t,
-                     int * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-
-nss_status_t
-_nss_mcdb_getspnam_r(const char * restrict,
-                     struct spwd * restrict, char * restrict, size_t,
                      int * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 

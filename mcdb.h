@@ -25,6 +25,15 @@
 #ifndef INCLUDED_MCDB_H
 #define INCLUDED_MCDB_H
 
+#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
+#define _ALL_SOURCE
+#endif
+#ifdef __hpux /*HP-UX strict conformance with C99 and _XOPEN_SOURCE 600*/
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
+#endif
+#endif
+
 #include <stdbool.h>  /* bool     */
 #include <stdint.h>   /* uint32_t, uintptr_t */
 #include <unistd.h>   /* size_t   */

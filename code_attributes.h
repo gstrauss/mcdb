@@ -26,6 +26,12 @@
 extern "C" {
 #endif
 
+#ifndef __STDC_C99
+#ifndef restrict
+#define restrict
+#endif
+#endif
+
 /*
  * C inline functions defined in header
  * Discussion of nuances of "extern inline" and inline functions in C headers:

@@ -26,7 +26,7 @@
 #define _POSIX_C_SOURCE 200112L
 #endif
 #ifndef _XOPEN_SOURCE /* >= 500 on Linux for mkstemp(), fchmod(), fdatasync() */
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 #endif
 /* large file support needed for stat(),fstat() input file > 2 GB */
 #if defined(_AIX)

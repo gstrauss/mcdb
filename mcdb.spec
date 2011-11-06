@@ -45,13 +45,11 @@ This package contains mcdb shared libraries.
 
 
 %build
-export TARGET_CPU=%{_target_cpu}
 make %{?_smp_mflags} PREFIX=
 
 
 %install
 rm -rf $RPM_BUILD_ROOT
-export TARGET_CPU=%{_target_cpu}
 make install PREFIX=$RPM_BUILD_ROOT PREFIX_USR=$RPM_BUILD_ROOT/usr
 make install-doc PREFIX=$RPM_BUILD_ROOT PREFIX_USR=$RPM_BUILD_ROOT/usr
 make install-headers PREFIX=$RPM_BUILD_ROOT PREFIX_USR=$RPM_BUILD_ROOT/usr

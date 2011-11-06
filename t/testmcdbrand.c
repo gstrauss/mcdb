@@ -23,7 +23,7 @@
 #define _POSIX_C_SOURCE 200112L
 #endif
 #ifndef _XOPEN_SOURCE /* IOV_MAX */
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 #endif
 
 /* large file support needed for open() input file > 2 GB */
@@ -43,6 +43,8 @@
 #endif
 #endif
 
+#include "mcdb.h"
+
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -50,8 +52,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "mcdb.h"
 
 int main (int argc, char *argv[])
 {

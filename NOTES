@@ -220,3 +220,20 @@ code to handle the specific data set, including a replacement for the djb hash
 function.  (mcdb code could be easily tweaked to support 64-bit hslots and
 64-bit hash values, but the on-disk format would be incompatible with mcdb.)
 
+
+
+Portability Notes
+-----------------
+
+
+warning: visibility attribute not supported in this configuration; ignored
+--------------------------------------------------------------------------
+This is a harmless warning and occurs on some platforms where the gcc extension
+__attribute__((visibility("..."))) is not supported.  On Solaris on SPARC,
+newer versions of gcc (e.g. 4.6.1) support the visibility attribute, while
+earlier versions of gcc might not.
+
+HP-UX
+-----
+Compilation requires newer version of gcc (e.g. 4.6.1)
+

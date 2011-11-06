@@ -26,7 +26,7 @@
 #define _POSIX_C_SOURCE 200112L
 #endif
 #ifndef _XOPEN_SOURCE /* IOV_MAX */
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 #endif
 /* large file support needed for open() input file > 2 GB */
 #if defined(_AIX)
@@ -65,6 +65,16 @@
 #include <libgen.h>  /* basename() */
 #include <limits.h>  /* SSIZE_MAX */
 
+/*(posix_madvise, defines not provided in Solaris 10, even w/ __EXTENSIONS__)*/
+#if (defined(__sun) || defined(__hpux)) && !defined(POSIX_MADV_NORMAL)
+extern int madvise(caddr_t, size_t, int);
+#define posix_madvise(addr,len,advice)  madvise((caddr_t)(addr),(len),(advice))
+#define POSIX_MADV_NORMAL      0
+#define POSIX_MADV_RANDOM      1
+#define POSIX_MADV_SEQUENTIAL  2
+#define POSIX_MADV_WILLNEED    3
+#define POSIX_MADV_DONTNEED    4
+#endif
 
 /* macros to hint to release memory pages every 32 MB (1u << 25) */
 #define mcdb_madv_initmark(ptr) ((ptr) + (1u << 25))

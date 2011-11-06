@@ -1,5 +1,5 @@
 /*
- * nss_mcdb_acct - query mcdb of passwd, group, shadow nsswitch.conf databases
+ * nss_mcdb_acct - query mcdb of passwd, group nsswitch.conf databases
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -27,7 +27,6 @@
 
 #include <pwd.h>
 #include <grp.h>
-#include <shadow.h>
 #include <stdlib.h>     /* realloc */
 #include <arpa/inet.h>  /* ntohl(), ntohs() */
 
@@ -36,8 +35,6 @@
  *     /etc/passwd
  * man group(5)  getgrnam getgrgid setgrent getgrent endgrent getgrouplist
  *     /etc/group
- * man shadow(5) getspnam
- *     /etc/shadow
  */
 
 static nss_status_t
@@ -55,18 +52,11 @@ nss_mcdb_acct_grouplist_decode(struct mcdb * restrict,
                                const struct nss_mcdb_vinfo * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
-static nss_status_t
-nss_mcdb_acct_spwd_decode(struct mcdb * restrict,
-                          const struct nss_mcdb_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
-
 
 void _nss_mcdb_setpwent(void) { nss_mcdb_setent(NSS_DBTYPE_PASSWD,0); }
 void _nss_mcdb_endpwent(void) { nss_mcdb_endent(NSS_DBTYPE_PASSWD);   }
 void _nss_mcdb_setgrent(void) { nss_mcdb_setent(NSS_DBTYPE_GROUP,0);  }
 void _nss_mcdb_endgrent(void) { nss_mcdb_endent(NSS_DBTYPE_GROUP);    }
-void _nss_mcdb_setspent(void) { nss_mcdb_setent(NSS_DBTYPE_SHADOW,0); }
-void _nss_mcdb_endspent(void) { nss_mcdb_endent(NSS_DBTYPE_SHADOW);   }
 
 
 nss_status_t
@@ -166,36 +156,6 @@ _nss_mcdb_getgrgid_r(const gid_t gid,
     return nss_mcdb_get_generic(NSS_DBTYPE_GROUP, &v);
 }
 
-
-nss_status_t
-_nss_mcdb_getspent_r(struct spwd * const restrict spbuf,
-                     char * const restrict buf, const size_t bufsz,
-                     int * const restrict errnop)
-{
-    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_spwd_decode,
-                                      .vstruct = spbuf,
-                                      .buf     = buf,
-                                      .bufsz   = bufsz,
-                                      .errnop  = errnop };
-    return nss_mcdb_getent(NSS_DBTYPE_SHADOW, &v);
-}
-
-nss_status_t
-_nss_mcdb_getspnam_r(const char * const restrict name,
-                     struct spwd * const restrict spbuf,
-                     char * const restrict buf, const size_t bufsz,
-                     int * const restrict errnop)
-{
-    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_spwd_decode,
-                                      .vstruct = spbuf,
-                                      .buf     = buf,
-                                      .bufsz   = bufsz,
-                                      .errnop  = errnop,
-                                      .key     = name,
-                                      .klen    = strlen(name),
-                                      .tagc    = (unsigned char)'=' };
-    return nss_mcdb_get_generic(NSS_DBTYPE_SHADOW, &v);
-}
 
 int
 nss_mcdb_getgrouplist(const char * const restrict user, gid_t group,
@@ -422,37 +382,5 @@ nss_mcdb_acct_grouplist_decode(struct mcdb * const restrict m,
             ++x;
     }
     *(gid_t *)v->vstruct = x;
-    return NSS_STATUS_SUCCESS;
-}
-
-
-static nss_status_t
-nss_mcdb_acct_spwd_decode(struct mcdb * const restrict m,
-                          const struct nss_mcdb_vinfo * const restrict v)
-{
-    const char * const restrict dptr = (char *)mcdb_dataptr(m);
-    const size_t dlen = ((size_t)mcdb_datalen(m)) - NSS_SP_HDRSZ;
-    struct spwd * const sp = (struct spwd *)v->vstruct;
-    char * const buf = v->buf;
-    union { uint32_t u[NSS_SP_HDRSZ>>2]; uint16_t h[NSS_SP_HDRSZ>>1]; } hdr;
-    if (dlen < v->bufsz) {
-        memcpy(buf, dptr+NSS_SP_HDRSZ, dlen);
-        buf[dlen] = '\0';
-        memcpy(hdr.u, dptr, NSS_SP_HDRSZ);
-    }
-    else {
-        *v->errnop = errno = ERANGE;
-        return NSS_STATUS_TRYAGAIN;
-    }
-    /* (cast to (int32_t) before casting to (long) to preserve -1) */
-    sp->sp_lstchg = (long)(int32_t)ntohl( hdr.u[NSS_SP_LSTCHG>>2] );
-    sp->sp_min    = (long)(int32_t)ntohl( hdr.u[NSS_SP_MIN>>2] );
-    sp->sp_max    = (long)(int32_t)ntohl( hdr.u[NSS_SP_MAX>>2] );
-    sp->sp_warn   = (long)(int32_t)ntohl( hdr.u[NSS_SP_WARN>>2] );
-    sp->sp_inact  = (long)(int32_t)ntohl( hdr.u[NSS_SP_INACT>>2] );
-    sp->sp_expire = (long)(int32_t)ntohl( hdr.u[NSS_SP_EXPIRE>>2] );
-    sp->sp_flag   =                ntohl( hdr.u[NSS_SP_FLAG>>2] );
-    sp->sp_namp   = buf;
-    sp->sp_pwdp   = buf + ntohs( hdr.h[NSS_SP_PWDP>>1] );
     return NSS_STATUS_SUCCESS;
 }

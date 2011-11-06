@@ -87,6 +87,10 @@ nointr_write(const int fd, const char * restrict buf, size_t sz)
 int  C99INLINE
 nointr_ftruncate(const int fd, const off_t sz);
 #if !defined(NO_C99INLINE)
+#if defined(__hpux) && defined(_LARGEFILE64_SOURCE) \
+ && !defined(_LP64) && !defined(__LP64__)
+#define ftruncate(fd,sz)  __ftruncate64((fd),(sz))
+#endif
 int  C99INLINE
 nointr_ftruncate(const int fd, const off_t sz)
 { int r; retry_eintr_do_while((r = ftruncate(fd, sz)),(r != 0)); return r; }
@@ -94,7 +98,7 @@ nointr_ftruncate(const int fd, const off_t sz)
 #endif
 
 /* caller must #define _ATFILE_SOURCE on Linux for openat() */
-#if (defined(__linux__) && defined(_ATFILE_SOURCE)) || defined(__sun)
+#if (defined(__linux__) || defined(__sun)) && defined(_ATFILE_SOURCE)
 int  C99INLINE
 nointr_openat(const int dfd, const char * const restrict fn,
               const int flags, const mode_t mode)

@@ -11,26 +11,26 @@
 # djb cdb test and functions from djb cdb package (rts.tests)
 # - some functions translated to use mcdbctl
 # - some new tests added
-function mcdbdump {
+mcdbdump () {
   mcdbctl dump "$1"
 }
-function mcdbget {
+mcdbget () {
   mcdbctl get "$1" "$2" ${3+"$3"}
 }
-function mcdbmake {
+mcdbmake () {
   mcdbctl make "$1" "$2"
 }
-function mcdbstats {
+mcdbstats () {
   mcdbctl stats "$1"
 }
-function mcdbtest {
+mcdbtest () {
   mcdbctl stats "$1" >/dev/null
 }
-function mcdbmake_12 {
+mcdbmake_12 () {
   awk '/^[^#]/ {print"+"length($1)","length($2)":"$1"->"$2} END {print""}' | \
     mcdbmake "$1" "$2" 
 }
-function mcdbmake_sv {
+mcdbmake_sv () {
   awk '
     {
       if (split($0,x,"#")) {
@@ -186,7 +186,8 @@ echo '' | mcdbmake loop/test.mcdb - 2>/dev/null
 rc=$?; [ $rc -eq 111 ] || echo 1>&2 "FAIL $rc"
 
 
-if which softlimit >/dev/null 2>&1; then
+slimit=`which softlimit 2>/dev/null`
+if [ -n "$slimit" ] && [ -x "$slimit" ]; then
 
 echo '--- mcdbmake handles nomem'
 perl -e 'for (1..5000) { print "+3,5:one->Hello\n"; }' \

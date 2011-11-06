@@ -29,8 +29,11 @@
 
 #include <errno.h>
 #include <string.h>
-#include <aliases.h>
-#include <netinet/ether.h>
+
+/*#include <aliases.h>*/       /* not portable; see nss_mcdb_misc.h */
+/*#include <netinet/ether.h>*/ /* not portable; see nss_mcdb_misc.h */
+
+#include <netinet/in.h> /* htonl(), htons() */
 #include <arpa/inet.h>  /* htonl(), htons() */
 
 size_t

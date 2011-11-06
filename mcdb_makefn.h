@@ -25,10 +25,10 @@
 #ifndef INCLUDED_MCDB_MAKEFN_H
 #define INCLUDED_MCDB_MAKEFN_H
 
-#include <sys/types.h>  /* size_t */
-
-#include "code_attributes.h"
 #include "mcdb_make.h"
+#include "code_attributes.h"
+
+#include <sys/types.h>  /* size_t */
 
 #ifdef __cplusplus
 extern "C" {

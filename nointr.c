@@ -20,7 +20,7 @@
  */
 
 #ifndef _XOPEN_SOURCE /* _XOPEN_SOURCE >= 500 for XSI-compliant ftruncate() */
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 #endif
 #ifndef _ATFILE_SOURCE /* openat() */
 #define _ATFILE_SOURCE

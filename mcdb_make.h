@@ -25,11 +25,11 @@
 #ifndef INCLUDED_MCDB_MAKE_H
 #define INCLUDED_MCDB_MAKE_H
 
+#include "mcdb.h"  /* MCDB_SLOTS */
+#include "code_attributes.h"
+
 #include <sys/types.h> /* size_t */
 #include <stdint.h>
-
-#include "code_attributes.h"
-#include "mcdb.h"  /* MCDB_SLOTS */
 
 #ifdef __cplusplus
 extern "C" {

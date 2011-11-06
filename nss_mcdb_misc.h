@@ -42,8 +42,13 @@ enum {
 #include "nss_mcdb.h"
 #include "code_attributes.h"
 
+/* TODO: implemented only on Linux; other platforms incomplete/missing */
+#if defined(__linux__)
 #include <aliases.h>        /* (struct aliasent) */
 #include <netinet/ether.h>  /* (struct ether_addr) */
+#elif defined(__sun)
+#include <sys/ethernet.h>   /* (struct ether_addr) */
+#endif
 
 void _nss_mcdb_setaliasent(void);
 void _nss_mcdb_endaliasent(void);
