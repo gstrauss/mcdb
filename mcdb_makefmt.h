@@ -25,6 +25,9 @@
 #ifndef INCLUDED_MCDB_MAKEFMT_H
 #define INCLUDED_MCDB_MAKEFMT_H
 
+#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
+#define _ALL_SOURCE
+#endif
 #include <sys/types.h>  /* size_t */
 
 #include "code_attributes.h"

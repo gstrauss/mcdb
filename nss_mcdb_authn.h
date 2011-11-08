@@ -29,12 +29,6 @@
 void _nss_mcdb_setspent(void);
 void _nss_mcdb_endspent(void);
 
-
-#ifndef _AIX
-
-
-#include <shadow.h>     /* (struct spwd) */
-
 enum {
   NSS_SP_LSTCHG  =  0,
   NSS_SP_MIN     =  4,
@@ -47,6 +41,11 @@ enum {
   NSS_SP_HDRSZ   = 32   /*(must be multiple of 4; round up)*/
 };
 
+
+#ifndef _AIX
+
+#include <shadow.h>     /* (struct spwd) */
+
 nss_status_t
 _nss_mcdb_getspent_r(struct spwd * restrict, char * restrict, size_t,
                      int * restrict)
@@ -57,7 +56,6 @@ _nss_mcdb_getspnam_r(const char * restrict,
                      struct spwd * restrict, char * restrict, size_t,
                      int * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-
 
 #endif /* !_AIX */
 

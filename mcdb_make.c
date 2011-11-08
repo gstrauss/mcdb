@@ -142,8 +142,11 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
 }
 
 #if !defined(__GLIBC__)
-/* emulate posix_fallocate() with statvfs() and pwrite(); all POSIX.1-2001 std */
+/* emulate posix_fallocate() with statvfs() and pwrite(); all POSIX.1-2001 std*/
 /* (_XOPEN_SOURCE 600 (posix_fallocate), _XOPEN_SOURCE 500 (pwrite)) */
+#ifdef __sun  /* bug in statvfs.h; copy define to avoid using __EXTENSIONS__ */
+#define FSTYPSZ 16
+#endif
 #include <sys/statvfs.h>
 static int  __attribute_noinline__
 mcdb_make_fallocate(const int fd, off_t offset, off_t len)
@@ -152,10 +155,10 @@ static int
 mcdb_make_fallocate(const int fd, off_t offset, off_t len)
 {
     /* Assumptions:
-     * - off_t is sizeof(long) or else is sizeof(long long) w/ 32-bit + largefile
+     * - off_t is sizeof(long) or else is sizeof(long long) w/ 32-bit +largefile
      * - (struct statvfs).f_bsize is power of 2
      * Contract: modifies file only within given range [offset,offset+len)
-     * Note: most efficient use is allocating file with multiple of block size */
+     * Note: most efficient use is allocating file with multiple of block size*/
     struct statvfs stvfs;
     struct stat st;
     off_t st_size;

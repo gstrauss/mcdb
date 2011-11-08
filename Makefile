@@ -1,5 +1,7 @@
 # mcdb
 
+OSNAME:=$(shell /bin/uname -s)
+
 .PHONY: all
 all: mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero \
      libmcdb.so libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
@@ -55,7 +57,6 @@ CFLAGS+=-D_THREAD_SAFE
 #   -DNO_C99INLINE
 # Another option to smaller binary is -Os instead of -O3, and remove -Winline
 
-OSNAME:=$(shell /bin/uname -s)
 ifeq ($(OSNAME),Linux)
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
     RPATH= -Wl,-rpath,$(PREFIX)/lib$(LIB_BITS)
@@ -149,15 +150,19 @@ t/testzero: t/testzero.o libmcdb.a
 nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
 	$(CC) -o $@ $(LDFLAGS) $^
 
-$(PREFIX)/lib$(LIB_BITS) $(PREFIX)/sbin:
+$(PREFIX)/lib $(PREFIX)/bin $(PREFIX)/sbin:
 	/bin/mkdir -p -m 0755 $@
 ifneq (,$(LIB_BITS))
-$(PREFIX)/lib $(PREFIX_USR)/lib:
+$(PREFIX)/lib$(LIB_BITS):
 	/bin/mkdir -p -m 0755 $@
 endif
 ifneq ($(PREFIX_USR),$(PREFIX))
-$(PREFIX_USR)/lib$(LIB_BITS) $(PREFIX_USR)/bin:
+$(PREFIX_USR)/lib $(PREFIX_USR)/bin:
 	/bin/mkdir -p -m 0755 $@
+ifneq (,$(LIB_BITS))
+$(PREFIX_USR)/lib$(LIB_BITS):
+	/bin/mkdir -p -m 0755 $@
+endif
 $(PREFIX_USR)/lib$(LIB_BITS)/libnss_mcdb.so.2: \
   $(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2 $(PREFIX_USR)/lib$(LIB_BITS)
 	[ -L $@ ] || /bin/ln -s ../../lib/$(<F) $@

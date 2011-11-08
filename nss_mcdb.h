@@ -28,15 +28,9 @@
 #if defined(__linux__)
   #include <nss.h>   /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
   typedef enum nss_status nss_status_t;
-#elif defined(__sun) || defined(__hpux)
-  #ifdef __sun
-    #include <nss_common.h> /* NSS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
-    #include <nss_dbdefs.h>
-  #endif
-  #ifdef __hpux
-    #include <nsswitch/hp_nss_common.h>
-    #include <nsswitch/hp_nss_dbdefs.h>
-  #endif
+#elif defined(__sun)
+  #include <nss_common.h> /* NSS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */
+  #include <nss_dbdefs.h>
   #define NSS_STATUS_SUCCESS  NSS_SUCCESS
   #define NSS_STATUS_NOTFOUND NSS_NOTFOUND
   #define NSS_STATUS_TRYAGAIN NSS_TRYAGAIN
@@ -55,6 +49,17 @@
    * and translate NSS_STATUS_TRYAGAIN to NS_RETURN when errno == ERANGE
    * See FreeBSD /usr/include/nss.h: __nss_compat_result(rv, err)
    * Register the wrapper interfaces with FreeBSD nss_module_register(). */
+#elif defined(__hpux)
+  //#include <nsswitch/hp_nss_common.h>
+  //#include <nsswitch/hp_nss_dbdefs.h>
+  #include <nsswitch.h>
+  typedef enum nss_status {
+    NSS_STATUS_TRYAGAIN = __NSW_TRYAGAIN,
+    NSS_STATUS_UNAVAIL  = __NSW_UNAVAIL,
+    NSS_STATUS_NOTFOUND = __NSW_NOTFOUND,
+    NSS_STATUS_SUCCESS  = __NSW_SUCCESS,
+    NSS_STATUS_RETURN   = __NSW_NOTFOUND
+  } nss_status_t;
 #else
   typedef enum nss_status {
     NSS_STATUS_TRYAGAIN = -2,
