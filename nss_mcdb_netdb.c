@@ -680,13 +680,22 @@ nss_mcdb_netdb_netent_decode(struct mcdb * const restrict m,
                              const struct nss_mcdb_vinfo * const restrict v)
 {
     const char * const restrict dptr = (char *)mcdb_dataptr(m);
+  #ifndef _AIX
     struct netent * const ne = (struct netent *)v->vstruct;
+  #else
+    struct nwent * const ne = (struct nwent *)v->vstruct;
+  #endif
     char *buf;
     size_t ne_mem_num;
     union { uint32_t u[NSS_NE_HDRSZ>>2]; uint16_t h[NSS_NE_HDRSZ>>1]; } hdr;
     memcpy(hdr.u, dptr, NSS_NE_HDRSZ);  /*(copy header for num data alignment)*/
     ne->n_addrtype = (int)    ntohl( hdr.u[NSS_N_ADDRTYPE>>2] );
+  #ifndef _AIX
     ne->n_net      =          ntohl( hdr.u[NSS_N_NET>>2] );
+  #else /*(should get space from v->buf, but one-off handled in AIX-map below)*/
+    *(uint32_t *)ne->n_addr = hdr.u[NSS_N_NET>>2]; /*(expects allocated space)*/
+    ne->n_length   = (int)    ntohs( hdr.h[NSS_N_LENGTH>>1] );
+  #endif
     ne_mem_num     = (size_t) ntohs( hdr.h[NSS_NE_MEM_NUM>>1] );
     ne->n_name     = buf = v->buf;
     ne->n_aliases  = /* align to 8-byte boundary for 64-bit */

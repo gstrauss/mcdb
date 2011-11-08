@@ -39,6 +39,9 @@ enum {
   NSS_NE_MEM_STR =  8,
   NSS_NE_MEM     = 10,
   NSS_NE_MEM_NUM = 12,
+ #ifdef _AIX
+  NSS_N_LENGTH   = 14,
+ #endif
   NSS_NE_HDRSZ   = 16   /*(must be multiple of 4; round up)*/
 };
 
@@ -85,6 +88,15 @@ struct rpcent {
   char *r_name;
   char **r_aliases;
   int r_number;
+};
+#endif
+#ifdef _AIX
+struct nwent {
+  char *n_name;     /* official name of net *//*(AIX example has field 'name')*/
+  char **n_aliases; /* alias list */
+  int n_addrtype;   /* net address type */
+  void *n_addr;     /* network address */
+  int n_length;     /* address length, in bits */
 };
 #endif
 

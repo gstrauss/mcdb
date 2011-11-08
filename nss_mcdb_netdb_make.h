@@ -34,10 +34,18 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
   __attribute_nonnull__;
 
 /* buf size 1K + NSS_NE_HDRSZ is probably reasonable */
+#ifndef _AIX
 size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 			           const struct netent * const restrict ne)
   __attribute_nonnull__;
+#else
+#include "nss_mcdb_netdb.h" /*(for struct nwent on AIX)*/
+size_t
+nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
+			           const struct nwent * const restrict ne)
+  __attribute_nonnull__;
+#endif
 
 /* buf size 1K + NSS_PE_HDRSZ is probably reasonable */
 size_t

@@ -119,9 +119,15 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
 }
 
 
+#ifndef _AIX
 size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct netent * const restrict ne)
+#else
+size_t
+nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
+				   const struct nwent * const restrict ne)
+#endif
 {
     const size_t    ne_name_len       = 1 + strlen(ne->n_name);
     const uintptr_t ne_mem_str_offset = ne_name_len;
@@ -142,11 +148,19 @@ nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 	    /* store string offsets into aligned header, then copy into buf */
 	    /* copy strings into buffer, including string terminating '\0' */
 	    hdr.u[NSS_N_ADDRTYPE>>2]  = htonl((uint32_t) ne->n_addrtype);
+          #ifndef _AIX
 	    hdr.u[NSS_N_NET>>2]       = htonl((uint32_t) ne->n_net);
+          #else
+	    hdr.u[NSS_N_NET>>2]       = *(uint32_t *)ne->n_addr;
+          #endif
 	    hdr.h[NSS_NE_MEM>>1]      = htons((uint16_t)(dlen - NSS_NE_HDRSZ));
 	    hdr.h[NSS_NE_MEM_STR>>1]  = htons((uint16_t) ne_mem_str_offset);
 	    hdr.h[NSS_NE_MEM_NUM>>1]  = htons((uint16_t) ne_mem_num);
+          #ifdef _AIX
+	    hdr.h[(NSS_N_LENGTH>>1)]  = htons((uint16_t) ne->n_length);/*_AIX*/
+          #else
 	    hdr.h[(NSS_NE_HDRSZ>>1)-1]= 0;/*(clear last 2 bytes (consistency))*/
+          #endif
 	    memcpy(buf,              hdr.u,      NSS_NE_HDRSZ);
 	    memcpy(buf+NSS_NE_HDRSZ, ne->n_name, ne_name_len);
 	    return dlen;
@@ -324,7 +338,11 @@ nss_mcdb_netdb_make_netent_encode(
   struct nss_mcdb_make_winfo * const restrict w,
   const void * const restrict entp)
 {
+  #ifndef _AIX
     const struct netent * const restrict ne = entp;
+  #else
+    const struct nwent * const restrict ne = entp;
+  #endif
     uintptr_t i;
     uint32_t n[2];
 
@@ -353,7 +371,11 @@ nss_mcdb_netdb_make_netent_encode(
     w->tagc = 'x';
     w->klen = sizeof(n);
     w->key  = (const char *)n;
+  #ifndef _AIX
     n[0] = htonl((uint32_t) ne->n_net);
+  #else
+    n[0] = *(uint32_t *)ne->n_addr;
+  #endif
     n[1] = htonl((uint32_t) ne->n_addrtype);
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
@@ -589,7 +611,11 @@ nss_mcdb_netdb_make_networks_parse(
     char *b;
     int c;
     int n;
+  #ifndef _AIX
     struct netent ne;
+  #else
+    struct nwent ne;
+  #endif
     struct in_addr in_addr;
     char *n_aliases[256];
     /*(255 aliases + canonical name amounts to 1 KB of (256) 3-char names)*/
@@ -616,7 +642,7 @@ nss_mcdb_netdb_make_networks_parse(
         *p = '\0';
         ne.n_name = b;
 
-        /* n_net */
+        /* n_net, n_addrtype */
         ++p;
         TOKEN_WSDELIM_BEGIN(p);
         b = p;
@@ -624,12 +650,19 @@ nss_mcdb_netdb_make_networks_parse(
         if ((c = *p) == '\0' || *b == '#' || *b == '\n')/* error: invalid line*/
             return false;
         *p = '\0';
-        if (inet_pton(AF_INET, b, &in_addr) > 0) {
-            ne.n_net = ntohl((uint32_t)in_addr.s_addr);
-            ne.n_addrtype = AF_INET;
-        }
+        ne.n_addrtype = AF_INET;
+      #ifndef _AIX
+        if (inet_pton(AF_INET, b, &in_addr) > 0)
+            ne.n_net = ntohl((uint32_t)in_addr.s_addr);  /* (host byte order) */
         else                            /* error: invalid or unsupported addr */
             return false;
+      #else  /* _AIX: struct nwent has n_addr, n_length instead of n_net */
+        ne.n_length = inet_net_pton(AF_INET,b,&in_addr,sizeof(struct in_addr));
+        if (ne.n_length != -1)
+            ne.n_addr = &in_addr;                     /* (network byte order) */
+        else                            /* error: invalid or unsupported addr */
+            return false;
+      #endif /* _AIX */
 
         /* n_aliases */
         n = 0;
