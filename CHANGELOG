@@ -1,5 +1,11 @@
 mcdb change log
 
+mcdb v0.04 (2011.11.07)
+- porting from Linux/glibc to other platforms (large set of changes)
+- mcdb_make - mcdb_fallocate() emulates posix_fallocate()
+- code_attributes.h - protect C++ from C99 restrict
+- split struct spwd code to separate files nss_mcdb_authn*.[ch]
+
 mcdb v0.03 (2011.10.23)
 - extend struct mcdb to store klen, and vp (void *) for user extension data
   Note: struct change is incompatible with prior releases;
