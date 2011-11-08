@@ -191,7 +191,8 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
      * (continue with open database if failure refreshing) */
     if (__builtin_expect(_nss_mcdb_mmap[dbtype] != 0, true)) {
         /* protocols, rpc, services unlikely to change often in most configs
-         * Therefore, skip stat() check if configured (default skips stat()) */
+         * Therefore, skip stat() check if configured (default skips stat())
+         * (Implication: must restart nscd if any of these three files change)*/
         switch (dbtype) {
           case NSS_DBTYPE_PROTOCOLS:
           case NSS_DBTYPE_RPC:

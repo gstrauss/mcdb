@@ -1,0 +1,42 @@
+* lam_mcdb.exp export list
+
+ho_byaddr
+ho_byname
+ho_byname2
+ho_close
+ho_minimize
+ho_next
+ho_pvtinit
+ho_rewind
+
+nw_byaddr
+nw_byname
+nw_close
+nw_minimize
+nw_next
+nw_pvtinit
+nw_rewind
+
+* (disabled; implementation incomplete)
+* ng_close
+* ng_minimize
+* ng_next
+* ng_pvtinit
+* ng_rewind
+* ng_test
+
+pr_byname
+pr_bynumber
+pr_close
+pr_minimize
+pr_next
+pr_pvtinit
+pr_rewind
+
+sv_byname
+sv_byport
+sv_close
+sv_minimize
+sv_next
+sv_pvtinit
+sv_rewind
