@@ -113,12 +113,10 @@ struct nss_mcdb_vinfo {
 
 
 INTERNAL nss_status_t
-nss_mcdb_setent(enum nss_dbtype, int)
-  __attribute_nonnull__;
+nss_mcdb_setent(enum nss_dbtype, int);
 
 INTERNAL nss_status_t
-nss_mcdb_endent(enum nss_dbtype)
-  __attribute_nonnull__;
+nss_mcdb_endent(enum nss_dbtype);
 
 /* _nss_mcdb_get*ent() walks db returning successive keys with '=' tag char */
 INTERNAL nss_status_t

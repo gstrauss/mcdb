@@ -178,7 +178,7 @@ static bool _nss_mcdb_stayopen = true;
 static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
                        const enum mcdb_flags mcdb_flags)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_warn_unused_result__;
 static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
                        const enum mcdb_flags mcdb_flags)

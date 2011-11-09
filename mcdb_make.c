@@ -22,10 +22,6 @@
  * mcdb is originally based upon the Public Domain cdb-0.75 by Dan Bernstein
  */
 
-#ifdef __GNUC__
-#define __USE_STRING_INLINES
-#endif
-
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
@@ -51,6 +47,13 @@
 #endif
 #ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE 1
+#endif
+#endif
+
+#ifdef __linux__
+#include <features.h>
+#if defined(__GLIBC__) && !defined(__clang__)
+#define __USE_STRING_INLINES
 #endif
 #endif
 
@@ -270,14 +273,14 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
       #if defined(__GLIBC__)/* glibc emulates if not natively supported by fs */
         if ((errno = posix_fallocate(m->fd, (off_t)m->osz,
                                      (off_t)(m->fsz-m->osz))) == 0)
-      #elif defined(_AIX)/* AIX errno=ENOTSUP if not natively supported by fs */\
+      #elif defined(_AIX)/*AIX errno=ENOTSUP if not natively supported by fs*/ \
          || defined(__SunOS_5_11)  /*not sure about Solaris 11 emulation*/
         if ((errno = posix_fallocate(m->fd, (off_t)m->osz,
                                      (off_t)(m->fsz-m->osz))) == 0
             || (errno != ENOSPC
                 && (errno = mcdb_make_fallocate(m->fd, (off_t)m->osz,
                                                 (off_t)(m->fsz-m->osz))) == 0))
-      #else /* emulate posix_fallocate() on earlier __sun, on __hpux and others*/
+      #else /*emulate posix_fallocate() on earlier __sun, on __hpux and others*/
         if ((errno = mcdb_make_fallocate(m->fd, (off_t)m->osz,
                                          (off_t)(m->fsz-m->osz))) == 0)
       #endif

@@ -45,8 +45,12 @@ ifneq (,$(RPM_OPT_FLAGS))
   LDFLAGS+=$(RPM_OPT_FLAGS)
 else
   CC=gcc -pipe
-  CFLAGS+=-Wall -Winline -pedantic -ansi -std=c99 -O3 -g $(ABI_FLAGS)
+  ANSI?=-ansi
+  CFLAGS+=-Wall -Winline -pedantic $(ANSI) -std=c99 -O3 -g $(ABI_FLAGS)
   LDFLAGS+=$(ABI_FLAGS)
+  ifneq (,$(filter %clang,$(CC)))
+    ANSI=
+  endif
 endif
  
 # Thread-safety (e.g. for thread-specific errno)
