@@ -41,22 +41,18 @@ endif
 endif
 
 ifneq (,$(RPM_OPT_FLAGS))
-  CFLAGS+=$(RPM_OPT_FLAGS) -std=c99
+  CFLAGS+=$(RPM_OPT_FLAGS)
   LDFLAGS+=$(RPM_OPT_FLAGS)
 else
   CC=gcc -pipe
   ANSI?=-ansi
-  CFLAGS+=-Wall -Winline -pedantic $(ANSI) -std=c99 -O3 -g $(ABI_FLAGS)
+  CFLAGS+=-Wall -Winline -pedantic $(ANSI) -O3 -g $(ABI_FLAGS)
   LDFLAGS+=$(ABI_FLAGS)
   ifneq (,$(filter %clang,$(CC)))
     ANSI=
   endif
 endif
  
-# Thread-safety (e.g. for thread-specific errno)
-# (vendor compilers might need additional compiler flags, e.g. Sun Studio -mt)
-CFLAGS+=-D_THREAD_SAFE
-
 # To disable uint32 and nointr C99 inline functions:
 #   -DNO_C99INLINE
 # Another option to smaller binary is -Os instead of -O3, and remove -Winline
@@ -102,6 +98,11 @@ endif
 # heavy handed dependencies
 _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 
+# Thread-safety (e.g. for thread-specific errno)
+# (vendor compilers might need additional compiler flags, e.g. Sun Studio -mt)
+PTHREAD_FLAGS?=-pthread -D_THREAD_SAFE
+CFLAGS+=-std=c99 $(PTHREAD_FLAGS)
+
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
@@ -140,7 +141,7 @@ libnss_mcdb_make.a: nss_mcdb_make.o nss_mcdb_acct_make.o nss_mcdb_authn_make.o \
 mcdbctl: mcdbctl.o libmcdb.a
 	$(CC) -o $@ $(LDFLAGS) $^
 
-t/%.o: CFLAGS+=-I$(CURDIR)
+t/%.o: CFLAGS+=-I $(CURDIR)
 
 t/testmcdbmake: t/testmcdbmake.o libmcdb.a
 	$(CC) -o $@ $(LDFLAGS) $^
