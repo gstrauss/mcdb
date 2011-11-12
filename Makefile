@@ -13,9 +13,11 @@ else
 PREFIX_USR?=/usr
 endif
 
+ifneq (,$(RPM_ARCH))
 ifeq (x86_64,$(RPM_ARCH))
   ABI_BITS=64
   LIB_BITS=64
+endif
 else
 ifneq (,$(wildcard /lib64))
   ABI_BITS=64
