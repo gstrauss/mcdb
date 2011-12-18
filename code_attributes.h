@@ -63,6 +63,14 @@ extern "C" {
 #include <features.h>
 #endif
 
+#ifndef __has_attribute       /* clang */
+#define __has_attribute(x) 0
+#endif
+
+#ifndef __has_builtin         /* clang */
+#define __has_builtin(x) 0
+#endif
+
 #ifndef __GNUC_PREREQ
 #  ifdef __GNUC_PREREQ__
 #    define __GNUC_PREREQ __GNUC_PREREQ__
@@ -79,7 +87,8 @@ extern "C" {
 #endif
 
 #if (defined(__GNUC__) && __GNUC_PREREQ(3,1)) \
- || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || __has_attribute(noinline)
 #ifndef __attribute_noinline__
 #define __attribute_noinline__  __attribute__((noinline))
 #endif
@@ -88,8 +97,9 @@ extern "C" {
 #define __attribute_noinline__
 #endif
 
-#if (defined(__GNUC__) && __GNUC_PREREQ(2,5)) \
- || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */
+#if __GNUC_PREREQ(2,5) \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || __has_attribute(noreturn)
 #ifndef __attribute_noreturn__
 #define __attribute_noreturn__  __attribute__((noreturn))
 #endif
@@ -98,7 +108,8 @@ extern "C" {
 #define __attribute_noreturn__
 #endif
 
-#if defined(__GNUC__) && __GNUC_PREREQ(3,3)
+#if __GNUC_PREREQ(3,3) \
+ || __has_attribute(nonnull)
 #ifndef __attribute_nonnull__
 #define __attribute_nonnull__  __attribute__((nonnull))
 #endif
@@ -107,7 +118,8 @@ extern "C" {
 #define __attribute_nonnull__
 #endif
 
-#if defined(__GNUC__) && __GNUC_PREREQ(3,3)
+#if __GNUC_PREREQ(3,3) \
+ || __has_attribute(nonnull)
 #ifndef __attribute_nonnull_x__
 #define __attribute_nonnull_x__(x)  __attribute__((nonnull x))
 #endif
@@ -116,7 +128,8 @@ extern "C" {
 #define __attribute_nonnull_x__(x)
 #endif
 
-#if defined(__GNUC__) && __GNUC_PREREQ(2,96)
+#if __GNUC_PREREQ(2,96) \
+ || __has_attribute(malloc)
 #ifndef __attribute_malloc__
 #define __attribute_malloc__  __attribute__((malloc))
 #endif
@@ -125,8 +138,9 @@ extern "C" {
 #define __attribute_malloc__
 #endif
 
-#if (defined(__GNUC__) && __GNUC_PREREQ(2,96)) \
- || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */
+#if __GNUC_PREREQ(2,96) \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || __has_attribute(pure)
 #ifndef __attribute_pure__
 #define __attribute_pure__  __attribute__((pure))
 #endif
@@ -135,7 +149,8 @@ extern "C" {
 #define __attribute_pure__
 #endif
 
-#if defined(__GNUC__) && __GNUC_PREREQ(4,3)
+#if __GNUC_PREREQ(4,3) \
+ || __has_attribute(hot)
 #ifndef __attribute_hot__
 #define __attribute_hot__  __attribute__((hot))
 #endif
@@ -144,7 +159,8 @@ extern "C" {
 #define __attribute_hot__
 #endif
 
-#if defined(__GNUC__) && __GNUC_PREREQ(4,3)
+#if __GNUC_PREREQ(4,3) \
+ || __has_attribute(cold)
 #ifndef __attribute_cold__
 #define __attribute_cold__  __attribute__((cold))
 #endif
@@ -153,7 +169,8 @@ extern "C" {
 #define __attribute_cold__
 #endif
 
-#if defined(__GNUC__) && __GNUC_PREREQ(2,96)
+#if __GNUC_PREREQ(2,96) \
+ || __has_attribute(unused)
 #ifndef __attribute_unused__
 #define __attribute_unused__  __attribute__((unused))
 #endif
@@ -162,13 +179,24 @@ extern "C" {
 #define __attribute_unused__
 #endif
 
-#if defined(__GNUC__) && __GNUC_PREREQ(3,4)
+#if __GNUC_PREREQ(3,4) \
+ || __has_attribute(warn_unused_result)
 #ifndef __attribute_warn_unused_result__
 #define __attribute_warn_unused_result__  __attribute__((warn_unused_result))
 #endif
 #endif
 #ifndef __attribute_warn_unused_result__
 #define __attribute_warn_unused_result__
+#endif
+
+#if (defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))) \
+ || __has_attribute(regparm)
+#ifndef __attribute_regparm__
+#define __attribute_regparm__(x)  __attribute__((regparm x))
+#endif
+#endif
+#ifndef __attribute_regparm__
+#define __attribute_regparm__(x)
 #endif
 
 
@@ -183,14 +211,14 @@ extern "C" {
  * EXPORT void foo(int bar);
  */
 
-#if defined(__GNUC__) && (__GNUC__ >= 4)
-# define EXPORT		__attribute__((visibility("default")))
-# define HIDDEN		__attribute__((visibility("hidden")))
-# define INTERNAL	__attribute__((visibility("internal")))
+#if __GNUC_PREREQ(4,0) || __has_attribute(visibility)
+# define EXPORT            __attribute__((visibility("default")))
+# define HIDDEN            __attribute__((visibility("hidden")))
+# define INTERNAL          __attribute__((visibility("internal")))
 #elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550)
-# define EXPORT		__global
-# define HIDDEN		__hidden
-# define INTERNAL	__hidden
+# define EXPORT            __global
+# define HIDDEN            __hidden
+# define INTERNAL          __hidden
 #else /* not gcc >= 4 and not Sun Studio >= 8 */
 # define EXPORT
 # define HIDDEN
@@ -204,15 +232,16 @@ extern "C" {
  * not expected and should be scheduled as the less likely branch taken.
  * (__builtin_expect() is recognized by IBM xlC compiler) */
 
-#if !(defined(__GNUC__) && __GNUC_PREREQ(2,96)) \
- && !(defined(__xlc__) || defined(__xlC__))
+#if !__GNUC_PREREQ(2,96) \
+ && !(defined(__xlc__) || defined(__xlC__)) \
+ && !__has_builtin(__builtin_expect)
 #ifndef __builtin_expect
 #define __builtin_expect(x,y) (x)
 #endif
 #endif
 
 /* GCC __builtin_prefetch() http://gcc.gnu.org/projects/prefetch.html */
-#if !defined(__GNUC__)
+#if !defined(__GNUC__) && !__has_builtin(__builtin_prefetch)
 /* xlC __dcbt() http://publib.boulder.ibm.com/infocenter/comphelp/v111v131/
  * (on Power7, might check locality and use __dcbtt() or __dcbstt())*/
 #if defined(__xlc__) || defined(__xlC__)
@@ -249,7 +278,7 @@ extern "C" {
   while (__builtin_expect((x),0) && __builtin_expect(errno == EINTR, 1)) ; \
   /*@=whileempty@*/
 
-#define retry_eintr_do_while(x,c)         /* caller must #include <errno.h> */ \
+#define retry_eintr_do_while(x,c)   /* caller must #include <errno.h> */   \
   do {(x);} while (__builtin_expect((c),0) && __builtin_expect(errno==EINTR, 1))
 
 

@@ -175,11 +175,11 @@ static bool _nss_mcdb_stayopen = true;
   mcdb_mmap_thread_registration_h(&(map),(flags))
 
 /* get shared mcdb_mmap */
-static struct mcdb_mmap *
+static struct mcdb_mmap *  __attribute_regparm__((2))
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
                        const enum mcdb_flags mcdb_flags)
   __attribute_warn_unused_result__;
-static struct mcdb_mmap *
+static struct mcdb_mmap *  __attribute_regparm__((2))
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
                        const enum mcdb_flags mcdb_flags)
 {
