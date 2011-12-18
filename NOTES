@@ -237,3 +237,17 @@ HP-UX
 -----
 Compilation requires newer version of gcc (e.g. 4.6.1)
 
+
+
+Distribution Notes
+------------------
+mcdb is licensed under the GNU Lesser General Public License (see file COPYING)
+mcdb is originally based on Dan J. Berstein cdb package.  cdb is public domain:
+
+http://cr.yp.to/distributors.html
+D. J. Bernstein
+Frequently asked questions from distributors
+[...]
+What are the distribution terms for cdb?
+2009.07.21: I hereby place the cdb package (in particular, cdb-0.75.tar.gz, with MD5 checksum 81fed54d0bde51b147dd6c20cdb92d51) into the public domain. The package is no longer copyrighted.
+

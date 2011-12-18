@@ -204,7 +204,7 @@ mcdb_make_fallocate(const int fd, off_t offset, off_t len)
             return errno;
     }
 
-    offset &= ~(stvfs.f_bsize-1); /*set offset to beginning of filesystem block*/
+    offset &= ~(stvfs.f_bsize-1);/*set offset to beginning of filesystem block*/
 
     while (offset < len && pwrite(fd,&buf,1,offset) != -1)
         offset += stvfs.f_bsize;

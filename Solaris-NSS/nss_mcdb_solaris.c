@@ -614,7 +614,7 @@ _nss_mcdb_services_constr(const char * const db_name,
  *
  * nss_mcdbctl would need to be modified to store data as above.
  * Note that custom decode routines would need to be written for hosts and
- * services databases since there is additional comparisons that are done to
+ * services databases since there are additional comparisons that are done to
  * find the correct entry in the database.  This could be achieved by putting
  * that extra piece of information at the beginning of the data string and
  * then, after matching, passing the remaining part of the string to
@@ -623,11 +623,11 @@ _nss_mcdb_services_constr(const char * const db_name,
  * While fairly straightforward, the above would be some hours of work, and
  * the benefit might be dubious.  NSSv2 API documentation suggests that if
  * NSSv2 interface is not available, nscd returns TRYLOCAL and client performs
- * the nss query.  In the case of mcdb, the result is might be a fast mcdb
- * query to an efficient packed binary format that is quickly decoded to the
- * desired entity.  On the flip side, if there were a way to detect that
- * nss_mcdb were running inside nscd, then nss_mcdb could be written to hold
- * open mcdb dbs and be notified when files change (instead of stat()ing).
+ * the nss query.  In the case of mcdb, the result might be a fast mcdb query
+ * to an efficient packed binary format that is quickly decoded to the desired
+ * entity.  On the flip side, if there were a way to detect that nss_mcdb were
+ * running inside nscd, then nss_mcdb could be written to hold open mcdb dbs
+ * and be notified when files change (instead of stat()ing).
  */
 
 
@@ -727,7 +727,7 @@ _nss_get_mcdb_passwd_name(struct nss_backend * const be,
  * nss_v_api and nss_v_opt must be sorted if NSS_VERSION_SORTED is indicated. */
 
 /* Note: must be sorted by API name if NSS_VERSION_SORTED set in nss_version_t*/
-/* Note: not implemented: _nss_put_mcdb_*().  ?? Implement are return xxx ?? */
+/* Note: not implemented: _nss_put_mcdb_*().  ?? Implement and return xxx ?? */
 /* Note: below represents guesses at expected interface names; confirmation
  * would be nice but nm on Solaris 10u7 /lib/nss_*.so.1 did not yield results */
 static nss_backend_api_t nss_mcdb_nss_v_api[] = {

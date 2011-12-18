@@ -95,6 +95,7 @@ static bool
 writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
 {
     /* Note: unlike writev(), this routine might modify the iovecs */
+    /* Note: not retrying writev() if EINTR; mcdbctl does not expect signals */
     ssize_t len;
     while (iovcnt && (len = writev(fd, iov, iovcnt)) != -1) {
         if ((sz -= len) == 0)
