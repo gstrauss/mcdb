@@ -28,7 +28,11 @@ extern "C" {
 
 #ifndef __STDC_C99
 #ifndef restrict
+#ifdef __GNUC__
+#define restrict __restrict
+#else
 #define restrict
+#endif
 #endif
 #endif
 

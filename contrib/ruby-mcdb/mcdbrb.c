@@ -54,43 +54,6 @@ static ID mcdbrb_id_each;
 /* option: use rb_tainted_str_new() instead of rb_str_new() for mcdb strings? */
 #define mcdbrb_str_new(p,len) rb_tainted_str_new((const char *)(p), (len))
 
-#ifndef __GNUC_PREREQ
-#  ifdef __GNUC_PREREQ__
-#    define __GNUC_PREREQ __GNUC_PREREQ__
-#  elif defined __GNUC__ && defined __GNUC_MINOR__
-#    define __GNUC_PREREQ(maj, min) \
-       ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
-#  else
-#    define __GNUC_PREREQ(maj, min) 0
-#  endif
-#endif
-
-#if (defined(__GNUC__) && __GNUC_PREREQ(3,1)) \
- || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */
-#ifndef __attribute_noinline__
-#define __attribute_noinline__  __attribute__((noinline))
-#endif
-#endif
-#ifndef __attribute_noinline__
-#define __attribute_noinline__
-#endif
-
-#if defined(__GNUC__) && __GNUC_PREREQ(4,3)
-#ifndef __attribute_cold__
-#define __attribute_cold__  __attribute__((cold))
-#endif
-#endif
-#ifndef __attribute_cold__
-#define __attribute_cold__
-#endif
-
-#if !(defined(__GNUC__) && __GNUC_PREREQ(2,96)) \
- && !(defined(__xlc__) || defined(__xlC__))
-#ifndef __builtin_expect
-#define __builtin_expect(x,y) (x)
-#endif
-#endif
-
 /* efficiency for common case; short-cut argument processing in common case
  * (throws exception if wrong type (unlikely) or if mcdb is closed)
  * (struct mcdb, mcdb_make both have 'map' struct element that can be tested)
@@ -116,7 +79,7 @@ static ID mcdbrb_id_each;
   if (__builtin_expect( ((void *)m->map == MAP_FAILED), 0)) \
       rb_raise(rb_eRuntimeError, "closed MCDB file");
 
-static void * __attribute_noinline__  __attribute_cold__
+static void *  __attribute_noinline__  __attribute_cold__
 mcdbrb_raise_error(const VALUE obj)
 {  /*(one of these should raise an exception if this routine is called)*/
    Check_Type(obj, T_DATA);

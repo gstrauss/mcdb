@@ -614,7 +614,7 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
  * (optimization)
  * The aliases below are not a complete set of mcdb symbols,
  * but instead are the most common used in libnss_mcdb.so.2 */
-#if defined(__GNUC__) && (__GNUC__ >= 4)
+#if __GNUC_PREREQ(4,0) || __has_attribute(alias)
 HIDDEN extern __typeof (mcdb_findtagstart)
                         mcdb_findtagstart_h
   __attribute__((alias ("mcdb_findtagstart")));

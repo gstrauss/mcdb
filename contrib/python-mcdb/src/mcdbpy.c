@@ -81,12 +81,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#ifdef __GNUC__
-#define restrict __restrict
-#else
-#define restrict
-#endif
-
 #include <mcdb/mcdb.h>
 #include <mcdb/mcdb_make.h>
 #include <mcdb/mcdb_makefn.h>

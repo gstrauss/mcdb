@@ -571,7 +571,7 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
  * (Reference: "How to Write Shared Libraries", by Ulrich Drepper)
  * (optimization)
  * The aliases below are not a complete set of mcdb_make symbols */
-#if defined(__GNUC__) && (__GNUC__ >= 4)
+#if __GNUC_PREREQ(4,0) || __has_attribute(alias)
 HIDDEN extern __typeof (mcdb_make_add)
                         mcdb_make_add_h
   __attribute__((alias ("mcdb_make_add")));
