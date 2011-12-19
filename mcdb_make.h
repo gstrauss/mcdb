@@ -86,16 +86,16 @@ mcdb_make_addbegin(struct mcdb_make * restrict, size_t, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 extern void
 mcdb_make_addbuf_key(struct mcdb_make * restrict,const char * restrict,size_t)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_nothrow__;
 extern void
 mcdb_make_addbuf_data(struct mcdb_make * restrict,const char * restrict,size_t)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_nothrow__;
 extern void
 mcdb_make_addend(struct mcdb_make * restrict)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_nothrow__;
 extern void
 mcdb_make_addrevert(struct mcdb_make * restrict)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_nothrow__;
 
 
 /* alias symbols with hidden visibility for use in DSO linking static mcdb.o

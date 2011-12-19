@@ -183,6 +183,16 @@ extern "C" {
 #define __attribute_unused__
 #endif
 
+#if __GNUC_PREREQ(3,3) \
+ || __has_attribute(nothrow)
+#ifndef __attribute_nothrow__
+#define __attribute_nothrow__  __attribute__((nothrow))
+#endif
+#endif
+#ifndef __attribute_nothrow__
+#define __attribute_nothrow__
+#endif
+
 #if __GNUC_PREREQ(3,4) \
  || __has_attribute(warn_unused_result)
 #ifndef __attribute_warn_unused_result__

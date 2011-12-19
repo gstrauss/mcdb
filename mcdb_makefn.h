@@ -41,7 +41,8 @@ mcdb_makefn_start (struct mcdb_make * restrict, const char * restrict fname,
 
 int
 mcdb_makefn_finish (struct mcdb_make * restrict, const bool)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 
 int
 mcdb_makefn_cleanup (struct mcdb_make * restrict)

@@ -45,7 +45,7 @@ extern "C" {
 
 int  C99INLINE
 nointr_dup(const int fd)
-  __attribute_warn_unused_result__;
+  __attribute_warn_unused_result__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 int  C99INLINE
 nointr_dup(const int fd)
@@ -54,7 +54,8 @@ nointr_dup(const int fd)
 
 int  C99INLINE
 nointr_open(const char * const restrict fn, const int flags, const mode_t mode)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 int  C99INLINE
 nointr_open(const char * const restrict fn, const int flags, const mode_t mode)
@@ -62,7 +63,8 @@ nointr_open(const char * const restrict fn, const int flags, const mode_t mode)
 #endif
 
 int  C99INLINE
-nointr_close(const int fd);
+nointr_close(const int fd)
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 int  C99INLINE
 nointr_close(const int fd)
@@ -71,7 +73,8 @@ nointr_close(const int fd)
 
 ssize_t  C99INLINE
 nointr_write(const int fd, const char * restrict buf, size_t sz)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 ssize_t  C99INLINE
 nointr_write(const int fd, const char * restrict buf, size_t sz)
@@ -85,7 +88,8 @@ nointr_write(const int fd, const char * restrict buf, size_t sz)
 /* caller must #define _XOPEN_SOURCE >= 500 for XSI-compliant ftruncate() */
 #if defined(_XOPEN_SOURCE) && _XOPEN_SOURCE-0 >= 500
 int  C99INLINE
-nointr_ftruncate(const int fd, const off_t sz);
+nointr_ftruncate(const int fd, const off_t sz)
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 #if defined(__hpux) && defined(_LARGEFILE64_SOURCE) \
  && !defined(_LP64) && !defined(__LP64__)
@@ -102,7 +106,8 @@ nointr_ftruncate(const int fd, const off_t sz)
 int  C99INLINE
 nointr_openat(const int dfd, const char * const restrict fn,
               const int flags, const mode_t mode)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 int  C99INLINE
 nointr_openat(const int dfd, const char * const restrict fn,

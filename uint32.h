@@ -75,7 +75,7 @@ extern "C" {
 
 uint32_t  C99INLINE  __attribute_pure__
 uint32_strunpack(const char s[4])
-  __attribute_warn_unused_result__;
+  __attribute_warn_unused_result__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
 uint32_strunpack(const char s[4])
@@ -87,7 +87,7 @@ uint32_strunpack(const char s[4])
 
 uint32_t  C99INLINE  __attribute_pure__
 uint32_strunpack_bigendian(const char s[4])
-  __attribute_warn_unused_result__;
+  __attribute_warn_unused_result__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
 uint32_strunpack_bigendian(const char s[4])
@@ -98,7 +98,8 @@ uint32_strunpack_bigendian(const char s[4])
 #endif
 
 void  C99INLINE
-uint32_strpack(char s[4], const uint32_t u);
+uint32_strpack(char s[4], const uint32_t u)
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 void  C99INLINE
 uint32_strpack(char s[4], const uint32_t u)
@@ -108,7 +109,8 @@ uint32_strpack(char s[4], const uint32_t u)
 #endif
 
 void  C99INLINE
-uint32_strpack_bigendian(char s[4], const uint32_t u);
+uint32_strpack_bigendian(char s[4], const uint32_t u)
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 void  C99INLINE
 uint32_strpack_bigendian(char s[4], const uint32_t u)
@@ -127,7 +129,8 @@ uint32_strpack_bigendian(char s[4], const uint32_t u)
 
 uint32_t  C99INLINE  __attribute_pure__
 uint32_hash_djb(uint32_t, const void *, size_t)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
 uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
@@ -211,7 +214,7 @@ uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
  * (buf returned contains exactly 8 chars and is not NUL-terminated) */
 void  C99INLINE
 uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 void  C99INLINE
 uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
@@ -245,7 +248,7 @@ uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
  * (buf returned contains exactly 4 chars and is not NUL-terminated) */
 void  C99INLINE
 uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 void  C99INLINE
 uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
@@ -267,7 +270,8 @@ uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
  * (use when hex chars are known 0..9 A..F) */
 uint32_t  C99INLINE  __attribute_pure__
 uint32_from_ascii8uphex(const char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
 uint32_from_ascii8uphex(const char * const restrict buf)
@@ -300,7 +304,8 @@ uint32_from_ascii8uphex(const char * const restrict buf)
  * (use when hex chars are known 0..9 A..F) */
 uint16_t  C99INLINE  __attribute_pure__
 uint16_from_ascii4uphex(const char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 uint16_t  C99INLINE
 uint16_from_ascii4uphex(const char * const restrict buf)
@@ -330,14 +335,16 @@ uint16_from_ascii4uphex(const char * const restrict buf)
  * (use when hex chars are known 0..9 A..F a..f) */
 uint32_t  __attribute_pure__
 uint32_from_ascii8hex(const char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 
 /* convert string of 4 ASCII hex chars to unsigned 16-bit value
  * (used to convert architecture-independent string data to numerical data)
  * (use when hex chars are known 0..9 A..F a..f) */
 uint16_t  __attribute_pure__
 uint32_from_ascii4hex(const char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 
 
 #ifdef __cplusplus

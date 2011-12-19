@@ -82,11 +82,13 @@ struct mcdb {
 extern bool
 mcdb_findtagstart(struct mcdb * restrict, const char * restrict, size_t,
                   unsigned char)/* note: must be 0 or cast to (unsigned char) */
-  __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_hot__;
+  __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_hot__
+  __attribute_nothrow__;
 extern bool
 mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
                  unsigned char) /* note: must be 0 or cast to (unsigned char) */
-  __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_hot__;
+  __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_hot__
+  __attribute_nothrow__;
 
 #define mcdb_findstart(m,key,klen) mcdb_findtagstart((m),(key),(klen),0)
 #define mcdb_findnext(m,key,klen)  mcdb_findtagnext((m),(key),(klen),0)
@@ -96,13 +98,16 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
 
 extern void *
 mcdb_read(const struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 extern uint32_t
 mcdb_numrecs(struct mcdb * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 extern bool
 mcdb_validate_slots(struct mcdb * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 
 /* (macros valid only after mcdb_find() or mcdb_find*next() returns true) */
 #define mcdb_datapos(m)      ((m)->dpos)
@@ -128,10 +133,11 @@ struct mcdb_iter {
 
 extern bool
 mcdb_iter(struct mcdb_iter * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 extern void
 mcdb_iter_init(struct mcdb_iter * restrict, struct mcdb * restrict)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_nothrow__;
 
 extern struct mcdb_mmap *  __attribute_malloc__
 mcdb_mmap_create(struct mcdb_mmap * restrict,
@@ -156,19 +162,22 @@ mcdb_mmap_destroy(struct mcdb_mmap * restrict)
 
 extern bool
 mcdb_mmap_init(struct mcdb_mmap * restrict, int)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 extern void
 mcdb_mmap_prefault(const struct mcdb_mmap * restrict)
-  __attribute_nonnull__;
+  __attribute_nonnull__  __attribute_nothrow__;
 extern void
 mcdb_mmap_free(struct mcdb_mmap * restrict)
   ;
 extern bool
 mcdb_mmap_reopen(struct mcdb_mmap * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 extern bool
 mcdb_mmap_refresh_check(const struct mcdb_mmap * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
 
 
 enum mcdb_flags {
