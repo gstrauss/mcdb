@@ -360,9 +360,8 @@ nss_mcdb_acct_grouplist_decode(struct mcdb * const restrict m,
     /* populate gidlist if enough space, else count gids */
     if (__builtin_expect( n > v->bufsz, 0)) { /* not enough space */
         /* count num gids (as if enough space were available) */
-        const uint32_t gidn = htonl((uint32_t)gid);
-        for (x = 1; --n; dptr += 4) { /*(compare network byte ordered gids)*/
-            if (gidn != ((dptr[0]<<24)|(dptr[1]<<16)|(dptr[2]<<8)|dptr[3]))
+        for (x = 1; --n; dptr += 4) {
+            if (gid !=(gid_t)((dptr[0]<<24)|(dptr[1]<<16)|(dptr[2]<<8)|dptr[3]))
                 ++x;
         }
         if (__builtin_expect( x > v->bufsz, 1)) { /* not enough space */
@@ -376,8 +375,7 @@ nss_mcdb_acct_grouplist_decode(struct mcdb * const restrict m,
     }
     gidlist[0] = gid;
     for (x = 1; --n; dptr += 4) {
-        gidlist[x] = (gid_t)
-                     ntohl((dptr[0]<<24)|(dptr[1]<<16)|(dptr[2]<<8)|dptr[3]);
+        gidlist[x] = (gid_t)((dptr[0]<<24)|(dptr[1]<<16)|(dptr[2]<<8)|dptr[3]);
         if (gidlist[x] != gid)
             ++x;
     }
