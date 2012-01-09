@@ -540,7 +540,7 @@ nss_mcdb_acct_make_passwd_parse(
         n = strtol(b, &e, 10);
         if (*e != '\0' || ((n == LONG_MIN || n == LONG_MAX) && errno == ERANGE))
             return false;               /* error: invalid number */
-        pw.pw_uid = (n >= 0 && (uid_t)n >= 0 && n == (uid_t)n)
+        pw.pw_uid = (n >= 0 && n == (uid_t)n)
           ? (uid_t)n
           : (n == -2 ? (uid_t)-2 : (uid_t)-1);
         if (pw.pw_uid == (uid_t)-1)
@@ -556,7 +556,7 @@ nss_mcdb_acct_make_passwd_parse(
         n = strtol(b, &e, 10);
         if (*e != '\0' || ((n == LONG_MIN || n == LONG_MAX) && errno == ERANGE))
             return false;               /* error: invalid number */
-        pw.pw_gid = (n >= 0 && (gid_t)n >= 0 && n == (gid_t)n)
+        pw.pw_gid = (n >= 0 && n == (gid_t)n)
           ? (gid_t)n
           : (n == -2 ? (gid_t)-2 : (gid_t)-1);
         if (pw.pw_gid == (gid_t)-1)
@@ -719,7 +719,7 @@ nss_mcdb_acct_make_group_parse(
         n = strtol(b, &e, 10);
         if (*e != '\0' || ((n == LONG_MIN || n == LONG_MAX) && errno == ERANGE))
             return false;               /* error: invalid number */
-        gr.gr_gid = (n >= 0 && (gid_t)n >= 0 && n == (gid_t)n)
+        gr.gr_gid = (n >= 0 && n == (gid_t)n)
           ? (gid_t)n
           : (n == -2 ? (gid_t)-2 : (gid_t)-1);
         if (gr.gr_gid == (gid_t)-1)

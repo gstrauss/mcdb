@@ -367,6 +367,6 @@ nss_mcdb_buf_decode(struct mcdb * const restrict m,
 bool
 nss_mcdb_refresh_check(const enum nss_dbtype dbtype)
 {
-    return (0 <= dbtype && dbtype < NSS_DBTYPE_SENTINEL)
+    return (0 <= (int)dbtype && dbtype < NSS_DBTYPE_SENTINEL)
         && mcdb_mmap_refresh_check_h(&_nss_mcdb_mmap_st[dbtype]);
 }
