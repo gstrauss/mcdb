@@ -77,7 +77,8 @@ extern int madvise(caddr_t, size_t, int);
 #endif
 
 /* macros to hint to release memory pages every 32 MB (1u << 25) */
-#define mcdb_madv_initmark(ptr) ((ptr) + (1u << 25))
+#define mcdb_madv_initmark(ptr, size) \
+  (size) >= (1u << 25) ? ((ptr) + (1u << 25)) : ((ptr) + (size))
 #define mcdb_madv_dontneed(ptr, mark)                                          \
   do {                                                                         \
     if (__builtin_expect( ((ptr) >= (mark)), 0)) {                             \
@@ -126,7 +127,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     struct mcdb_iter iter;
     uint32_t klen;
     uint32_t dlen;
-    unsigned char *mark = mcdb_madv_initmark(m->map->ptr);
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr, m->map->size);
     int    iovcnt = 0;
     size_t iovlen = 0;
     size_t buflen = 0;
@@ -140,8 +141,6 @@ mcdbctl_dump(struct mcdb * const restrict m)
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     while (mcdb_iter(&iter)) {
 
-        mcdb_madv_dontneed(iter.ptr, mark);  /* hint to release memory pages */
-
         klen = mcdb_iter_keylen(&iter);
         dlen = mcdb_iter_datalen(&iter);
 
@@ -153,6 +152,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
             iovcnt = 0;
             iovlen = 0;
             buflen = 0;
+            mcdb_madv_dontneed(iter.ptr, mark); /*hint to release memory pages*/
         }
 
         iov[iovcnt].iov_base = "+";
@@ -191,6 +191,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
             iovcnt = 0;
             iovlen = 0;
             buflen = 0;
+            mcdb_madv_dontneed(iter.ptr, mark); /*hint to release memory pages*/
         }
 
         iov[iovcnt].iov_base = mcdb_iter_dataptr(&iter);
@@ -222,7 +223,8 @@ mcdbctl_stats(struct mcdb * const restrict m)
     struct mcdb_iter iter;
     uintptr_t iter_dpos;
     char *k;
-    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ);
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ,
+                                             m->map->size- MCDB_HEADER_SZ);
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
@@ -380,7 +382,8 @@ mcdbctl_has_unique_keys(struct mcdb * const restrict m)
 {
     struct mcdb_iter iter;
     char *k;
-    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ);
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ,
+                                             m->map->size- MCDB_HEADER_SZ);
     posix_madvise(m->map->ptr, m->map->size,
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     if (!mcdb_validate_slots(m))
@@ -411,7 +414,8 @@ mcdbctl_make_unique_keys(struct mcdb * const restrict m, const bool first)
     struct mcdb_iter iter;
     struct mcdb_make mk;
     char *k, *data;
-    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ);
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ,
+                                             m->map->size- MCDB_HEADER_SZ);
     uint32_t dlen;
     int rv = EXIT_SUCCESS;
     posix_madvise(m->map->ptr, m->map->size,
