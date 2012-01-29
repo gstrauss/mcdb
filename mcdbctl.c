@@ -60,7 +60,7 @@
 #include <stdio.h>   /* printf(), snprintf(), IOV_MAX */
 #include <stdlib.h>  /* malloc(), free(), EXIT_SUCCESS */
 #include <string.h>  /* strlen() */
-#include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO */
+#include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO _SC_PAGESIZE */
 #include <sys/uio.h> /* writev() */
 #include <libgen.h>  /* basename() */
 #include <limits.h>  /* SSIZE_MAX */
@@ -76,15 +76,29 @@ extern int madvise(caddr_t, size_t, int);
 #define POSIX_MADV_DONTNEED    4
 #endif
 
-/* macros to hint to release memory pages every 32 MB (1u << 25) */
-#define mcdb_madv_initmark(ptr, size) \
-  (size) >= (1u << 25) ? ((ptr) + (1u << 25)) : ((ptr) + (size))
+/* code to hint to release memory pages every 32 MB (1u << 25) */
+static unsigned char *
+mcdb_madv_initmark(unsigned char * const ptr, const uintptr_t sz, size_t offset)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+static unsigned char *
+mcdb_madv_initmark(unsigned char * const ptr, const uintptr_t sz, size_t offset)
+{
+    if (offset != 0) {
+        /* round up if non-zero to avoid calling dontneed on mcdb header page */
+        const uintptr_t pagesz = ((uintptr_t)sysconf(_SC_PAGESIZE)) - 1;
+        offset = (offset + pagesz) & ~pagesz;/* round up to nearest page size */
+    }
+    return (sz)-(offset) >= (1u << 25)
+      ? (ptr) + (offset) + (1u << 25)
+      : (ptr) + (sz);
+}
 #define mcdb_madv_dontneed(ptr, mark)                                          \
   do {                                                                         \
     if (__builtin_expect( ((ptr) >= (mark)), 0)) {                             \
       do {                                                                     \
         posix_madvise((mark) - (1u << 25), (1u << 25), POSIX_MADV_DONTNEED);   \
-        (mark) += (1u << 25);                                                  \
+        if ((uintptr_t)((mark) += (1u << 25)) < (1u << 25))                    \
+            (mark) = (unsigned char *)~(uintptr_t)0;                           \
       } while (__builtin_expect( ((ptr) >= (mark)), 0));                       \
     }                                                                          \
   } while (0)
@@ -127,7 +141,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
     struct mcdb_iter iter;
     uint32_t klen;
     uint32_t dlen;
-    unsigned char *mark = mcdb_madv_initmark(m->map->ptr, m->map->size);
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr, m->map->size, 0);
     int    iovcnt = 0;
     size_t iovlen = 0;
     size_t buflen = 0;
@@ -137,7 +151,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
       /* oversized buffer since all num strings must add up to less than max */
 
     mcdb_iter_init(&iter, m);
-    posix_madvise(iter.ptr, (size_t)(iter.eod - iter.ptr),
+    posix_madvise(iter.map, (size_t)(iter.eod - iter.map),
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     while (mcdb_iter(&iter)) {
 
@@ -223,8 +237,8 @@ mcdbctl_stats(struct mcdb * const restrict m)
     struct mcdb_iter iter;
     uintptr_t iter_dpos;
     char *k;
-    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ,
-                                             m->map->size- MCDB_HEADER_SZ);
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr, m->map->size,
+                                             MCDB_HEADER_SZ);
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     unsigned int rv;
@@ -287,6 +301,31 @@ mcdbctl_getseq(struct mcdb * const restrict m,
 }
 
 static int
+mcdbctl_getall(struct mcdb * const restrict m,
+               const char * const restrict key)
+  __attribute_nonnull__  __attribute_warn_unused_result__;
+static int
+mcdbctl_getall(struct mcdb * const restrict m,
+               const char * const restrict key)
+{
+    const size_t klen = strlen(key);
+    struct iovec iov[2];
+    if (mcdb_find(m, key, klen)) {
+        do {
+            /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
+            iov[0].iov_base = mcdb_dataptr(m);
+            iov[0].iov_len  = mcdb_datalen(m);
+            iov[1].iov_base = "\n";
+            iov[1].iov_len  = 1;
+            if (!writev_loop(STDOUT_FILENO,iov,2,(ssize_t)(iov[0].iov_len+1)))
+                return MCDB_ERROR_WRITE;
+        } while (mcdb_findnext(m, key, klen));
+        return EXIT_SUCCESS;
+    }
+    return EXIT_FAILURE;
+}
+
+static int
 mcdbctl_query(const int argc, char ** restrict argv)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static int
@@ -297,7 +336,8 @@ mcdbctl_query(const int argc, char ** restrict argv)
     int rv;
     int fd;
     unsigned long seq = 0;
-    enum { MCDBCTL_BAD_QUERY_TYPE, MCDBCTL_GET, MCDBCTL_DUMP, MCDBCTL_STATS }
+    enum { MCDBCTL_BAD_QUERY_TYPE, MCDBCTL_GET, MCDBCTL_GETALL,
+           MCDBCTL_DUMP, MCDBCTL_STATS }
       query_type = MCDBCTL_BAD_QUERY_TYPE;
 
     /* validate args  (query type string == argv[1]) */
@@ -307,6 +347,8 @@ mcdbctl_query(const int argc, char ** restrict argv)
             seq = strtoul(argv[4], &endptr, 10);
             if (seq != ULONG_MAX && argv[4] != endptr && *endptr == '\0')
                 query_type = MCDBCTL_GET;
+            else if (0 == strcmp(argv[4], "all"))
+                query_type = MCDBCTL_GETALL;
         }
         else if (argc == 4)
             query_type = MCDBCTL_GET;
@@ -335,7 +377,12 @@ mcdbctl_query(const int argc, char ** restrict argv)
     switch (query_type) {
       case MCDBCTL_GET:
         rv = mcdbctl_getseq(&m, argv[3], seq);  /* key = argv[3] */
-        if (rv != EXIT_SUCCESS)
+        if (rv == EXIT_FAILURE)
+            exit(100); /* not found: exit nonzero without errmsg */
+        break;
+      case MCDBCTL_GETALL:
+        rv = mcdbctl_getall(&m, argv[3]);       /* key = argv[3] */
+        if (rv == EXIT_FAILURE)
             exit(100); /* not found: exit nonzero without errmsg */
         break;
       case MCDBCTL_DUMP:
@@ -382,8 +429,8 @@ mcdbctl_has_unique_keys(struct mcdb * const restrict m)
 {
     struct mcdb_iter iter;
     char *k;
-    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ,
-                                             m->map->size- MCDB_HEADER_SZ);
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr, m->map->size,
+                                             MCDB_HEADER_SZ);
     posix_madvise(m->map->ptr, m->map->size,
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     if (!mcdb_validate_slots(m))
@@ -414,8 +461,8 @@ mcdbctl_make_unique_keys(struct mcdb * const restrict m, const bool first)
     struct mcdb_iter iter;
     struct mcdb_make mk;
     char *k, *data;
-    unsigned char *mark = mcdb_madv_initmark(m->map->ptr + MCDB_HEADER_SZ,
-                                             m->map->size- MCDB_HEADER_SZ);
+    unsigned char *mark = mcdb_madv_initmark(m->map->ptr, m->map->size,
+                                             MCDB_HEADER_SZ);
     uint32_t dlen;
     int rv = EXIT_SUCCESS;
     posix_madvise(m->map->ptr, m->map->size,

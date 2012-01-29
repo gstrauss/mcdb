@@ -268,7 +268,8 @@ extern "C" {
 #if defined(__SUNPRO_C) || defined(__SUNPRO_CC)
 #include <sun_prefetch.h>
 #define __builtin_prefetch(addr,rw,locality) \
-        ((rw) ? sun_prefetch_write_once(addr) : sun_prefetch_read_once(addr))
+        ((rw) ? sun_prefetch_write_once((void *)(addr)) \
+              : sun_prefetch_read_once((void *)(addr)))
 #endif
 /* HP aCC for IA-64 (Itanium)
  * Search internet "Inline assembly for Itanium-based HP-UX"

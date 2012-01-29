@@ -243,10 +243,12 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
 }
 
 static bool  __attribute_noinline__
-mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
+mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
+                 const bool sequential)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static bool  __attribute_noinline__
-mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
+mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
+                 const bool sequential)
 {
     const size_t offset = m->pos & m->pgalign; /* mmap offset must be aligned */
     size_t msz;
@@ -305,7 +307,8 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz)
     if (m->map == MAP_FAILED) return false;
     m->offset = offset;
     m->msz = msz;
-    posix_madvise(m->map, msz, POSIX_MADV_SEQUENTIAL);
+    if (sequential)
+        posix_madvise(m->map, msz, POSIX_MADV_SEQUENTIAL);
     return true;
 }
 
@@ -326,7 +329,7 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
     if (pos > UINT_MAX-len)                   return mcdb_make_err(NULL,ENOMEM);
   #endif
-    if (m->offset+m->msz < pos+len && !mcdb_mmap_upsize(m, pos+len))
+    if (m->offset+m->msz < pos+len && !mcdb_mmap_upsize(m, pos+len, true))
                                               return mcdb_make_err(NULL,errno);
     p = m->map + pos - m->offset;
     uint32_strpack_bigendian_macro(p,keylen);
@@ -411,7 +414,8 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
     memset(m->count, 0, MCDB_SLOTS * sizeof(uint32_t));
     /* do not modify m->fname, m->fntmp, m->st_mode; may already have been set*/
     /* (defer mcdb_mmap_upsize() if fd==-1 to allow caller to set custom map) */
-    if (m->head[0] != NULL && (fd == -1 || mcdb_mmap_upsize(m, MCDB_MMAP_SZ))) {
+    if (m->head[0] != NULL
+        && (fd == -1 || mcdb_mmap_upsize(m, MCDB_MMAP_SZ, true))) {
         for (uint32_t u = 0; u < MCDB_SLOTS; ++u) {
             m->head[u] = m->head[0]+u;
             m->head[u]->num  = 0;
@@ -462,10 +466,14 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
   #if !defined(_LP64) && !defined(__LP64__)
     if (d > (UINT_MAX-(m->pos+u)))             return mcdb_make_err(m,ENOMEM);
   #endif
-    if (m->offset+m->msz < m->pos+d && !mcdb_mmap_upsize(m,m->pos+d))
+    if (m->offset+m->msz < m->pos+d && !mcdb_mmap_upsize(m, m->pos+d, false))
                                                return mcdb_make_err(m,errno);
     if (d) memset(m->map + m->pos - m->offset, ~0, d);
     m->pos += d; /*set all bits in hole so code can detect end of data padding*/
+
+    /* undo POSIX_MADV_SEQUENTIAL advice to avoid crash on Solaris
+     * (madvise is supposed to be advice, not promise; Solaris crash is bug) */
+    posix_madvise(m->map, m->msz, POSIX_MADV_NORMAL);
 
     b = (m->pos < UINT_MAX) ? 3 : 4;
     for (i = 0; i < MCDB_SLOTS; ++i) {
@@ -474,7 +482,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
 
         /* mmap sufficient space into which to write hash table for this slot */
         if (m->offset+m->msz < d+((uintptr_t)len << b)
-            && !mcdb_mmap_upsize(m, d+((uintptr_t)len << b)))
+            && !mcdb_mmap_upsize(m, d+((uintptr_t)len << b), false))
             break;
 
         /* constant header (16 bytes per header slot, so multiply by 16) */
@@ -488,7 +496,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         m->pos += ((uintptr_t)len << b);
         memset(p, 0, (size_t)len << b);
         if (b == 3) { /* data section ends < 4 GB; use 32-bit dpos offset */
-            /* (could be make into a subroutine taking (len, p, m->head[i]) */
+            /* (could be made into a subroutine taking (len, p, m->head[i]) */
             /* layout in memory: 4-byte khash, 4-byte dpos */
             for (const struct mcdb_hplist *x = m->head[i]; x; x = x->next) {
                 const struct mcdb_hp * restrict hp = x->hp;

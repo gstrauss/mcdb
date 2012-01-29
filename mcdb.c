@@ -279,8 +279,9 @@ mcdb_iter_init(struct mcdb_iter * const restrict iter,
     iter->map  = m->map;
     /* Note: callers that intend to iterate through entire mcdb might call
      * posix_madvise() on the mcdb as long as mcdb fits into physical memory,
-     * e.g. posix_madvise(iter->ptr, (size_t)(iter->eod - iter->ptr),
+     * e.g. posix_madvise(iter->map, (size_t)(iter->eod - iter->map),
      *                    POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+     *      (if iter->ptr instead of iter->map, round down for page alignment)
      */
 }
 
