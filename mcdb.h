@@ -189,8 +189,7 @@ enum mcdb_flags {
 };
 
 extern bool
-mcdb_mmap_thread_registration(struct mcdb_mmap ** restrict,
-                              enum mcdb_flags)
+mcdb_mmap_thread_registration(struct mcdb_mmap ** restrict, int)
   __attribute_nonnull__;
 extern bool
 mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
@@ -212,8 +211,8 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
 #define MCDB_SLOTS (1u<<MCDB_SLOT_BITS)   /* must be power-of-2 */
 #define MCDB_SLOT_MASK (MCDB_SLOTS-1)     /* bitmask */
 #define MCDB_HEADER_SZ (MCDB_SLOTS<<4)    /* MCDB_SLOTS * 16  (256*16=4096) */
-#define MCDB_MMAP_SZ (1<<19)              /* 512KB; must be >  MCDB_HEADER_SZ */
-#define MCDB_BLOCK_SZ (1<<22)             /*   4MB; must be >= MCDB_MMAP_SZ */
+#define MCDB_MMAP_SZ (1u<<19)             /* 512KB; must be >  MCDB_HEADER_SZ */
+#define MCDB_BLOCK_SZ (1u<<22)            /*   4MB; must be >= MCDB_MMAP_SZ */
 
 #define MCDB_PAD_ALIGN 16
 #define MCDB_PAD_MASK (MCDB_PAD_ALIGN-1)

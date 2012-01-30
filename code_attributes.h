@@ -260,7 +260,7 @@ extern "C" {
  * (on Power7, might check locality and use __dcbtt() or __dcbstt())*/
 #if defined(__xlc__) || defined(__xlC__)
 #define __builtin_prefetch(addr,rw,locality) \
-        ((rw) ? __dcbst(addr) : __dcbt(addr))
+        ((rw) ? __dcbst((void *)(addr)) : __dcbt((void *)(addr)))
 #endif
 /* Sun Studio
  * http://blogs.oracle.com/solarisdev/entry/new_article_prefetching
@@ -273,13 +273,23 @@ extern "C" {
 #endif
 /* HP aCC for IA-64 (Itanium)
  * Search internet "Inline assembly for Itanium-based HP-UX"
- * _Asm_lfhint competers appear to be reverse those of gcc __builtin_prefetch */
+ * (HP compiler expects to see string _LFHINT_* and not integral constants)*/
 #if defined(__ia64) && (defined(__HP_cc) || defined(__HP_aCC))
 #include <fenv.h>
 #include <machine/sys/inline.h>
-#define __builtin_prefetch(addr,rw,locality) \
-        ((rw) ? _Asm_lfetch_excl(_LFTYPE_NONE, -(locality)+3, (addr)) \
-              : _Asm_lfetch(_LFTYPE_NONE, -(locality)+3, (addr)))
+#define __builtin_prefetch(addr,rw,locality)                        \
+        ((rw) ? _Asm_lfetch_excl(_LFTYPE_NONE,                      \
+                                   (locality) == 0 ? _LFHINT_NONE : \
+                                   (locality) == 1 ? _LFHINT_NT1  : \
+                                   (locality) == 2 ? _LFHINT_NT2  : \
+                                                     _LFHINT_NTA,   \
+                                 (void *)(addr))                    \
+              : _Asm_lfetch(     _LFTYPE_NONE,                      \
+                                   (locality) == 0 ? _LFHINT_NONE : \
+                                   (locality) == 1 ? _LFHINT_NT1  : \
+                                   (locality) == 2 ? _LFHINT_NT2  : \
+                                                     _LFHINT_NTA,   \
+                                 (void *)(addr)))
 #endif
 /* default (do-nothing macros) */
 #ifndef __builtin_prefetch

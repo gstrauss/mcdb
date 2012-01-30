@@ -69,6 +69,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
+#include <stdint.h>    /* SIZE_MAX */
 
 #ifdef _THREAD_SAFE
 #include <pthread.h>       /* pthread_mutex_t, pthread_mutex_{lock,unlock}() */
@@ -118,7 +119,8 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     if (__builtin_expect((!m->hslots), 0))
         return false;
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
-    m->kpos  = m->hpos + (((khash >> MCDB_SLOT_BITS) % m->hslots) << m->map->b);
+    m->kpos  = m->hpos
+             +(((uintptr_t)((khash>>MCDB_SLOT_BITS) % m->hslots)) << m->map->b);
     ptr = m->map->ptr + m->kpos;
     __builtin_prefetch(ptr,0,2);    /*prefetch for mcdb_findtagnext()*/
     __builtin_prefetch(ptr+64,0,2); /*prefetch for mcdb_findtagnext()*/
@@ -232,7 +234,7 @@ mcdb_validate_slots(struct mcdb * const restrict m)
         numrecs += (hslots = uint32_strunpack_bigendian_aligned_macro(ptr+u+8));
         if (/* __builtin_expect( (*(uint32_t *)(ptr+u+12)) == 0, 1) && */
             __builtin_expect( (hpos == hpos_next), 1)) /*(skip padding == 0)*/
-            hpos_next += (hslots << bits);
+            hpos_next += ((uintptr_t)hslots << bits);
         else
             return false;
     } while ((u += 16) < MCDB_HEADER_SZ);
@@ -314,7 +316,8 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     mcdb_mmap_unmap(map);
 
     if (fstat(fd, &st) != 0) return false;
-    x = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    if (st.st_size >= SIZE_MAX) return (errno = EFBIG, false);
+    x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (x == MAP_FAILED) return false;
     __builtin_prefetch((char *)x+960, 0, 3); /*(touch mem page w/ mcdb header)*/
   #if 0 /* disable; does not appear to improve performance */
@@ -324,8 +327,8 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 	/*(addr (x) must be aligned on _SC_PAGESIZE for madvise portability)*/
   #endif
     map->ptr   = (unsigned char *)x;
-    map->size  = st.st_size;
-    map->b     = st.st_size < UINT_MAX || *(uint32_t *)x == 0 ? 3 : 4;
+    map->size  = (uintptr_t)st.st_size;
+    map->b     = st.st_size < UINT_MAX || *(uint32_t *)x == 0 ? 3u : 4u;
     map->n     = ~0;
     map->mtime = st.st_mtime;
     map->next  = NULL;
@@ -440,7 +443,8 @@ mcdb_mmap_refresh_check(const struct mcdb_mmap * const restrict map)
  * mcdb_mmap_create(), fn_free(map) is called, whether or not map or NULL was
  * passed as first argument to mcdb_mmap_create().
  */
-struct mcdb_mmap *  __attribute_noinline__
+__attribute_noinline__
+struct mcdb_mmap *
 mcdb_mmap_create(struct mcdb_mmap * restrict map,
                  const char * const dname  __attribute_unused__,
                  const char * const fname,
@@ -511,7 +515,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
 
 bool  __attribute_noinline__
 mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
-                              const enum mcdb_flags flags)
+                              const int flags)
 {
     struct mcdb_mmap *map;
     struct mcdb_mmap *next = NULL;
@@ -598,7 +602,7 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
     /* else rc = true;  (map->next already updated e.g. while obtaining lock) */
 
     if (rc) {
-        const enum mcdb_flags mcdb_flags_hold_lock =
+        const int mcdb_flags_hold_lock =
             MCDB_REGISTER_USE_INCR
           | MCDB_REGISTER_MUTEX_UNLOCK_HOLD
           | MCDB_REGISTER_MUTEX_LOCK_HOLD;

@@ -194,7 +194,7 @@ nss_mcdb_authn_make_shadow_parse(
         TOKEN_COLONDELIM_END(p);
         if (*p != '\n')
             return false;               /* error: invalid line */
-        sp.sp_flag = -1;                /* -1 if field is empty */
+        sp.sp_flag = ~0;                /* -1 if field is empty */
         if (b != p) {
             *p = '\0';
             errno = 0;
@@ -203,7 +203,7 @@ nss_mcdb_authn_make_shadow_parse(
                 return false;           /* error: invalid number */
             if (ULONG_MAX != UINT_MAX && UINT_MAX < u)
                 return false;           /* error: number out of range */
-            sp.sp_flag = u;
+            sp.sp_flag = (uint32_t)u;
         }
 
         /* find newline (to prep for beginning of next line) (checked above) */

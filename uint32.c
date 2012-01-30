@@ -25,7 +25,7 @@
  *  in header, so simply disable C99INLINE to generate external linkage
  *  definition for all inlined functions seen (i.e. those in uint32.h))
  */
-#if defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
+#if defined(NO_C99INLINE)||(defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
 #define C99INLINE
 #undef  NO_C99INLINE
 #endif
@@ -75,23 +75,24 @@ uint16_t uint16_from_ascii4uphex(const char * restrict);
 uint32_t
 uint32_from_ascii8hex(const char * const restrict buf)
 {
-    const uint32_t x0 = buf[0];
-    const uint32_t x1 = buf[1];
-    const uint32_t x2 = buf[2];
-    const uint32_t x3 = buf[3];
-    const uint32_t x4 = buf[4];
-    const uint32_t x5 = buf[5];
-    const uint32_t x6 = buf[6];
-    const uint32_t x7 = buf[7];
+    const unsigned char * const b = (const unsigned char *)buf;
+    const uint32_t x0 = b[0];
+    const uint32_t x1 = b[1];
+    const uint32_t x2 = b[2];
+    const uint32_t x3 = b[3];
+    const uint32_t x4 = b[4];
+    const uint32_t x5 = b[5];
+    const uint32_t x6 = b[6];
+    const uint32_t x7 = b[7];
 
-    const uint32_t x0_lt_A = int32_x_lt_y_returns_all_ones(x0,'A');
-    const uint32_t x1_lt_A = int32_x_lt_y_returns_all_ones(x1,'A');
-    const uint32_t x2_lt_A = int32_x_lt_y_returns_all_ones(x2,'A');
-    const uint32_t x3_lt_A = int32_x_lt_y_returns_all_ones(x3,'A');
-    const uint32_t x4_lt_A = int32_x_lt_y_returns_all_ones(x4,'A');
-    const uint32_t x5_lt_A = int32_x_lt_y_returns_all_ones(x5,'A');
-    const uint32_t x6_lt_A = int32_x_lt_y_returns_all_ones(x6,'A');
-    const uint32_t x7_lt_A = int32_x_lt_y_returns_all_ones(x7,'A');
+    const uint32_t x0_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x0,'A');
+    const uint32_t x1_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x1,'A');
+    const uint32_t x2_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x2,'A');
+    const uint32_t x3_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x3,'A');
+    const uint32_t x4_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x4,'A');
+    const uint32_t x5_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x5,'A');
+    const uint32_t x6_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x6,'A');
+    const uint32_t x7_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x7,'A');
 
     const uint32_t n0 = xton_select_lt_A(x0, x0_lt_A) << 28;
     const uint32_t n1 = xton_select_lt_A(x1, x1_lt_A) << 24;
@@ -112,15 +113,16 @@ uint32_from_ascii8hex(const char * const restrict buf)
 uint16_t
 uint16_from_ascii4hex(const char * const restrict buf)
 {
-    const uint32_t x0 = buf[0];
-    const uint32_t x1 = buf[1];
-    const uint32_t x2 = buf[2];
-    const uint32_t x3 = buf[3];
+    const unsigned char * const b = (const unsigned char *)buf;
+    const uint32_t x0 = b[0];
+    const uint32_t x1 = b[1];
+    const uint32_t x2 = b[2];
+    const uint32_t x3 = b[3];
 
-    const uint32_t x0_lt_A = int32_x_lt_y_returns_all_ones(x0,'A');
-    const uint32_t x1_lt_A = int32_x_lt_y_returns_all_ones(x1,'A');
-    const uint32_t x2_lt_A = int32_x_lt_y_returns_all_ones(x2,'A');
-    const uint32_t x3_lt_A = int32_x_lt_y_returns_all_ones(x3,'A');
+    const uint32_t x0_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x0,'A');
+    const uint32_t x1_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x1,'A');
+    const uint32_t x2_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x2,'A');
+    const uint32_t x3_lt_A = (uint32_t)int32_x_lt_y_returns_all_ones(x3,'A');
 
     const uint32_t n0 = xton_select_lt_A(x0, x0_lt_A) << 12;
     const uint32_t n1 = xton_select_lt_A(x1, x1_lt_A) <<  8;

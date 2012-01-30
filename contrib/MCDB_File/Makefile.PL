@@ -18,7 +18,10 @@ WriteMakefile(
     # compile and link with local, static libmcdb.a
     INC         => '-I ../../..',
     dynamic_lib => {
-      OTHERLDFLAGS => '../../libmcdb.a -Wl,--version-script,perlext.map',
+      OTHERLDFLAGS => '../../libmcdb.a'.
+        (  $^O eq 'linux'   ? ' -Wl,--version-script,perlext.map'
+         : $^O eq 'solaris' ? ' -lrt'
+         :                    ''),
     },
     # compile and link with system libmcdb.so
     #LIBS       => ['-lmcdb'],

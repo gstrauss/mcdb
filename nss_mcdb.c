@@ -177,11 +177,11 @@ static bool _nss_mcdb_stayopen = true;
 /* get shared mcdb_mmap */
 static struct mcdb_mmap *  __attribute_regparm__((2))
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
-                       const enum mcdb_flags mcdb_flags)
+                       const int mcdb_flags)
   __attribute_warn_unused_result__;
 static struct mcdb_mmap *  __attribute_regparm__((2))
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
-                       const enum mcdb_flags mcdb_flags)
+                       const int mcdb_flags)
 {
     /* reuse set*ent(),get*ent(),end*end() session if open in current thread */
     if (_nss_mcdb_st[dbtype].map != NULL)
@@ -219,7 +219,7 @@ nss_mcdb_setent(const enum nss_dbtype dbtype,
                 const int stayopen  __attribute_unused__)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
-    const enum mcdb_flags mcdb_flags = MCDB_REGISTER_USE_INCR;
+    const int mcdb_flags = MCDB_REGISTER_USE_INCR;
     if (m->map != NULL
         || (m->map = _nss_mcdb_db_getshared(dbtype, mcdb_flags)) != NULL) {
         m->hpos = (uintptr_t)(m->map->ptr + MCDB_HEADER_SZ);
@@ -233,7 +233,7 @@ nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     struct mcdb_mmap *map = m->map;
-    const enum mcdb_flags mcdb_flags =
+    const int mcdb_flags =
         MCDB_REGISTER_USE_DECR | MCDB_REGISTER_MUNMAP_SKIP;
     m->map = NULL;  /* set thread-local ptr NULL even though munmap skipped */
     return (map == NULL || _nss_mcdb_db_relshared(map, mcdb_flags))
@@ -317,7 +317,7 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 {
     struct mcdb m;
     nss_status_t status;
-    const enum mcdb_flags mcdb_flags_lock =
+    const int mcdb_flags_lock =
       MCDB_REGISTER_USE_INCR | MCDB_REGISTER_MUTEX_LOCK_HOLD;
 
     /* Queries to mcdb are quick, so attempt to reduce locking overhead.
@@ -340,7 +340,7 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 
     /* set*ent(),get*ent(),end*end() session not open/reused in current thread*/
     if (_nss_mcdb_st[dbtype].map == NULL) {
-        const enum mcdb_flags mcdb_flags_unlock =
+        const int mcdb_flags_unlock =
             MCDB_REGISTER_USE_DECR
           | MCDB_REGISTER_MUNMAP_SKIP
           | MCDB_REGISTER_MUTEX_UNLOCK_HOLD;

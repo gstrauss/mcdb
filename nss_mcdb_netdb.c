@@ -550,11 +550,11 @@ nss_mcdb_netdb_gethost_query(const uint32_t type,
     nss_status_t status;
     if (v->bufsz >= 4) {
         /*copy type for later match in nss_mcdb_netdb_hostent_decode()*/
-        char * const restrict buf = v->buf;
-        buf[0] = (type              ) >> 24;
-        buf[1] = (type & 0x00FF0000u) >> 16;
-        buf[2] = (type & 0x0000FF00u) >>  8;
-        buf[3] = (type & 0x000000FFu);  /* network byte order; big-endian */
+        char * const restrict buf = v->buf; /*(masks redundant with char cast)*/
+        buf[0] = (char)((type              ) >> 24);
+        buf[1] = (char)((type & 0x00FF0000u) >> 16);
+        buf[2] = (char)((type & 0x0000FF00u) >>  8);
+        buf[3] = (char)((type & 0x000000FFu));/*network byte order; big-endian*/
         status = nss_mcdb_get_generic(NSS_DBTYPE_HOSTS, v);
     }
     else {
@@ -599,7 +599,7 @@ nss_mcdb_netdb_gethost_filladdr(const void * const restrict addr,
     hostbuf->h_length    = h_length;
     hostbuf->h_addr_list = (char **)(aligned+8);
     hostbuf->h_aliases[0]   = NULL;
-    hostbuf->h_addr_list[0] = memcpy(aligned+16, addr, h_length);
+    hostbuf->h_addr_list[0] = memcpy(aligned+16, addr, (size_t)h_length);
     return NSS_STATUS_SUCCESS;
 }
 
@@ -625,15 +625,18 @@ nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
     size_t he_mem_num;
     size_t he_lst_num;
     union { uint32_t u[NSS_HE_HDRSZ>>2]; uint16_t h[NSS_HE_HDRSZ>>1]; } hdr;
-    const uint32_t type = (buf[0]<<24) | (buf[1]<<16) | (buf[2]<<8) | buf[3];
+    const uint32_t type = (((unsigned char *)buf)[0]<<24)
+                        | (((unsigned char *)buf)[1]<<16)
+                        | (((unsigned char *)buf)[2]<<8)
+                        |  ((unsigned char *)buf)[3];
 
     /* match type (e.g. AF_INET, AF_INET6), if not zero (AF_UNSPEC) */
-    if (type != 0) {
-        const char *atyp = dptr+NSS_H_ADDRTYPE; /*netwk byte order; big-endian*/
+    if (type != 0) { /*network byte order; big-endian*/
+        const unsigned char *atyp = (unsigned char *)dptr+NSS_H_ADDRTYPE;
         while (type != ((atyp[0]<<24)|(atyp[1]<<16)|(atyp[2]<<8)|atyp[3])) {
             if (mcdb_findtagnext_h(m, v->key, v->klen, v->tagc)) {
                 dptr = (char *)mcdb_dataptr(m);
-                atyp = dptr+NSS_H_ADDRTYPE;
+                atyp = (unsigned char *)dptr+NSS_H_ADDRTYPE;
             }
             else {
                 *v->errnop = errno = ENOENT;
@@ -653,7 +656,7 @@ nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
     if (((char *)he->h_aliases)-buf+((he_mem_num+1+he_lst_num+1)<<3)<=v->bufsz){
         char ** const restrict he_mem = he->h_aliases;    /* 8-byte aligned */
         char ** const restrict he_lst = he->h_addr_list = he_mem+he_mem_num+1;
-        memcpy(buf, dptr+NSS_HE_HDRSZ, mcdb_datalen(m)-NSS_HE_HDRSZ);
+        memcpy(buf, dptr+NSS_HE_HDRSZ, (size_t)mcdb_datalen(m)-NSS_HE_HDRSZ);
         he_mem[0] = (buf += ntohs(hdr.h[NSS_HE_MEM_STR>>1])); /*he_mem strings*/
         for (size_t i=1; i<he_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
@@ -702,7 +705,7 @@ nss_mcdb_netdb_netent_decode(struct mcdb * const restrict m,
       (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_NE_MEM>>1])+0x7u)) & ~0x7u);
     if (((char *)ne->n_aliases)-buf+((ne_mem_num+1)<<3) <= v->bufsz) {
         char ** const restrict ne_mem = ne->n_aliases;
-        memcpy(buf, dptr+NSS_NE_HDRSZ, mcdb_datalen(m)-NSS_NE_HDRSZ);
+        memcpy(buf, dptr+NSS_NE_HDRSZ, (size_t)mcdb_datalen(m)-NSS_NE_HDRSZ);
         ne_mem[0] = (buf += ntohs(hdr.h[NSS_NE_MEM_STR>>1])); /*ne_mem strings*/
         for (size_t i=1; i<ne_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
@@ -736,7 +739,7 @@ nss_mcdb_netdb_protoent_decode(struct mcdb * const restrict m,
       (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_PE_MEM>>1])+0x7u)) & ~0x7u);
     if (((char *)pe->p_aliases)-buf+((pe_mem_num+1)<<3) <= v->bufsz) {
         char ** const restrict pe_mem = pe->p_aliases;
-        memcpy(buf, dptr+NSS_PE_HDRSZ, mcdb_datalen(m)-NSS_PE_HDRSZ);
+        memcpy(buf, dptr+NSS_PE_HDRSZ, (size_t)mcdb_datalen(m)-NSS_PE_HDRSZ);
         pe_mem[0] = (buf += ntohs(hdr.h[NSS_PE_MEM_STR>>1])); /*pe_mem strings*/
         for (size_t i=1; i<pe_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
@@ -770,7 +773,7 @@ nss_mcdb_netdb_rpcent_decode(struct mcdb * const restrict m,
       (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_RE_MEM>>1])+0x7u)) & ~0x7u);
     if (((char *)re->r_aliases)-buf+((re_mem_num+1)<<3) <= v->bufsz) {
         char ** const restrict re_mem = re->r_aliases;
-        memcpy(buf, dptr+NSS_RE_HDRSZ, mcdb_datalen(m)-NSS_RE_HDRSZ);
+        memcpy(buf, dptr+NSS_RE_HDRSZ, (size_t)mcdb_datalen(m)-NSS_RE_HDRSZ);
         re_mem[0] = (buf += ntohs(hdr.h[NSS_RE_MEM_STR>>1])); /*re_mem strings*/
         for (size_t i=1; i<re_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
@@ -823,7 +826,7 @@ nss_mcdb_netdb_servent_decode(struct mcdb * const restrict m,
       (char **)(((uintptr_t)(buf+ntohs(hdr.h[NSS_SE_MEM>>1])+0x7u)) & ~0x7u);
     if (((char *)se->s_aliases)-buf+((se_mem_num+1)<<3) <= v->bufsz) {
         char ** const restrict se_mem = se->s_aliases;
-        memcpy(buf, dptr+NSS_SE_HDRSZ, mcdb_datalen(m)-NSS_SE_HDRSZ);
+        memcpy(buf, dptr+NSS_SE_HDRSZ, (size_t)mcdb_datalen(m)-NSS_SE_HDRSZ);
         se_mem[0] = (buf += ntohs(hdr.h[NSS_SE_MEM_STR>>1])); /*se_mem strings*/
         for (size_t i=1; i<se_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')

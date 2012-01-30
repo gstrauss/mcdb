@@ -35,18 +35,22 @@ extern "C" {
 /*(use macros only with simple args, or else better to call inline subroutine)*/
 
 /* uint32_strunpack_macro(): string 's' must be unsigned char */
-#define uint32_strunpack_macro(s) \
-  ( (s)[0] | ((s)[1]<<8) | ((s)[2]<<16) | ((s)[3]<<24) )
+#define uint32_strunpack_macro(s)                                     \
+  (  ((unsigned char *)(s))[0]      | (((unsigned char *)(s))[1]<<8)  \
+  | (((unsigned char *)(s))[2]<<16) | (((unsigned char *)(s))[3]<<24) )
 
 /* uint32_strunpack_bigendian_macro(): string 's' must be unsigned char */
-#define uint32_strunpack_bigendian_macro(s) \
-  ( ((s)[0]<<24) | ((s)[1]<<16) | ((s)[2]<<8) | (s)[3] )
+#define uint32_strunpack_bigendian_macro(s)                           \
+  ( (((unsigned char *)(s))[0]<<24) | (((unsigned char *)(s))[1]<<16) \
+  | (((unsigned char *)(s))[2]<<8)  |  ((unsigned char *)(s))[3] )
 
-#define uint32_strpack_macro(s,u) \
-  (s)[0]=u & 0xFF; (s)[1]=(u>>8) & 0xFF; (s)[2]=(u>>16) & 0xFF; (s)[3]=(u>>24)
+#define uint32_strpack_macro(s,u)                        \
+  (s)[0]=(char)(u & 0xFF); (s)[1]=(char)((u>>8) & 0xFF); \
+  (s)[2]=(char)((u>>16) & 0xFF); (s)[3]=(char)(u>>24)
 
-#define uint32_strpack_bigendian_macro(s,u) \
-  (s)[0]=(u>>24); (s)[1]=(u>>16) & 0xFF; (s)[2]=(u>>8) & 0xFF; (s)[3]=u & 0xFF
+#define uint32_strpack_bigendian_macro(s,u)              \
+  (s)[0]=(char)(u>>24); (s)[1]=(char)((u>>16) & 0xFF);   \
+  (s)[2]=(char)((u>>8) & 0xFF); (s)[3]=(char)(u & 0xFF)
 
 
 #include <arpa/inet.h>  /* htonl(), ntohl() */
@@ -123,7 +127,7 @@ uint32_strpack_bigendian(char s[4], const uint32_t u)
 /* djb cdb hash function: http://cr.yp.to/cdb/cdb.txt
  * modified from the Public Domain cdb-0.75 by Dan Bernstein */
 
-#define UINT32_HASH_DJB_INIT 5381
+#define UINT32_HASH_DJB_INIT 5381u
 
 #define uint32_hash_djb_uchar(h,c) (((h) + ((h) << 5)) ^ (c))
 
@@ -157,7 +161,7 @@ uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
  *     /articles/2006/04/benefits_to_branch_elimination.html
  *   http://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign
  *   http://aggregate.org/MAGIC/
- * modified to use unsigned shift since signed right shift implentation defined
+ * modified to use unsigned shift; signed right shift is implementation defined
  *
  * 1) cast x and y to int32_t to avoid underflow warnings and then subtract
  *      (x < y yields negative number; x >= y yields positive number or zero)
@@ -276,14 +280,15 @@ uint32_from_ascii8uphex(const char * const restrict buf)
 uint32_t  C99INLINE
 uint32_from_ascii8uphex(const char * const restrict buf)
 {
-    const uint32_t x0 = buf[0];
-    const uint32_t x1 = buf[1];
-    const uint32_t x2 = buf[2];
-    const uint32_t x3 = buf[3];
-    const uint32_t x4 = buf[4];
-    const uint32_t x5 = buf[5];
-    const uint32_t x6 = buf[6];
-    const uint32_t x7 = buf[7];
+    const unsigned char * const b = (const unsigned char *)buf;
+    const uint32_t x0 = b[0];
+    const uint32_t x1 = b[1];
+    const uint32_t x2 = b[2];
+    const uint32_t x3 = b[3];
+    const uint32_t x4 = b[4];
+    const uint32_t x5 = b[5];
+    const uint32_t x6 = b[6];
+    const uint32_t x7 = b[7];
 
     const uint32_t n0 = uxton(x0) << 28;
     const uint32_t n1 = uxton(x1) << 24;
@@ -310,10 +315,11 @@ uint16_from_ascii4uphex(const char * const restrict buf)
 uint16_t  C99INLINE
 uint16_from_ascii4uphex(const char * const restrict buf)
 {
-    const uint32_t x0 = buf[0];
-    const uint32_t x1 = buf[1];
-    const uint32_t x2 = buf[2];
-    const uint32_t x3 = buf[3];
+    const unsigned char * const b = (const unsigned char *)buf;
+    const uint32_t x0 = b[0];
+    const uint32_t x1 = b[1];
+    const uint32_t x2 = b[2];
+    const uint32_t x3 = b[3];
 
     const uint32_t n0 = uxton(x0) << 12;
     const uint32_t n1 = uxton(x1) <<  8;

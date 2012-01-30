@@ -116,7 +116,7 @@ writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
         if ((sz -= len) == 0)
             return true;
         while (len != 0) {
-            if (len >= iov->iov_len) {
+            if ((size_t)len >= iov->iov_len) {
                 len -= iov->iov_len;
                 --iovcnt;
                 ++iov;
@@ -151,7 +151,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
       /* oversized buffer since all num strings must add up to less than max */
 
     mcdb_iter_init(&iter, m);
-    posix_madvise(iter.map, (size_t)(iter.eod - iter.map),
+    posix_madvise(iter.map, (size_t)(iter.eod - (unsigned char *)iter.map),
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
     while (mcdb_iter(&iter)) {
 
@@ -174,7 +174,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         ++iovcnt;
 
         iov[iovcnt].iov_base = buf+buflen;
-        buflen += iov[iovcnt].iov_len = snprintf(buf+buflen, 11, "%u", klen);
+        buflen += iov[iovcnt].iov_len=(size_t)snprintf(buf+buflen,11,"%u",klen);
         ++iovcnt;
 
         iov[iovcnt].iov_base = ",";
@@ -182,7 +182,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         ++iovcnt;
 
         iov[iovcnt].iov_base = buf+buflen;
-        buflen += iov[iovcnt].iov_len = snprintf(buf+buflen, 11, "%u", dlen);
+        buflen += iov[iovcnt].iov_len=(size_t)snprintf(buf+buflen,11,"%u",dlen);
         ++iovcnt;
 
         iov[iovcnt].iov_base = ":";
@@ -197,7 +197,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         iov[iovcnt].iov_len  = 2;
         ++iovcnt;
 
-        iovlen += klen + 5;
+        iovlen += (size_t)klen + 5;
 
         if (iovlen + dlen + 1 > SSIZE_MAX) {
             if (!writev_loop(STDOUT_FILENO, iov, iovcnt, (ssize_t)iovlen))
@@ -216,7 +216,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         iov[iovcnt].iov_len  = 1;
         ++iovcnt;
 
-        iovlen += dlen + 1;
+        iovlen += (size_t)dlen + 1;
 
     }
 
@@ -241,7 +241,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
                                              MCDB_HEADER_SZ);
     unsigned long nrec = 0;
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
-    unsigned int rv;
+    int rv;
     bool rc;
     posix_madvise(m->map->ptr, m->map->size,
                   POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
@@ -401,10 +401,10 @@ mcdbctl_query(const int argc, char ** restrict argv)
 }
 
 static int
-mcdbctl_make(const int argc, char ** const restrict argv)
+mcdbctl_make(const int argc __attribute_unused__, char ** const restrict argv)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static int
-mcdbctl_make(const int argc, char ** const restrict argv)
+mcdbctl_make(const int argc __attribute_unused__, char ** const restrict argv)
 {
     /* assert(argc == 4); */                   /* must be checked by caller */
     /* assert(0 == strcmp(argv[1], "make")); *//* must be checked by caller */
@@ -566,7 +566,7 @@ static const char * const restrict mcdb_usage =
  * djb cdb tools take cdb on stdin, since able to mmap stdin backed by file.
  */
 int
-main(const int argc, char ** const restrict argv)
+main(int argc, char ** const restrict argv)
 {
     int rv;
     if (argc == 4 && 0 == strcmp(argv[1], "make"))

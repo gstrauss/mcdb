@@ -197,7 +197,8 @@ int main(void)
 
     /* parse databases */
     /* (parse /etc/shadow (fdb[0]) only if root, else begin with fdb[1]) */
-    for (int i=(0==geteuid()?0:1); i < sizeof(fdb)/sizeof(struct fdb_st); ++i) {
+    for (int i = (0==geteuid() ? 0 : 1);
+             i < (int)(sizeof(fdb)/sizeof(struct fdb_st)); ++i) {
         w.datasz = fdb[i].datasz;
         w.encode = fdb[i].encode;
         w.flush  = fdb[i].flush;
@@ -216,8 +217,8 @@ int main(void)
         if (stat(fdb[i].mcdbfile, &st) != 0) {
             st.st_mtime = 0;
             st.st_mode = (0 != strcmp(fdb[i].file, "/etc/shadow"))
-              ? S_IRUSR | S_IRGRP | S_IROTH    /* default read-only */
-              : S_IRUSR;  /* default root read-only for /etc/shadow */
+              ? (mode_t)(S_IRUSR | S_IRGRP | S_IROTH)    /* default read-only */
+              : (mode_t)(S_IRUSR);  /* default root read-only for /etc/shadow */
             if (errno != ENOENT)
                 break;
         }

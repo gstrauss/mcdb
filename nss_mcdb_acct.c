@@ -166,7 +166,7 @@ nss_mcdb_getgrouplist(const char * const restrict user, gid_t group,
     const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_acct_grouplist_decode,
                                       .vstruct = &group,
                                       .buf     = (char * restrict)groups,
-                                      .bufsz   = *ngroups,
+                                      .bufsz   = *(unsigned int *)ngroups,
                                       .errnop  = &errnum,
                                       .key     = user,
                                       .klen    = strlen(user),
@@ -203,7 +203,7 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
       ? sc_ngroups_max_cached
       : (sc_ngroups_max_cached = sysconf(_SC_NGROUPS_MAX));
     int sz = (0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX)
-           ? sc_ngroups_max+1
+           ? (int)(sc_ngroups_max+1)
            : NSS_MCDB_NGROUPS_MAX+1;
     gid_t gidlist[sz];
     if (nss_mcdb_getgrouplist(user, group, gidlist, &sz) == -1) {
@@ -238,7 +238,7 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
         gid_t * restrict groups = *groupsp;
         uintptr_t i, j;
         const uintptr_t m = (uintptr_t)*start;  /*(*start must always be >= 0)*/
-        const uintptr_t n = (uintptr_t)sz;
+        const uintptr_t n = (uintptr_t)(unsigned int)sz;
         for (j = 0; j < n; ++j) {
             i = 0;
             while (i < m && groups[i] != gidlist[j])
@@ -328,7 +328,7 @@ nss_mcdb_acct_group_decode(struct mcdb * const restrict m,
      * (assume data consistent, gr_mem_num correct) */
     if (((char *)gr->gr_mem)-buf+((gr_mem_num+1)<<3) <= v->bufsz) {
         char ** const restrict gr_mem = gr->gr_mem;
-        memcpy(buf, dptr+NSS_GR_HDRSZ, mcdb_datalen(m)-NSS_GR_HDRSZ);
+        memcpy(buf, dptr+NSS_GR_HDRSZ, (size_t)mcdb_datalen(m)-NSS_GR_HDRSZ);
         gr_mem[0] = (buf += ntohs(hdr.h[NSS_GR_MEM_STR>>1])); /*gr_mem strings*/
         for (size_t i=1; i<gr_mem_num; ++i) {/*(i=1; assigned first str above)*/
             while (*++buf != '\0')
@@ -349,12 +349,12 @@ static nss_status_t
 nss_mcdb_acct_grouplist_decode(struct mcdb * const restrict m,
                                const struct nss_mcdb_vinfo * const restrict v)
 {
-    const char * restrict dptr = (char *)mcdb_dataptr(m);
+    const unsigned char * restrict dptr = mcdb_dataptr(m);
     gid_t * const gidlist = (gid_t *)v->buf;
     const gid_t gid = *(gid_t *)v->vstruct;
     gid_t n, x;
     union { uint32_t u[NSS_GL_HDRSZ>>2]; uint16_t h[NSS_GL_HDRSZ>>1]; } hdr;
-    memcpy(hdr.u, dptr, NSS_GL_HDRSZ);
+    memcpy(hdr.u, (const char * restrict)dptr, NSS_GL_HDRSZ);
     dptr += NSS_GL_HDRSZ;
     n = 1 + (gid_t) ntohl( hdr.u[NSS_GL_NGROUPS>>2] );
     /* populate gidlist if enough space, else count gids */

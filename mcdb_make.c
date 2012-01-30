@@ -177,10 +177,12 @@ mcdb_make_fallocate(const int fd, off_t offset, off_t len)
    || defined(_LARGEFILE_SOURCE) || defined(_LARGEFILE64_SOURCE) \
    || defined(_LARGE_FILES)
     if (len <= LLONG_MAX-(stvfs.f_bsize-1)  /* check for integer overflow */
-        && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1)) <= LLONG_MAX-offset)
+        && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1))
+            <= (unsigned long long)(LLONG_MAX-offset))
   #else
     if (len <= LONG_MAX-(stvfs.f_bsize-1)   /* check for integer overflow */
-        && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1)) <= LONG_MAX-offset)
+        && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1))
+            <= (unsigned long)(LONG_MAX-offset))
   #endif
         len += offset;
     else
@@ -275,8 +277,16 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
       #if defined(__GLIBC__)/* glibc emulates if not natively supported by fs */
         if ((errno = posix_fallocate(m->fd, (off_t)m->osz,
                                      (off_t)(m->fsz-m->osz))) == 0)
-      #elif defined(_AIX)/*AIX errno=ENOTSUP if not natively supported by fs*/ \
-         || defined(__SunOS_5_11)  /*not sure about Solaris 11 emulation*/
+      #elif defined(__SunOS_5_11)/*not sure about Solaris 11; not tested by me*/
+        /* disabled for defined(_AIX) since mcdb_make_fallocate() is faster
+         * and because posix_fallocate() in 32-bit can result in SIGSEGV.
+         * Observed on AIX TL6 SP3: posix_fallocate() fails on initial resize
+         * and mcdb_make_fallocate() succeeds, but then posix_fallocate()
+         * returns 0 on second call to extend file, but later access invalid.
+         * Prior issues others had with posix_fallocate() on AIX:
+         * http://thr3ads.net/dovecot/2009/07/1089409-AIX-and-posix_fallocate
+         * https://www-304.ibm.com/support/docview.wss?uid=isg1IZ46957 */
+        /*defined(_AIX)*//*AIX errno=ENOTSUP if not natively supported by fs*/
         if ((errno = posix_fallocate(m->fd, (off_t)m->osz,
                                      (off_t)(m->fsz-m->osz))) == 0
             || (errno != ENOSPC
@@ -475,7 +485,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
      * (madvise is supposed to be advice, not promise; Solaris crash is bug) */
     posix_madvise(m->map, m->msz, POSIX_MADV_NORMAL);
 
-    b = (m->pos < UINT_MAX) ? 3 : 4;
+    b = (m->pos < UINT_MAX) ? 3u : 4u;
     for (i = 0; i < MCDB_SLOTS; ++i) {
         len = count[i] << 1;
         d   = m->pos;
@@ -536,7 +546,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
         }
     }
 
-    u = (i == MCDB_SLOTS && mcdb_mmap_commit(m, header));
+    u = (uint32_t)(i == MCDB_SLOTS && mcdb_mmap_commit(m, header));
     return (u ? 0 : -1) | mcdb_make_destroy(m);
 }
 

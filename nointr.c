@@ -32,7 +32,7 @@
  *  in header, so simply disable C99INLINE to generate external linkage
  *  definition for all inlined functions seen (i.e. those in nointr.h))
  */
-#if defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__)
+#if defined(NO_C99INLINE)||(defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
 #define C99INLINE
 #undef  NO_C99INLINE
 #endif

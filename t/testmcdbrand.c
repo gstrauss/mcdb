@@ -48,7 +48,9 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -78,7 +80,8 @@ int main (int argc, char *argv[])
     /* open input file */
     if ((fd = open(argv[2], O_RDONLY, 0777)) == -1) {perror("open"); return -1;}
     if (fstat(fd, &st) != 0)                        {perror("fstat");return -1;}
-    p = (const char *)mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    if (st.st_size >= SIZE_MAX)        {errno=EFBIG; perror("input");return -1;}
+    p = (const char *)mmap(0, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (p == MAP_FAILED)                            {perror("mmap"); return -1;}
     close(fd);
 

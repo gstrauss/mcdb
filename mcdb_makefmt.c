@@ -151,11 +151,11 @@ mcdb_bufread_number (struct mcdb_input * const restrict b,
     const char * const buf = b->buf;
     const size_t datasz = b->datasz;
 
-    while (datasz != pos && ((size_t)(buf[pos]-'0'))<=9uL && num <= 214748363uL)
+    while (datasz != pos && ((uint32_t)(buf[pos]-'0'))<=9u && num <=214748363uL)
         num = num * 10 + (buf[pos++]-'0');
     *rv = num;
 
-    if (b->pos != pos && (datasz == pos || ((size_t)(buf[pos]-'0')) > 9uL)) {
+    if (b->pos != pos && (datasz == pos || ((uint32_t)(buf[pos]-'0')) > 9u)) {
         b->pos = pos;
         return true;
     }
@@ -347,19 +347,23 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
     if ((fd = nointr_open(infile,O_RDONLY,0)) == -1)
         return MCDB_ERROR_READ;
 
-    if (fstat(fd, &st) == -1 || (!S_ISREG(st.st_mode) && (errno = EINVAL))
-        || ((x = mmap(0,st.st_size,PROT_READ,MAP_SHARED,fd,0)) == MAP_FAILED))
+    if (fstat(fd, &st) == -1
+        || (!S_ISREG(st.st_mode) || st.st_size >= SIZE_MAX ? (errno=EFBIG) : 0)
+        || ((x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0))
+            == MAP_FAILED))
         errsave = errno;
 
     /* close fd after mmap (no longer needed),check mmap succeeded,create mcdb*/
     if (nointr_close(fd) == 0 && x != MAP_FAILED) {
-        posix_madvise(x, st.st_size, POSIX_MADV_SEQUENTIAL|POSIX_MADV_WILLNEED);
+        posix_madvise(x, (size_t)st.st_size,
+                      POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
         /* pass entire map and size as params; fd -1 elides read()/remaps */
-        rv = mcdb_makefmt_fdintofile(-1,x,st.st_size,fname,fn_malloc,fn_free);
+        rv = mcdb_makefmt_fdintofile(-1, x, (size_t)st.st_size,
+                                     fname, fn_malloc, fn_free);
     }
 
     if (x != MAP_FAILED)
-        munmap(x, st.st_size);
+        munmap(x, (size_t)st.st_size);
     else if (errsave != 0)
         errno = errsave;
 

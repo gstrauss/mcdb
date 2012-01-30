@@ -47,7 +47,7 @@
 #include <sys/mman.h> /* mmap() munmap() */
 #include <fcntl.h>    /* open() */
 #include <stdbool.h>  /* true false */
-#include <stdint.h>   /* uint32_t */
+#include <stdint.h>   /* uint32_t SIZE_MAX */
 #include <stdio.h>    /* snprintf() */
 #include <string.h>   /* memcpy() strcmp() strncmp() strrchr() */
 #include <unistd.h>   /* fstat() close() */
@@ -72,8 +72,13 @@ nss_mcdb_nsswitch(const char * restrict svc,
         const int fd =
           nointr_open(NSSWITCH_CONF_PATH, O_RDONLY|O_NONBLOCK|O_CLOEXEC, 0);
         if (fd != -1) {
-            if (fstat(fd, &st) == 0)
-                nsswitch = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+            if (fstat(fd, &st) == 0) {
+                if (st.st_size < SIZE_MAX)
+                    nsswitch = mmap(NULL, (size_t)st.st_size,
+                                    PROT_READ, MAP_SHARED, fd, 0);
+                else
+                    errno = EFBIG; /* nsswitch.conf >= 4 GB; highly unlikely */
+            }
             (void) nointr_close(fd);
         }
         else if (errno != ENOENT)
@@ -181,7 +186,7 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * const restrict w,
     do {
         /* sanity check if input file changed during parse (previous loop)*/
         if (fd != -1) { /* file changed during parse; reset and redo loop */
-            munmap(map, fsize);
+            munmap(map, (size_t)fsize);
             map = MAP_FAILED;
             rc = false;
             if (nointr_close(fd) == -1)
@@ -194,10 +199,14 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * const restrict w,
         fd = open(input, O_RDONLY | O_NONBLOCK | O_CLOEXEC, 0);
         if (fd == -1 || fstat(fd, &st) != 0)
             break;
+        if (st.st_size >= SIZE_MAX) {
+            errno = EFBIG;
+            break;
+        }
         inode = st.st_ino;
         fsize = st.st_size;
         mtime = st.st_mtime;
-        map = mmap(NULL, fsize, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, 0);
+        map = mmap(NULL,(size_t)fsize,PROT_READ|PROT_WRITE,MAP_PRIVATE,fd,0);
         if (map == MAP_FAILED)
             break;
 
@@ -240,7 +249,7 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * const restrict w,
 
     errsave = errno;
     if (map != MAP_FAILED)
-        munmap(map, st.st_size);
+        munmap(map, (size_t)st.st_size);
     if (fd != -1) {
         if (nointr_close(fd) != 0)
             rc = false;

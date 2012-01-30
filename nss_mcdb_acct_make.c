@@ -86,7 +86,7 @@ nss_mcdb_acct_make_groupmem_pool_alloc(const size_t sz,
     enum { GROUPMEM_POOL_SZ = 65536 + sizeof(uintptr_t) }; /*arbitrary pool_sz*/
     uintptr_t * restrict mem;
 
-    const long sc_getgr_r_size_max = sysconf(_SC_GETGR_R_SIZE_MAX);
+    const size_t sc_getgr_r_size_max = (size_t)sysconf(_SC_GETGR_R_SIZE_MAX);
     if (sz > sc_getgr_r_size_max)
         return false;
     /* assert(GROUPMEM_POOL_SZ >= sc_getgr_r_size_max); */
@@ -246,8 +246,8 @@ nss_mcdb_acct_make_grouplist_datastr(char * restrict buf, const size_t bufsz,
 {
     /* nss_mcdb_acct_make_group_flush() validates sane number of gids (ngids) */
     const gid_t * const gidlist = groupmem->gidlist;
-    const uint32_t ngids = groupmem->ngids;
-    const size_t sz = NSS_GL_HDRSZ + (ngids << 2); /* 4-char encoding per gid */
+    const uint32_t ngids = groupmem->ngids; /*4-char encoding per gid (below)*/
+    const size_t sz = NSS_GL_HDRSZ + ((size_t)ngids << 2);
     union { uint32_t u[NSS_GL_HDRSZ>>2]; uint16_t h[NSS_GL_HDRSZ>>1]; } hdr;
     union { uint32_t u; char c[4]; } g;
     hdr.u[NSS_GL_NGROUPS>>2] = htonl(ngids);
@@ -255,7 +255,7 @@ nss_mcdb_acct_make_grouplist_datastr(char * restrict buf, const size_t bufsz,
 	memcpy(buf, hdr.u, NSS_GL_HDRSZ);
 	buf += NSS_GL_HDRSZ;
 	for (uint32_t i = 0; i < ngids; ++i, buf+=4) {
-	    g.u = htonl(gidlist[i]);
+	    g.u = htonl((uint32_t)gidlist[i]);
 	    buf[0] = g.c[0]; buf[1] = g.c[1]; buf[2] = g.c[2]; buf[3] = g.c[3];
 	}
 	return sz;
@@ -274,9 +274,9 @@ nss_mcdb_acct_make_group_flush(struct nss_mcdb_make_winfo * const restrict w)
     /* arbitrary limit: NSS_MCDB_NGROUPS_MAX in nss_mcdb_acct.h */
     /*(permit max ngids supplemental groups to validate input)*/
     const long sc_ngroups_max = sysconf(_SC_NGROUPS_MAX);
-    const int ngids =
+    const unsigned int ngids =
       (0 < sc_ngroups_max && sc_ngroups_max < NSS_MCDB_NGROUPS_MAX)
-        ? sc_ngroups_max
+        ? (unsigned int)sc_ngroups_max
         : NSS_MCDB_NGROUPS_MAX;
 
     w->tagc = '~';

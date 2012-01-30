@@ -28,17 +28,17 @@ endif
 # 'gmake ABI_BITS=64' for 64-bit build (recommended on all 64-bit platforms)
 ifeq (64,$(ABI_BITS))
 ifeq ($(OSNAME),Linux)
-ABI_FLAGS=-m64
+ABI_FLAGS?=-m64
 endif
 ifeq ($(OSNAME),AIX)
 AR+=-X64
-ABI_FLAGS=-maix64
+ABI_FLAGS?=-maix64
 endif
 ifeq ($(OSNAME),HP-UX)
-ABI_FLAGS=-mlp64
+ABI_FLAGS?=-mlp64
 endif
 ifeq ($(OSNAME),SunOS)
-ABI_FLAGS=-m64
+ABI_FLAGS?=-m64
 endif
 endif
 
@@ -46,9 +46,10 @@ ifneq (,$(RPM_OPT_FLAGS))
   CFLAGS+=$(RPM_OPT_FLAGS)
   LDFLAGS+=$(RPM_OPT_FLAGS)
 else
-  CC=gcc -pipe
+  CC?=gcc -pipe
   ANSI?=-ansi
-  CFLAGS+=-Wall -Winline -pedantic $(ANSI) -O3 -g $(ABI_FLAGS)
+  WARNING_FLAGS?=-Wall -Winline -pedantic $(ANSI)
+  CFLAGS+=$(WARNING_FLAGS) -O3 -g $(ABI_FLAGS)
   LDFLAGS+=$(ABI_FLAGS)
   ifneq (,$(filter %clang,$(CC)))
     ANSI=
@@ -100,10 +101,51 @@ endif
 # heavy handed dependencies
 _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
 
+# C99
+STDC99?=-std=c99
+CFLAGS+=$(STDC99)
+# position independent code (for shared libraries)
+FPIC?=-fpic
+# link shared library
+SHLIB?=-shared
+
 # Thread-safety (e.g. for thread-specific errno)
 # (vendor compilers might need additional compiler flags, e.g. Sun Studio -mt)
 PTHREAD_FLAGS?=-pthread -D_THREAD_SAFE
-CFLAGS+=-std=c99 $(PTHREAD_FLAGS)
+CFLAGS+=$(PTHREAD_FLAGS)
+
+# To use vendor compiler, set CC and the following macros, as appropriate:
+#   Oracle Sun Studio
+#     CC=cc
+#     STDC99=-xc99=all
+#     PTHREAD_FLAGS=-mt -D_THREAD_SAFE
+#     FPIC=-xcode=pic13
+#     SHLIB=-G
+#     WARNING_FLAGS=-v
+#   IBM Visual Age XL C/C++
+#     CC=xlc
+#     # use -qsuppress to silence msg: keyword '__attribute__' is non-portable
+#     STDC99=-qlanglvl=stdc99 -qsuppress=1506-1108
+#     PTHREAD_FLAGS=-qthreaded -D__VACPP_MULTI__ -D_THREAD_SAFE
+#     FPIC=-qpic=small
+#     SHLIB=-qmkshrobj
+#     WARNING_FLAGS=
+#     #(64-bit)
+#     ABI_FLAGS=-q64
+#     #(additionally, xlc needs -qtls to recognized __thread keyword)
+#     nss_mcdb.o: CFLAGS+=-qtls=local-dynamic
+#   HP aCC
+#     CC=cc
+#     STDC99=-AC99
+#     PTHREAD_FLAGS=-mt -D_THREAD_SAFE
+#     FPIC=+z
+#     SHLIB=-b
+#     #(noisy list of inconsequential warnings)
+#     WARNING_FLAGS=+w
+#     #(64-bit)
+#     ABI_FLAGS=+DD64
+#     #(additionally, aCC does not appear to support C99 inline)
+#     CFLAGS+=-DNO_C99INLINE
 
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
@@ -113,7 +155,7 @@ lib32/nss_mcdb.o: CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
 
 PIC_OBJS:= mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
            nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
-$(PIC_OBJS): CFLAGS+= -fpic
+$(PIC_OBJS): CFLAGS+=$(FPIC)
 
 # (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
 ifeq ($(OSNAME),Linux)
@@ -121,13 +163,13 @@ libnss_mcdb.so.2: LDFLAGS+=-Wl,-soname,$(@F) -Wl,--version-script,nss_mcdb.map
 endif
 libnss_mcdb.so.2: mcdb.o \
                   nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
-	$(CC) -o $@ -shared -fpic $(LDFLAGS) $^
+	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
 libmcdb.so: LDFLAGS+=-Wl,-soname,mcdb
 endif
 libmcdb.so: mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o
-	$(CC) -o $@ -shared -fpic $(LDFLAGS) $^
+	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
            nointr.o uint32.o
@@ -225,7 +267,7 @@ lib32/%.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 LIB32_PIC_OBJS:= $(addprefix lib32/,$(PIC_OBJS))
 $(LIB32_PIC_OBJS): LIB_BITS=32
 $(LIB32_PIC_OBJS): ABI_FLAGS=-m32
-$(LIB32_PIC_OBJS): CFLAGS+= -fpic
+$(LIB32_PIC_OBJS): CFLAGS+= $(FPIC)
 
 ifeq ($(OSNAME),Linux)
 lib32/libnss_mcdb.so.2: \
@@ -234,7 +276,7 @@ endif
 lib32/libnss_mcdb.so.2: ABI_FLAGS=-m32
 lib32/libnss_mcdb.so.2: $(addprefix lib32/, \
   mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o)
-	$(CC) -o $@ -shared -fpic $(LDFLAGS) $^
+	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
 lib32/libmcdb.so: LDFLAGS+=-Wl,-soname,mcdb
@@ -242,7 +284,7 @@ endif
 lib32/libmcdb.so: ABI_FLAGS=-m32
 lib32/libmcdb.so: $(addprefix lib32/, \
   mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o)
-	$(CC) -o $@ -shared -fpic $(LDFLAGS) $^
+	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifneq ($(PREFIX_USR),$(PREFIX))
 $(PREFIX_USR)/lib/libnss_mcdb.so.2: $(PREFIX)/lib/libnss_mcdb.so.2 \

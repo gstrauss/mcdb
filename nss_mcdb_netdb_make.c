@@ -60,7 +60,7 @@ nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,
     }
     else {
 	errno = ERANGE;
-	return (size_t)-1;
+	return ~(size_t)0; /* -1 */
     }
 }
 
@@ -72,7 +72,7 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
     const size_t he_mem_str_offset = he_name_len;
     size_t he_lst_str_offset;
     char ** const restrict he_lst  = he->h_addr_list;
-    const size_t len               = (size_t)he->h_length;
+    const size_t len               = (size_t)(unsigned int)he->h_length;
     size_t he_mem_num;
     size_t he_lst_num = 0;
     size_t dlen = NSS_HE_HDRSZ + he_mem_str_offset;
@@ -80,7 +80,7 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
     if (   __builtin_expect(he_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(dlen        <  bufsz,     1)) {
 	he_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,he->h_aliases,&dlen);
-	if (__builtin_expect( he_mem_num == (size_t)-1, 0))
+	if (__builtin_expect( he_mem_num == ~(size_t)0, 0))
 	    return 0;
 	he_lst_str_offset = dlen - NSS_HE_HDRSZ;
 	while (he_lst[he_lst_num] != NULL
@@ -137,7 +137,7 @@ nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
     if (   __builtin_expect(ne_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(dlen        <  bufsz,     1)) {
 	ne_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,ne->n_aliases,&dlen);
-	if (__builtin_expect( ne_mem_num == (size_t)-1, 0))
+	if (__builtin_expect( ne_mem_num == ~(size_t)0, 0))
 	    return 0;
 	if (   __builtin_expect(ne_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect((ne_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
@@ -184,7 +184,7 @@ nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
     if (   __builtin_expect(pe_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(dlen        <  bufsz,     1)) {
 	pe_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,pe->p_aliases,&dlen);
-	if (__builtin_expect( pe_mem_num == (size_t)-1, 0))
+	if (__builtin_expect( pe_mem_num == ~(size_t)0, 0))
 	    return 0;
 	if (   __builtin_expect(pe_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect((pe_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
@@ -223,7 +223,7 @@ nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
     if (   __builtin_expect(re_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(dlen        <  bufsz,     1)) {
 	re_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,re->r_aliases,&dlen);
-	if (__builtin_expect( re_mem_num == (size_t)-1, 0))
+	if (__builtin_expect( re_mem_num == ~(size_t)0, 0))
 	    return 0;
 	if (   __builtin_expect(re_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect((re_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
@@ -264,7 +264,7 @@ nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
     if (   __builtin_expect(se_name_len <= USHRT_MAX, 1)
 	&& __builtin_expect(dlen        <  bufsz,     1)) {
 	se_mem_num =nss_mcdb_netdb_make_list2str(buf,bufsz,se->s_aliases,&dlen);
-	if (__builtin_expect( se_mem_num == (size_t)-1, 0))
+	if (__builtin_expect( se_mem_num == ~(size_t)0, 0))
 	    return 0;
 	if (   __builtin_expect(se_mem_num <= USHRT_MAX, 1)
 	    && __builtin_expect((se_mem_num<<3)+8u+7u <= bufsz-dlen, 1)) {
@@ -324,7 +324,7 @@ nss_mcdb_netdb_make_hostent_encode(
 
     /* one address per line in /etc/hosts, so support encoding only one addr */
     w->tagc = 'b';  /* binary */
-    w->klen = he->h_length;
+    w->klen = (size_t)he->h_length;
     w->key  = he->h_addr_list[0];
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
@@ -578,7 +578,7 @@ nss_mcdb_netdb_make_hosts_parse(
             if (*b == '#' || *b == '\n')/* done; no more aliases*/
                 break;
             *p = '\0';
-            if (n < (sizeof(h_aliases)/sizeof(char *) - 1))
+            if (n < (int)(sizeof(h_aliases)/sizeof(char *) - 1))
                 he.h_aliases[n++] = b;
             else
                 return false; /* too many aliases to fit in fixed-sized array */
@@ -676,7 +676,7 @@ nss_mcdb_netdb_make_networks_parse(
             if (*b == '#' || *b == '\n')/* done; no more aliases*/
                 break;
             *p = '\0';
-            if (n < (sizeof(n_aliases)/sizeof(char *) - 1))
+            if (n < (int)(sizeof(n_aliases)/sizeof(char *) - 1))
                 ne.n_aliases[n++] = b;
             else
                 return false; /* too many aliases to fit in fixed-sized array */
@@ -760,7 +760,7 @@ nss_mcdb_netdb_make_protocols_parse(
             if (*b == '#' || *b == '\n')/* done; no more aliases*/
                 break;
             *p = '\0';
-            if (n < (sizeof(p_aliases)/sizeof(char *) - 1))
+            if (n < (int)(sizeof(p_aliases)/sizeof(char *) - 1))
                 pe.p_aliases[n++] = b;
             else
                 return false; /* too many aliases to fit in fixed-sized array */
@@ -844,7 +844,7 @@ nss_mcdb_netdb_make_rpc_parse(
             if (*b == '#' || *b == '\n')/* done; no more aliases*/
                 break;
             *p = '\0';
-            if (n < (sizeof(r_aliases)/sizeof(char *) - 1))
+            if (n < (int)(sizeof(r_aliases)/sizeof(char *) - 1))
                 re.r_aliases[n++] = b;
             else
                 return false; /* too many aliases to fit in fixed-sized array */
@@ -931,7 +931,7 @@ nss_mcdb_netdb_make_services_parse(
             if (*b == '#' || *b == '\n')/* done; no more aliases*/
                 break;
             *p = '\0';
-            if (n < (sizeof(s_aliases)/sizeof(char *) - 1))
+            if (n < (int)(sizeof(s_aliases)/sizeof(char *) - 1))
                 se.s_aliases[n++] = b;
             else
                 return false; /* too many aliases to fit in fixed-sized array */
