@@ -46,7 +46,7 @@ ifneq (,$(RPM_OPT_FLAGS))
   CFLAGS+=$(RPM_OPT_FLAGS)
   LDFLAGS+=$(RPM_OPT_FLAGS)
 else
-  CC?=gcc -pipe
+  CC=gcc -pipe
   ANSI?=-ansi
   WARNING_FLAGS?=-Wall -Winline -pedantic $(ANSI)
   CFLAGS+=$(WARNING_FLAGS) -O3 -g $(ABI_FLAGS)

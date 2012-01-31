@@ -176,11 +176,11 @@ mcdb_make_fallocate(const int fd, off_t offset, off_t len)
   #if (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS-0 == 64)  \
    || defined(_LARGEFILE_SOURCE) || defined(_LARGEFILE64_SOURCE) \
    || defined(_LARGE_FILES)
-    if (len <= (unsigned long long)(LLONG_MAX-(stvfs.f_bsize-1))
+    if (len <= (long long)(LLONG_MAX-(stvfs.f_bsize-1))
         && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1))
             <= (unsigned long long)(LLONG_MAX-offset))
   #else
-    if (len <= (unsigned long long)(LONG_MAX-(stvfs.f_bsize-1))
+    if (len <= (long long)(LONG_MAX-(stvfs.f_bsize-1))
         && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1))
             <= (unsigned long)(LONG_MAX-offset))
   #endif
@@ -467,7 +467,7 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
   #if !defined(_LP64) && !defined(__LP64__)
     if (u > (UINT_MAX>>4))                     return mcdb_make_err(m,ENOMEM);
     u <<= 4;  /* 8 byte hash entries in 32-bit; x 2 for space in table */
-    if (m->pos > (UINT_MAX-u))                 return mcdb_make_err(m,ENOMEM);
+    if (m->pos > ((size_t)UINT_MAX-u))         return mcdb_make_err(m,ENOMEM);
   #endif
 
     /* add "hole" for alignment; incompatible with djb cdbdump */
