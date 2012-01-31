@@ -251,7 +251,9 @@ _nss_mcdb_initgroups_dyn(const char * const restrict user,
                 /* realloc groups, as needed, to limit (no limit if limit <= 0)
                  * reallocate only when adding unique gids require, rather than
                  * preallocating and possibly hitting the limit due to dups */
-                sz = (0 < limit && limit < (*size << 1)) ? limit : (*size << 1);
+                sz = (0 < limit && limit < (*size << 1))
+                  ? (int)limit
+                  : (int)(*size << 1);
                 groups = realloc(groups, sz * sizeof(gid_t));
                 if (groups == NULL) /*(realloc failed. oh well. truncate here)*/
                     return NSS_STATUS_SUCCESS;
@@ -352,20 +354,20 @@ nss_mcdb_acct_grouplist_decode(struct mcdb * const restrict m,
     const unsigned char * restrict dptr = mcdb_dataptr(m);
     gid_t * const gidlist = (gid_t *)v->buf;
     const gid_t gid = *(gid_t *)v->vstruct;
-    gid_t n, x;
+    int n, x;
     union { uint32_t u[NSS_GL_HDRSZ>>2]; uint16_t h[NSS_GL_HDRSZ>>1]; } hdr;
     memcpy(hdr.u, (const char * restrict)dptr, NSS_GL_HDRSZ);
     dptr += NSS_GL_HDRSZ;
-    n = 1 + (gid_t) ntohl( hdr.u[NSS_GL_NGROUPS>>2] );
+    n = 1 + (int) ntohl( hdr.u[NSS_GL_NGROUPS>>2] );
     /* populate gidlist if enough space, else count gids */
-    if (__builtin_expect( n > v->bufsz, 0)) { /* not enough space */
+    if (__builtin_expect( (uint32_t)n > v->bufsz, 0)) { /* not enough space */
         /* count num gids (as if enough space were available) */
         for (x = 1; --n; dptr += 4) {
             if (gid !=(gid_t)((dptr[0]<<24)|(dptr[1]<<16)|(dptr[2]<<8)|dptr[3]))
                 ++x;
         }
-        if (__builtin_expect( x > v->bufsz, 1)) { /* not enough space */
-            *(gid_t *)v->vstruct = x;
+        if (__builtin_expect( (uint32_t)x > v->bufsz, 1)) { /*not enough space*/
+            *(gid_t *)v->vstruct = (gid_t)x;
             *v->errnop = errno = ERANGE;
             return NSS_STATUS_TRYAGAIN;
         }
@@ -379,6 +381,6 @@ nss_mcdb_acct_grouplist_decode(struct mcdb * const restrict m,
         if (gidlist[x] != gid)
             ++x;
     }
-    *(gid_t *)v->vstruct = x;
+    *(gid_t *)v->vstruct = (gid_t)x;
     return NSS_STATUS_SUCCESS;
 }

@@ -40,7 +40,7 @@ int
 main(int argc,char **argv)
 {
     struct mcdb_make m;
-    unsigned long loop = argc > 1 ? strtoul(argv[1], NULL, 10) : 0;
+    uint32_t loop = argc > 1 ? (uint32_t)strtoul(argv[1], NULL, 10) : 0;
     const int fd = argc > 2 ? nointr_open(argv[2], O_RDWR|O_CREAT, 0666) : -1;
     char buf[4];
     /*(avoid gcc warning using key with uint32_strpack_bigendian_aligned_macro:

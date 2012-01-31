@@ -348,7 +348,10 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
         return MCDB_ERROR_READ;
 
     if (fstat(fd, &st) == -1
-        || (!S_ISREG(st.st_mode) || st.st_size >= SIZE_MAX ? (errno=EFBIG) : 0)
+        || (!S_ISREG(st.st_mode) ? (errno = EINVAL) : 0)
+       #if !defined(_LP64) && !defined(__LP64__)
+        || (st.st_size > (off_t)SIZE_MAX ? (errno = EFBIG) : 0)
+       #endif
         || ((x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0))
             == MAP_FAILED))
         errsave = errno;

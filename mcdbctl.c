@@ -174,7 +174,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         ++iovcnt;
 
         iov[iovcnt].iov_base = buf+buflen;
-        buflen += iov[iovcnt].iov_len=(size_t)snprintf(buf+buflen,11,"%u",klen);
+        buflen+=iov[iovcnt].iov_len=(uint32_t)snprintf(buf+buflen,11,"%u",klen);
         ++iovcnt;
 
         iov[iovcnt].iov_base = ",";
@@ -182,7 +182,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         ++iovcnt;
 
         iov[iovcnt].iov_base = buf+buflen;
-        buflen += iov[iovcnt].iov_len=(size_t)snprintf(buf+buflen,11,"%u",dlen);
+        buflen+=iov[iovcnt].iov_len=(uint32_t)snprintf(buf+buflen,11,"%u",dlen);
         ++iovcnt;
 
         iov[iovcnt].iov_base = ":";
@@ -254,7 +254,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
          * alias into the map (k) as key is in violation of C99 restrict
          * pointers, but is inconsequential since it is all read-only */
         k = (char *)mcdb_iter_keyptr(&iter);
-        iter_dpos = mcdb_iter_datapos(&iter);
+        iter_dpos = (uintptr_t)mcdb_iter_datapos(&iter);
         if ((rc = mcdb_findstart(m, k, mcdb_iter_keylen(&iter)))) {
             do { rc = mcdb_findnext(m, k, mcdb_iter_keylen(&iter));
             } while (rc && mcdb_datapos(m) != iter_dpos);

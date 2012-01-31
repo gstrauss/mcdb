@@ -216,9 +216,9 @@ int main(void)
         mtime = st.st_mtime;
         if (stat(fdb[i].mcdbfile, &st) != 0) {
             st.st_mtime = 0;
-            st.st_mode = (0 != strcmp(fdb[i].file, "/etc/shadow"))
-              ? (mode_t)(S_IRUSR | S_IRGRP | S_IROTH)    /* default read-only */
-              : (mode_t)(S_IRUSR);  /* default root read-only for /etc/shadow */
+            st.st_mode = (mode_t)((0 != strcmp(fdb[i].file, "/etc/shadow"))
+              ? (S_IRUSR | S_IRGRP | S_IROTH)    /* default read-only */
+              : (S_IRUSR));  /* default root read-only for /etc/shadow */
             if (errno != ENOENT)
                 break;
         }

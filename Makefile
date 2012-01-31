@@ -140,8 +140,8 @@ CFLAGS+=$(PTHREAD_FLAGS)
 #     PTHREAD_FLAGS=-mt -D_THREAD_SAFE
 #     FPIC=+z
 #     SHLIB=-b
-#     #(noisy list of inconsequential warnings)
-#     WARNING_FLAGS=+w
+#     #(noisy; quiet informational messages about adding padding to structs)
+#     WARNING_FLAGS=+w +W4227,4255
 #     #(64-bit)
 #     ABI_FLAGS=+DD64
 #     #(additionally, aCC does not appear to support C99 inline)

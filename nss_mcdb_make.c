@@ -73,11 +73,13 @@ nss_mcdb_nsswitch(const char * restrict svc,
           nointr_open(NSSWITCH_CONF_PATH, O_RDONLY|O_NONBLOCK|O_CLOEXEC, 0);
         if (fd != -1) {
             if (fstat(fd, &st) == 0) {
-                if (st.st_size < SIZE_MAX)
+              #if !defined(_LP64) && !defined(__LP64__)
+                if (st.st_size > (off_t)SIZE_MAX)
+                    errno = EFBIG; /* nsswitch.conf >= 4 GB; highly unlikely */
+                else
+              #endif
                     nsswitch = mmap(NULL, (size_t)st.st_size,
                                     PROT_READ, MAP_SHARED, fd, 0);
-                else
-                    errno = EFBIG; /* nsswitch.conf >= 4 GB; highly unlikely */
             }
             (void) nointr_close(fd);
         }
@@ -199,10 +201,9 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * const restrict w,
         fd = open(input, O_RDONLY | O_NONBLOCK | O_CLOEXEC, 0);
         if (fd == -1 || fstat(fd, &st) != 0)
             break;
-        if (st.st_size >= SIZE_MAX) {
-            errno = EFBIG;
-            break;
-        }
+      #if !defined(_LP64) && !defined(__LP64__)
+        if (st.st_size > (off_t)SIZE_MAX) { errno = EFBIG; break; }
+      #endif
         inode = st.st_ino;
         fsize = st.st_size;
         mtime = st.st_mtime;

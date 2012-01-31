@@ -176,17 +176,17 @@ mcdb_make_fallocate(const int fd, off_t offset, off_t len)
   #if (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS-0 == 64)  \
    || defined(_LARGEFILE_SOURCE) || defined(_LARGEFILE64_SOURCE) \
    || defined(_LARGE_FILES)
-    if (len <= LLONG_MAX-(stvfs.f_bsize-1)  /* check for integer overflow */
+    if (len <= (unsigned long long)(LLONG_MAX-(stvfs.f_bsize-1))
         && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1))
             <= (unsigned long long)(LLONG_MAX-offset))
   #else
-    if (len <= LONG_MAX-(stvfs.f_bsize-1)   /* check for integer overflow */
+    if (len <= (unsigned long long)(LONG_MAX-(stvfs.f_bsize-1))
         && ((len+stvfs.f_bsize-1) & ~(stvfs.f_bsize-1))
             <= (unsigned long)(LONG_MAX-offset))
   #endif
         len += offset;
     else
-        return EFBIG;
+        return EFBIG;  /* integer overflow */
 
     st_size = st.st_size < len ? st.st_size : len;
     while (offset < st_size

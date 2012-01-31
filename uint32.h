@@ -35,12 +35,12 @@ extern "C" {
 /*(use macros only with simple args, or else better to call inline subroutine)*/
 
 /* uint32_strunpack_macro(): string 's' must be unsigned char */
-#define uint32_strunpack_macro(s)                                     \
+#define uint32_strunpack_macro(s)                          (uint32_t) \
   (  ((unsigned char *)(s))[0]      | (((unsigned char *)(s))[1]<<8)  \
   | (((unsigned char *)(s))[2]<<16) | (((unsigned char *)(s))[3]<<24) )
 
 /* uint32_strunpack_bigendian_macro(): string 's' must be unsigned char */
-#define uint32_strunpack_bigendian_macro(s)                           \
+#define uint32_strunpack_bigendian_macro(s)                (uint32_t) \
   ( (((unsigned char *)(s))[0]<<24) | (((unsigned char *)(s))[1]<<16) \
   | (((unsigned char *)(s))[2]<<8)  |  ((unsigned char *)(s))[3] )
 

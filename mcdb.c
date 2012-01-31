@@ -316,7 +316,9 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     mcdb_mmap_unmap(map);
 
     if (fstat(fd, &st) != 0) return false;
-    if (st.st_size >= SIZE_MAX) return (errno = EFBIG, false);
+  #if !defined(_LP64) && !defined(__LP64__)
+    if (st.st_size > (off_t)SIZE_MAX) return (errno = EFBIG, false);
+  #endif
     x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (x == MAP_FAILED) return false;
     __builtin_prefetch((char *)x+960, 0, 3); /*(touch mem page w/ mcdb header)*/

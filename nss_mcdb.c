@@ -259,7 +259,7 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
         if (mcdb_iter_keyptr(&iter)[0] == (unsigned char)'=') {
             m->hpos = (uintptr_t)iter.ptr;
             /* valid data for mcdb_datapos() mcdb_datalen() mcdb_dataptr() */
-            m->dpos = mcdb_iter_datapos(&iter);
+            m->dpos = (uintptr_t)mcdb_iter_datapos(&iter);
             m->dlen = mcdb_iter_datalen(&iter);
             return v->decode(m, v);
         }

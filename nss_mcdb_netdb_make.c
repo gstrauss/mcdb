@@ -324,7 +324,7 @@ nss_mcdb_netdb_make_hostent_encode(
 
     /* one address per line in /etc/hosts, so support encoding only one addr */
     w->tagc = 'b';  /* binary */
-    w->klen = (size_t)he->h_length;
+    w->klen = (uint32_t)he->h_length;
     w->key  = he->h_addr_list[0];
     if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
         return false;
