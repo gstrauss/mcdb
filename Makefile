@@ -166,7 +166,7 @@ libnss_mcdb.so.2: mcdb.o \
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
-libmcdb.so: LDFLAGS+=-Wl,-soname,mcdb
+libmcdb.so: LDFLAGS+=-Wl,-soname,$(@F)
 endif
 libmcdb.so: mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
@@ -256,6 +256,7 @@ install: $(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2 \
 
 
 # also create 32-bit libraries for /lib on systems with /lib and /lib64
+ifeq (,$(MCDB_SKIP32))
 ifeq (,$(RPM_ARCH))
 ifeq (64,$(LIB_BITS))
 ifeq (,$(wildcard lib32))
@@ -279,7 +280,7 @@ lib32/libnss_mcdb.so.2: $(addprefix lib32/, \
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
-lib32/libmcdb.so: LDFLAGS+=-Wl,-soname,mcdb
+lib32/libmcdb.so: LDFLAGS+=-Wl,-soname,$(@F)
 endif
 lib32/libmcdb.so: ABI_FLAGS=-m32
 lib32/libmcdb.so: $(addprefix lib32/, \
@@ -304,6 +305,7 @@ all: lib32/libnss_mcdb.so.2 lib32/libmcdb.so
 
 install: $(PREFIX)/lib/libnss_mcdb.so.2 $(PREFIX_USR)/lib/libnss_mcdb.so.2 \
          $(PREFIX_USR)/lib/libmcdb.so
+endif
 endif
 endif
 
