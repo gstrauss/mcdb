@@ -103,6 +103,7 @@ extern "C" {
 
 #if __GNUC_PREREQ(2,5) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || defined(__HP_cc) || defined(__HP_aCC) \
  || __has_attribute(noreturn)
 #ifndef __attribute_noreturn__
 #define __attribute_noreturn__  __attribute__((noreturn))
@@ -133,6 +134,7 @@ extern "C" {
 #endif
 
 #if __GNUC_PREREQ(2,96) \
+ || defined(__HP_cc)|| defined(__HP_aCC) \
  || __has_attribute(malloc)
 #ifndef __attribute_malloc__
 #define __attribute_malloc__  __attribute__((malloc))
@@ -147,6 +149,10 @@ extern "C" {
  || __has_attribute(pure)
 #ifndef __attribute_pure__
 #define __attribute_pure__  __attribute__((pure))
+#endif
+#elif defined(__HP_cc)|| defined(__HP_aCC)
+#ifndef __attribute_pure__
+#define __attribute_pure__  __attribute__((non_exposing))
 #endif
 #endif
 #ifndef __attribute_pure__
@@ -194,6 +200,7 @@ extern "C" {
 #endif
 
 #if __GNUC_PREREQ(3,4) \
+ || defined(__HP_cc)|| defined(__HP_aCC) \
  || __has_attribute(warn_unused_result)
 #ifndef __attribute_warn_unused_result__
 #define __attribute_warn_unused_result__  __attribute__((warn_unused_result))
@@ -233,7 +240,11 @@ extern "C" {
 # define EXPORT            __global
 # define HIDDEN            __hidden
 # define INTERNAL          __hidden
-#else /* not gcc >= 4 and not Sun Studio >= 8 */
+#elif defined(__HP_cc) || defined(__HP_aCC)
+# define EXPORT            __attribute__((visibility("default")))
+# define HIDDEN            __attribute__((visibility("hidden")))
+# define INTERNAL          __attribute__((visibility("protected")))
+#else /* not gcc >= 4 and not Sun Studio >= 8 and not HP aCC */
 # define EXPORT
 # define HIDDEN
 # define INTERNAL
