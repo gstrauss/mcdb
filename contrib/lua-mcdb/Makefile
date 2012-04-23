@@ -1,8 +1,11 @@
 CC=gcc -pipe
-CFLAGS+=-Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3 -g
+CFLAGS+=-Wall -Winline -pedantic -ansi -std=c99 -D_THREAD_SAFE -O3 -g -fpic
 
 # compile using local mcdb headers
 CFLAGS+=-I ../../..
+
+# provide path to lua.h if not in default compiler include paths
+#CFLAGS+=-I /usr/include/lua5.1
 
 %.o: %.c
 	$(CC) -o $@ $(CFLAGS) -c $<
