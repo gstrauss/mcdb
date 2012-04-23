@@ -34,7 +34,9 @@
 #include <stdlib.h>    /* strtoul() */
 #include <unistd.h>    /* close() */
 
-static const char data[65536];
+/* write keylen,datalen,key,value exactly 64K for convenience troubleshooting
+ *  (4-byte keylen + 4-byte datalen + 4-byte key + 65524 byte data = 65536) */
+static const char data[65536-12];
 
 int
 main(int argc,char **argv)
