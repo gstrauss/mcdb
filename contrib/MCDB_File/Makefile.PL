@@ -34,8 +34,8 @@ WriteMakefile(
             build_requires => { 'Test::More' => 0, },  # For testing
             resources      => {
                 license => 'http://dev.perl.org/licenses/',
-                homepage => 'https://github.com/gstrauss/MCDB_File',
-                repository => 'https://github.com/gstrauss/MCDB_File',
+                homepage => 'https://github.com/gstrauss/mcdb',
+                repository => 'https://github.com/gstrauss/mcdb',
             },
       })),
 );
