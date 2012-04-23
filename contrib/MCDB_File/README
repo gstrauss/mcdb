@@ -3,7 +3,7 @@ MCDB_File
 
 Perl interface to create and read mcdb constant databases.
 
-MCDB_File extension module wraps interfaces in libmcdb.so
+MCDB_File extension module wraps interfaces in the mcdb library.
 See https://github.com/gstrauss/mcdb/ for latest info on mcdb.
 mcdb is based on D. J. Bernstein's constant database package
 (see http://cr.yp.to/cdb.html).
@@ -21,6 +21,10 @@ Documentation can be found by running: perldoc MCDB_File
 If you have any problems, questions, or ideas for future
 enhancements, please contact code()gluelogic.com.
 
+If building from git clone https://github.com/gstrauss/mcdb instead of
+from MCDB_File CPAN distribution, must first: make MCDB_File-bootstrap
+at top level of mcdb git clone.
+
 DEPENDENCIES
 
 This module requires these other modules and libraries:
@@ -30,8 +34,12 @@ This module requires these other modules and libraries:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011 by Glue Logic LLC
+MCDB_File - Copyright (C) 2011 by Glue Logic LLC
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.12.4 or,
 at your option, any later version of Perl 5 you may have available.
+
+mcdb - Copyright (C) 2011 by Glue Logic LLC
+
+mcdb is licensed under LGPL v2.1  https://github.com/gstrauss/mcdb/COPYING

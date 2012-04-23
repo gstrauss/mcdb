@@ -275,7 +275,7 @@ to call the $mcdb->find('key') method than to call $mcdb->FETCH('key').
 =head1 ACKNOWLEDGEMENTS
 
 mcdb is based on cdb, created by Dan Bernstein <djb@koobera.math.uic.edu>.
-MCDB_File is based on CDB_FILE, created by Tim Goodwin, <tjg@star.le.ac.uk>
+MCDB_File is based on CDB_File, created by Tim Goodwin, <tjg@star.le.ac.uk>
 and currently maintained by Todd Rinaldo https://github.com/toddr/CDB_File/
 
 =head1 AUTHOR

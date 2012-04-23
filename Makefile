@@ -310,6 +310,16 @@ endif
 endif
 
 
+# bootstrap for creating CPAN module MCDB_File dist package
+.PHONY: MCDB_File-bootstrap MCDB_File-bootstrap-clean
+MCDB_File-bootstrap: clean MCDB_File-bootstrap-clean
+	cd .. && tar czf mcdb/contrib/MCDB_File/mcdb.tar.gz --exclude=mcdb.tar.gz --exclude=.git mcdb
+MCDB_File-bootstrap-clean:
+	[ ! -f contrib/MCDB_File/Makefile ] || \
+          $(MAKE) -C contrib/MCDB_File distclean
+	-$(RM) contrib/MCDB_File/mcdb.tar.gz
+
+
 .PHONY: test test64
 test64: TEST64=test64
 test64: test ;

@@ -5,6 +5,7 @@ ChangeLog
 MANIFEST
 Makefile.PL
 README
+mcdb.tar.gz
 perlext.map
 t/01main.t
 t/02last.t
