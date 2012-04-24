@@ -26,7 +26,9 @@
 #define INCLUDED_MCDB_H
 
 #ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
+#ifndef _ALL_SOURCE
 #define _ALL_SOURCE
+#endif
 #endif
 #ifdef __hpux /*HP-UX strict conformance with C99 and _XOPEN_SOURCE 600*/
 #ifndef _XOPEN_SOURCE
@@ -34,10 +36,33 @@
 #endif
 #endif
 
-#include <stdbool.h>  /* bool     */
 #include <stdint.h>   /* uint32_t, uintptr_t */
 #include <unistd.h>   /* size_t   */
 #include <sys/time.h> /* time_t   */
+
+#ifndef __cplusplus
+#if __STDC_VERSION__ >= 199901L /* C99 */
+#if defined(bool) && !defined(__bool_true_false_are_defined)
+#undef bool
+#endif
+#include <stdbool.h>  /* bool */
+#else
+/* http://pubs.opengroup.org/onlinepubs/007904875/basedefs/stdbool.h.html */
+/*(intentionally conflict w/ existing #define bool if different and no _Bool)*/
+#define bool char
+#define true  1
+#define false 0
+/*#define __bool_true_false_are_defined 1 *//* not defining since not _Bool */
+#endif
+#endif
+
+#if defined(__cplusplus) || __STDC_VERSION__ < 199901L /* C99 */
+#ifdef __GNUC__
+#define restrict __restrict
+#else
+#define restrict
+#endif
+#endif
 
 #if !defined(_POSIX_MAPPED_FILES) || !(_POSIX_MAPPED_FILES-0) \
  || !defined(_POSIX_SYNCHRONIZED_IO) || !(_POSIX_SYNCHRONIZED_IO-0)

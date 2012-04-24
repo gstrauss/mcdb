@@ -67,6 +67,8 @@ ifeq ($(OSNAME),Linux)
   ifeq (,$(RPM_OPT_FLAGS))
     CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector
   endif
+  # earlier versions of GNU ld might not support -Wl,--hash-style,gnu
+  # (safe to remove -Wl,--hash-style,gnu for RedHat Enterprise 4)
   LDFLAGS+=-Wl,-O,1 -Wl,--hash-style,gnu -Wl,-z,relro,-z,now
   mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero: \
     LDFLAGS+=-Wl,-z,noexecstack

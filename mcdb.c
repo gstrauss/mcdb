@@ -380,7 +380,7 @@ mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
     bool rc;
 
     const int oflags = O_RDONLY | O_NONBLOCK | O_CLOEXEC;
-  #if defined(__linux__) || defined(__sun)
+  #ifdef AT_FDCWD
     if (map->dfd != -1) {
         if ((fd = nointr_openat(map->dfd, map->fname, oflags, 0)) == -1)
             return false;
@@ -403,7 +403,7 @@ mcdb_mmap_refresh_check(const struct mcdb_mmap * const restrict map)
     struct stat st;
     return (map->ptr == NULL
             || ( (
-                  #if defined(__linux__) || defined(__sun)
+                  #ifdef AT_FDCWD
                     map->dfd != -1
                       ? fstatat(map->dfd, map->fname, &st, 0) == 0
                       :

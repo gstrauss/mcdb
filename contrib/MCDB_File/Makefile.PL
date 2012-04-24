@@ -2,8 +2,12 @@ use 5.005;
 use strict;
 use warnings;
 
-use version 0.77;
+use Config;
 use ExtUtils::MakeMaker;
+
+# (version.pm not portable until Perl 5.9 (?); Perl 5.10.0 uses _ in versions)
+my $ExtUtils_MakeMaker_VERSION = $ExtUtils::MakeMaker::VERSION;
+$ExtUtils_MakeMaker_VERSION =~ tr/_//d;
 
 WriteMakefile(
     NAME                   => 'MCDB_File',
@@ -11,7 +15,7 @@ WriteMakefile(
     VERSION_FROM           => 'MCDB_File.pm',
     ABSTRACT_FROM          => 'MCDB_File.pm',
     PL_FILES               => {},
-    (version->parse($ExtUtils::MakeMaker::VERSION) < 6.3002 ? () :
+    ($ExtUtils_MakeMaker_VERSION < 6.3002 ? () :
       (LICENSE             => 'perl', )),
     PREREQ_PM              => { 'Test::More' => 0, },  # For testing
     dist                   => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
@@ -28,7 +32,7 @@ WriteMakefile(
     # compile and link with system libmcdb.so
     #LIBS       => ['-lmcdb'],
     NEEDS_LINKING          => 1,
-    (version->parse($ExtUtils::MakeMaker::VERSION) < 6.46 ? () :
+    ($ExtUtils_MakeMaker_VERSION < 6.46 ? () :
       (META_MERGE => {
             recommends     => { },
             build_requires => { 'Test::More' => 0, },  # For testing
@@ -41,12 +45,19 @@ WriteMakefile(
 );
 
 sub MY::postamble {
-    return <<'MAKE_FRAG';
+    # Building mcdb requires C99 but different compilers require different flags
+    # so at the moment, rules below build mcdb with gcc (which must be present)
+    # XXX: Future: pass to mcdb gmake compiler-specific flags to enable C99 and:
+    #        CC='$(CC)' RPM_OPT_FLAGS='$(CCFLAGS)' ABI_FLAGS= MCDB_SKIP32= \
+    #           ABI_BITS=($Config{ptrsize} == 8 ? 64 : 32) # evaluated
+    my $postamble =
+      "mcdb/libmcdb.a: ABI_BITS=".($Config{ptrsize} == 8 ? 64 : 32)."\n\n";
+    $postamble .= <<'MAKE_FRAG';
+mcdb/libmcdb.a: mcdb
+	$(MAKE) -C mcdb libmcdb.a ABI_BITS=$(ABI_BITS)
+
 mcdb: mcdb.tar.gz
 	gunzip -c $< | tar xf -
-
-mcdb/libmcdb.a: mcdb
-	$(MAKE) -C mcdb libmcdb.a
 
 clean::
 	[ ! -d mcdb ] || $(MAKE) -C mcdb clean
@@ -54,4 +65,5 @@ clean::
 realclean::
 	-$(RM) -r mcdb
 MAKE_FRAG
+    return $postamble;
 }

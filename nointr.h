@@ -102,7 +102,7 @@ nointr_ftruncate(const int fd, const off_t sz)
 #endif
 
 /* caller must #define _ATFILE_SOURCE on Linux for openat() */
-#if (defined(__linux__) || defined(__sun)) && defined(_ATFILE_SOURCE)
+#if defined(_ATFILE_SOURCE) && defined(AT_FDCWD)
 int  C99INLINE
 nointr_openat(const int dfd, const char * const restrict fn,
               const int flags, const mode_t mode)

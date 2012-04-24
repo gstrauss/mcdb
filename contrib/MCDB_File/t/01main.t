@@ -45,8 +45,8 @@ cleanup_mcdb('good');
 
 # Test empty file.
 %a = ();
-eval { MCDB_File::Make::create('empty.mcdb', %a) || die "MCDB create failed" };
-is(!$@, 1, "No errors creating mcdb");
+eval { MCDB_File::Make::create('empty.mcdb', %a) || die "Failed to create empty mcdb: $!" };
+is("$@", '', "Create empty mcdb");
 
 ok((tie(%h, "MCDB_File", 'empty.mcdb')), "Tie new empty mcdb");
 

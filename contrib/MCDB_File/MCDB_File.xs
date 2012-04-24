@@ -43,7 +43,7 @@ mcdbxs_is_iterkey (struct mcdb_iter * const restrict iter,
     return (iter->ptr
             && klen == mcdb_iter_keylen(iter)
             && 0 == memcmp(mcdb_iter_keyptr(iter), kp, klen))
-           || ((iter->ptr = NULL));
+           || ((iter->ptr = NULL), false);
 }
 
 static SV *
