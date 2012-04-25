@@ -230,7 +230,8 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
     }
 
     return (    0 == nointr_ftruncate(m->fd, (off_t)m->pos)
-            &&  0 == msync(m->map, m->pos - m->offset, MS_ASYNC)
+            &&  (0== m->pos - m->offset ||/*(avoid 0-sized msync; portability)*/
+                 0== msync(m->map, m->pos - m->offset, MS_ASYNC))
             && -1 != lseek(m->fd, 0, SEEK_SET)
             && -1 != nointr_write(m->fd, header, MCDB_HEADER_SZ));
     /* Most (all?) modern UNIX use a unified VM page cache, so the difference
@@ -302,9 +303,11 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
     }
 
     /* flush and munmap prior mmap */
-    if (m->map != MAP_FAILED) {/*(m->fd==-1 during some large mcdb size tests)*/
-        if ((m->fd == -1 || msync(m->map, m->pos - m->offset, MS_ASYNC) == 0)
-            && munmap(m->map, m->msz) == 0)
+    if (m->map != MAP_FAILED) {
+        if ((  -1 == m->fd     /*(m->fd==-1 during some large mcdb size tests)*/
+             || 0 == m->pos - m->offset   /*(avoid 0-sized msync; portability)*/
+             || 0 == msync(m->map, m->pos - m->offset, MS_ASYNC))
+            &&  0 == munmap(m->map, m->msz))
             m->map = MAP_FAILED;
         else
             return false;

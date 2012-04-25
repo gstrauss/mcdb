@@ -319,6 +319,7 @@ MCDB_File-bootstrap: clean MCDB_File-bootstrap-clean
 MCDB_File-bootstrap-clean:
 	[ ! -f contrib/MCDB_File/Makefile ] || \
           $(MAKE) -C contrib/MCDB_File distclean
+	[ ! -d contrib/MCDB_File/mcdb ] || $(RM) -r contrib/MCDB_File/mcdb
 	-$(RM) contrib/MCDB_File/mcdb.tar.gz
 
 
