@@ -240,8 +240,10 @@ rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 # testzero uses keys of size 4 and data records of size 65524
 #  (4-byte keylen + 4-byte datalen + 4-byte key + 65524 byte data = 65536; 64KB)
 # mcdb overhead is 4096 + 24 bytes per record as long as data section fits <4 GB
+# (most platforms succeed with 'testzero 65519'
+#  cygwin 32-bit succeeds with 'testzero 65518')
 echo '--- testzero can build a database very close to 4GB'
-testzero 65519
+testzero 65518
 rc=$?; [ $rc -eq 0 ] || echo 1>&2 "FAIL $rc"
 
 # testzero on large data sets will fail in 32-bit, but should succeed in 64-bit

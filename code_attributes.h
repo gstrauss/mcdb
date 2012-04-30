@@ -250,6 +250,16 @@ extern "C" {
 # define INTERNAL
 #endif
 
+#if defined(__GNUC__) \
+ &&(defined(__sun) || defined(_AIX) || defined(__hpux) || defined(__CYGWIN__))
+# undef  EXPORT
+# undef  HIDDEN
+# undef  INTERNAL
+# define EXPORT
+# define HIDDEN
+# define INTERNAL
+#endif
+
 
 /* GCC __builtin_expect() is used below to hint to compiler expected results
  * of commands executed.  Successful execution is expected and should be

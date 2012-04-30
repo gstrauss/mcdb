@@ -210,7 +210,7 @@ mcdbxs_DESTROY(sv)
     struct mcdbxs_read *this;
   CODE:
     if (sv_isobject(sv) && SvTYPE(SvRV(sv)) == SVt_PVMG) {
-        this = (struct mcdbxs_read *)SvIV(SvRV(sv));
+        this = INT2PTR(struct mcdbxs_read *, SvIV((SV *)SvRV(sv)));
         mcdb_mmap_destroy(this->m.map);
         Safefree(this);
     }
@@ -286,7 +286,7 @@ mcdbxs_make_DESTROY(sv)
     SV * sv;
   CODE:
     if (sv_isobject(sv) && SvTYPE(SvRV(sv)) == SVt_PVMG)
-        mcdbxs_make_destroy((struct mcdb_make *)SvIV(SvRV(sv)));
+        mcdbxs_make_destroy(INT2PTR(struct mcdb_make *,SvIV((SV *)SvRV(sv))));
 
 void
 mcdbxs_make_finish(mk, ...)

@@ -229,8 +229,12 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
         return true;
     }
 
-    return (    0 == nointr_ftruncate(m->fd, (off_t)m->pos)
-            &&  (0== m->pos - m->offset ||/*(avoid 0-sized msync; portability)*/
+    return (
+          #ifndef __CYGWIN__  /* (see comments in mcdb_make_destroy()) */
+                0 == nointr_ftruncate(m->fd, (off_t)m->pos)
+            && 
+          #endif
+                (0== m->pos - m->offset ||/*(avoid 0-sized msync; portability)*/
                  0== msync(m->map, m->pos - m->offset, MS_ASYNC))
             && -1 != lseek(m->fd, 0, SEEK_SET)
             && -1 != nointr_write(m->fd, header, MCDB_HEADER_SZ));
@@ -568,6 +572,12 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
         m->map = MAP_FAILED;
         if (errsave != 0)
             errno = errsave;
+      #ifdef __CYGWIN__
+        /* cygwin: defer ftruncate from mcdb_mmap_commit() to after munmap() */
+        /* (ftruncate appears to fails EPERM if offset overlaps with mmap) */
+        else
+            rc |= nointr_ftruncate(m->fd, (off_t)m->pos);
+      #endif
     }
     if (m->head[0] != NULL) {
         struct mcdb_hplist *n;

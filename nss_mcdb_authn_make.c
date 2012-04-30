@@ -31,7 +31,7 @@
 #include <arpa/inet.h>  /* htonl(), htons() */
 
 
-#ifndef _AIX  /* no /etc/shadow on AIX */
+#if !defined(_AIX) && !defined(__CYGWIN__)  /* no /etc/shadow on AIX, Cygwin */
 
 
 #include <shadow.h>
@@ -237,4 +237,4 @@ nss_mcdb_authn_make_spwd_encode(
 }
 
 
-#endif /* _AIX */
+#endif /* !defined(_AIX) && !defined(__CYGWIN__) */

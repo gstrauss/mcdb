@@ -42,6 +42,14 @@ ABI_FLAGS?=-m64
 endif
 endif
 
+# cygwin needs -std=gnu99 or -D_GNU_SOURCE for mkstemp() and strerror_r()
+# cygwin gcc does not support -fpic or -pthread
+ifneq (,$(filter CYGWIN%,$(OSNAME)))
+FPIC=
+STDC99=-std=gnu99
+PTHREAD_FLAGS=-D_THREAD_SAFE
+endif
+
 ifneq (,$(RPM_OPT_FLAGS))
   CFLAGS+=$(RPM_OPT_FLAGS)
   LDFLAGS+=$(RPM_OPT_FLAGS)

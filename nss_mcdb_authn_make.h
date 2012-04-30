@@ -26,7 +26,7 @@
 #include "code_attributes.h"
 
 
-#ifndef _AIX
+#if !defined(_AIX) && !defined(__CYGWIN__)
 
 #include <shadow.h>
 
@@ -36,7 +36,7 @@ nss_mcdb_authn_make_spwd_datastr(char * restrict buf, const size_t bufsz,
 				 const struct spwd * const restrict sp)
   __attribute_nonnull__;
 
-#endif /* !_AIX */
+#endif /* !defined(_AIX) && !defined(__CYGWIN__) */
 
 
 bool

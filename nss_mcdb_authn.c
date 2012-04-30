@@ -27,7 +27,7 @@ void _nss_mcdb_setspent(void) { nss_mcdb_setent(NSS_DBTYPE_SHADOW,0); }
 void _nss_mcdb_endspent(void) { nss_mcdb_endent(NSS_DBTYPE_SHADOW);   }
 
 
-#ifndef _AIX
+#if !defined(_AIX) && !defined(__CYGWIN__)
 
 
 #include <errno.h>
@@ -110,4 +110,4 @@ nss_mcdb_authn_spwd_decode(struct mcdb * const restrict m,
 }
 
 
-#endif /* !_AIX */
+#endif /* !defined(_AIX) && !defined(__CYGWIN__) */

@@ -42,7 +42,7 @@ enum {
 };
 
 
-#ifndef _AIX
+#if !defined(_AIX) && !defined(__CYGWIN__)
 
 #include <shadow.h>     /* (struct spwd) */
 
@@ -57,7 +57,7 @@ _nss_mcdb_getspnam_r(const char * restrict,
                      int * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
-#endif /* !_AIX */
+#endif /* !defined(_AIX) && !defined(__CYGWIN__) */
 
 
 #endif
