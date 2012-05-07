@@ -276,9 +276,12 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
         msz = (UINT_MAX & m->pgalign) - offset;
   #endif
 
-    /* increase file size by at least msz (prefer multiple of disk block size)*/
+    /* increase file size by at least msz (prefer multiple of disk block size)
+     * (reduce to MCDB_MMAP_SZ for 1st (and maybe 2nd) mmap for small mcdb) */
     if (m->fd != -1 && m->fsz < offset + msz) {
-        m->fsz = (offset + msz + (MCDB_BLOCK_SZ-1)) & ~(MCDB_BLOCK_SZ-1);
+        m->fsz = (m->offset != 0)
+          ? ((offset + msz + (MCDB_BLOCK_SZ-1)) & ~(MCDB_BLOCK_SZ-1))
+          : ((offset + msz + (MCDB_MMAP_SZ-1))  & ~(MCDB_MMAP_SZ-1));
       #if defined(__GLIBC__)/* glibc emulates if not natively supported by fs */
         if ((errno = posix_fallocate(m->fd, (off_t)m->osz,
                                      (off_t)(m->fsz-m->osz))) == 0)
