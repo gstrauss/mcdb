@@ -343,7 +343,7 @@ mcdb_make_addbegin(struct mcdb_make * const restrict m,
     if (m->map == MAP_FAILED && m->fd != -1)  return mcdb_make_err(NULL,EPERM);
     if (m->hp.l== ~0 && !mcdb_hplist_alloc(m))return mcdb_make_err(NULL,errno);
     m->hp.p = pos;
-    m->hp.h = UINT32_HASH_DJB_INIT;
+    m->hp.h = m->hash_init;
     if (keylen>INT_MAX-8 || datalen>INT_MAX-8)return mcdb_make_err(NULL,EINVAL);
     m->hp.l = (uint32_t)keylen;
   #if !defined(_LP64) && !defined(__LP64__)  /* (no 4 GB limit in 64-bit) */
@@ -374,7 +374,9 @@ mcdb_make_addbuf_key(struct mcdb_make * const restrict m,
 {
     /* len validated in mcdb_make_addbegin(); passing any other len is wrong,
      * unless the len is shorter from partial contents of buf. */
-    m->hp.h = uint32_hash_djb(m->hp.h, buf, len);
+    m->hp.h = (m->hash_fn == uint32_hash_djb)
+      ? uint32_hash_djb(m->hp.h, buf, len)
+      : m->hash_fn(m->hp.h, buf, len);
     mcdb_make_addbuf_data(m, buf, len);
 }
 
@@ -419,6 +421,8 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
     m->map       = MAP_FAILED;
     m->pos       = MCDB_HEADER_SZ;
     m->offset    = 0;
+    m->hash_init = UINT32_HASH_DJB_INIT;
+    m->hash_fn   = uint32_hash_djb;
     m->fsz       = 0;
     m->osz       = 0;
     m->msz       = 0;

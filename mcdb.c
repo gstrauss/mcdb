@@ -101,12 +101,22 @@ mcdb_findtagstart(struct mcdb * const restrict m,
                   const char * const restrict key, const size_t klen,
                   const unsigned char tagc)
 {
-    const uint32_t khash_init = /* init hash value; hash tagc if tagc not 0 */
-      (tagc != 0)
-        ? uint32_hash_djb_uchar(UINT32_HASH_DJB_INIT, tagc)
-        : UINT32_HASH_DJB_INIT;
-    const uint32_t khash = uint32_hash_djb(khash_init, key, klen);
     const unsigned char * restrict ptr;
+    uint32_t khash;
+    if (m->map->hash_fn == uint32_hash_djb) {
+        const uint32_t khash_init = /*init hash value; hash tagc if tagc not 0*/
+          (tagc != 0)
+            ? uint32_hash_djb_uchar(UINT32_HASH_DJB_INIT, tagc)
+            : UINT32_HASH_DJB_INIT;
+        khash = uint32_hash_djb(khash_init, key, klen);
+    }
+    else {
+        const uint32_t khash_init = /*init hash value; hash tagc if tagc not 0*/
+          (tagc != 0)
+            ? m->map->hash_fn(m->map->hash_init, (const char *)&tagc, 1u)
+            : m->map->hash_init;
+        khash = m->map->hash_fn(khash_init, key, klen);
+    }
 
     (void) mcdb_thread_refresh_self(m);
     /* (ignore rc; continue with previous map in case of failure) */
@@ -335,6 +345,8 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     map->mtime = st.st_mtime;
     map->next  = NULL;
     map->refcnt= 0;
+    map->hash_init = UINT32_HASH_DJB_INIT;
+    map->hash_fn   = uint32_hash_djb;
     return true;
 }
 
@@ -593,8 +605,13 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
             next->ptr = NULL;       /*(skip munmap() in mcdb_mmap_reopen())*/
             if (map->fname == map->fnamebuf)
                 next->fname = next->fnamebuf;
-            if ((rc = mcdb_mmap_reopen(next)))
+            if ((rc = mcdb_mmap_reopen(next))) {
+                next->hash_init = (*mapptr)->hash_init;
+                next->hash_fn   = (*mapptr)->hash_fn;
+                /* XXX: TODO should have StoreStore memory barrier here
+                 * (this matters only for custom hash functions) */
                 (*mapptr)->next = next;
+            }
             else
                 map->fn_free(next);
         }

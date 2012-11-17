@@ -123,7 +123,12 @@ However, there is an overhead to formating the input as ASCII numbers, as well
 as parsing and translating the ASCII back to native numbers.  (The cost adds up
 with lots of keys.)  Another method to create mcdb which is even faster is
 for a program to link with and call mcdb_make_* routines directly, as is done
-in nss_mcdbctl.
+in nss_mcdbctl.  For any mcdb beyond trivial size, disk speed has a large impact
+on performance.  An encrpyted filesystem (e.g. homedirs in some Linux distros)
+can be multiple times slower than unencrypted.  Where absolute performance
+matters, solid state disks (SSDs) are recommended over spinning hard disks,
+and in-memory filesystems (tmpfs on Linux, e.g. mounted on /dev/shm on Fedora
+Linux) are even faster as long as the mcdb fits in the in-memory filesystem.
 
 mcdb in memory only
 -------------------
@@ -162,7 +167,6 @@ an example larger_mcdb:
   map->n   = ~0;
   m.map = &map;
   /* ... mcdb_find(&m, str, len) ... */
-
 
 compiler intrinsics/builtins not (yet) tested on all platforms
 --------------------------------------------------------------
@@ -219,6 +223,50 @@ be considered, though at that point it is probably advisable to write custom
 code to handle the specific data set, including a replacement for the djb hash
 function.  (mcdb code could be easily tweaked to support 64-bit hslots and
 64-bit hash values, but the on-disk format would be incompatible with mcdb.)
+
+mcdb support for user-provided (custom) hash function
+-----------------------------------------------------
+Experimental support exists for a user-provided (custom) hash function to
+replace the djb hash function.  It is only available in C and documented here
+in the raw.  (If useful, please send feedback to me and I might create simple
+function interfaces to configure a custom hash function.  It would even be
+possible to have a structured footer at the end of the mcdb which, if present,
+could contain info about which hash_fn to use from a future pre-configured set.)
+
+During mcdb creation, a custom hash function can be set after mcdb_make_start()
+but prior to the first mcdb_make_add().  By default, struct mcdb_make is
+initialized in mcdb_make_start() to use the hash_fn = djb hash and initial hash
+value hash_init = djb hash initial value.
+  uint32_t hash_init;         /* hash init value */
+  uint32_t (*hash_fn)(uint32_t, const void * restrict, size_t); /* hash func */
+Similarly, mcdb_mmap_init() sets the djb hash function and initial value in
+struct mcdb_mmap, using members named the same as above, and so the mcdb
+consumer must set the custom hash function after mcdb_mmap_init() and prior to
+querying the mcdb.  Key and value arguments passed to mcdb functions typically
+expect (const char *) and so casting might be necessary to avoid compiler
+warnings/errors if the hash function expects a different type.
+
+mcdb makes no attempt to validate the hash function matches the hash function
+used to create the mcdb.  Doing so is the responsibilty of mcdb creator and
+consumers.  If the hash function is lost, the key/value data in the mcdb is
+still retrievable via mcdb_iter() or mcdbctl dump.  Other options to the
+command-line tool mcdbctl will not function properly when operating on an mcdb
+created using a custom hash function.
+
+One interesting example of a high-performance custom hash function is the
+identity function, which can be used when the data in the mcdb always has
+keys that are 4-byte integers (with reasonable distribution in the lower bits),
+and hash_init is set to 0 to be initialized, but is otherwise ignored.
+  uint32_t
+  hash_uint32_identity(uint32_t h       __attribute__((unused)),
+                       const void * const restrict vbuf,
+                       const size_t sz  __attribute__((unused)))
+  {
+      return *(uint32_t *)vbuf;
+  }
+Additionally, there are other options.  An excellent starting point -- but by
+no means exhaustive -- comparison of some alternative hash functions can be
+found at: http://burtleburtle.net/bob/hash/doobs.html
 
 
 
