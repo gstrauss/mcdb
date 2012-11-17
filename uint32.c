@@ -51,8 +51,11 @@ void uint32_strpack_bigendian(char s[4], uint32_t);
 void uint32_strpack_bigendian(char s[4], uint32_t);
 
 extern inline
-uint32_t uint32_hash_djb(uint32_t, const void *, size_t);
-uint32_t uint32_hash_djb(uint32_t, const void *, size_t);
+uint32_t uint32_hash_djb(uint32_t, const void * restrict, size_t);
+uint32_t uint32_hash_djb(uint32_t, const void * restrict, size_t);
+extern inline
+uint32_t uint32_hash_identity(uint32_t, const void * restrict, size_t);
+uint32_t uint32_hash_identity(uint32_t, const void * restrict, size_t);
 
 extern inline
 void uint32_to_ascii8uphex(uint32_t, char * restrict);

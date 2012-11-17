@@ -131,18 +131,32 @@ uint32_strpack_bigendian(char s[4], const uint32_t u)
 #define uint32_hash_djb_uchar(h,c) (((h) + ((h) << 5)) ^ (c))
 
 uint32_t  C99INLINE  __attribute_pure__
-uint32_hash_djb(uint32_t, const void *, size_t)
+uint32_hash_djb(uint32_t, const void * restrict, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
 uint32_t  C99INLINE
-uint32_hash_djb(uint32_t h, const void * const vbuf, const size_t sz)
+uint32_hash_djb(uint32_t h, const void * const restrict vbuf, const size_t sz)
 {
     const unsigned char * restrict buf = (const unsigned char *)vbuf;
     const unsigned char * const e = (const unsigned char *)vbuf + sz;
     for (; __builtin_expect( (buf < e), 1); ++buf)
         h = uint32_hash_djb_uchar(h,*buf);
     return h;
+}
+#endif
+
+uint32_t  C99INLINE  __attribute_pure__
+uint32_hash_identity(uint32_t, const void * restrict, size_t)
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
+#if !defined(NO_C99INLINE)
+uint32_t  C99INLINE
+uint32_hash_identity(uint32_t h       __attribute__((unused)),
+                     const void * const restrict vbuf,
+                     const size_t sz  __attribute__((unused)))
+{
+    return *(uint32_t *)vbuf;
 }
 #endif
 
