@@ -42,6 +42,9 @@ struct mcdb_make {
   size_t pos;
   size_t offset;
   char * restrict map;
+  uint32_t hash_init;         /* hash init value */
+  uint32_t hash_pad;          /* (padding)*/
+  uint32_t (*hash_fn)(uint32_t, const void * restrict, size_t); /* hash func */
   size_t fsz;
   size_t osz;
   size_t msz;
