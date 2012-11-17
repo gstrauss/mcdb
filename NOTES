@@ -226,6 +226,10 @@ function.  (mcdb code could be easily tweaked to support 64-bit hslots and
 
 mcdb support for user-provided (custom) hash function
 -----------------------------------------------------
+The ability to use other hash functions can measurably improve mcdb performance
+if a specific dataset hashes more quickly and/or with better distribution with
+a different hash function. 
+
 Experimental support exists for a user-provided (custom) hash function to
 replace the djb hash function.  It is only available in C and documented here
 in the raw.  (If useful, please send feedback to me and I might create simple

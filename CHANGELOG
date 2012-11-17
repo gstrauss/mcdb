@@ -1,5 +1,9 @@
 mcdb change log
 
+mcdb v0.05 (2012.11.16)
+- extension: allow user-provided (custom) hash function (C interface only)
+  (mcdb creator and consumers must both use same hash function substitution)
+
 mcdb v0.04 (2011.11.07)
 - porting from Linux/glibc to other platforms (large set of changes)
 - mcdb_make - mcdb_fallocate() emulates posix_fallocate()
