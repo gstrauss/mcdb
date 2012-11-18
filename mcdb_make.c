@@ -280,8 +280,8 @@ mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
      * (reduce to MCDB_MMAP_SZ for 1st (and maybe 2nd) mmap for small mcdb) */
     if (m->fd != -1 && m->fsz < offset + msz) {
         m->fsz = (m->offset != 0)
-          ? ((offset + msz + (MCDB_BLOCK_SZ-1)) & ~(MCDB_BLOCK_SZ-1))
-          : ((offset + msz + (MCDB_MMAP_SZ-1))  & ~(MCDB_MMAP_SZ-1));
+          ? ((offset + msz + (MCDB_BLOCK_SZ-1)) & ~(size_t)(MCDB_BLOCK_SZ-1))
+          : ((offset + msz + (MCDB_MMAP_SZ-1))  & ~(size_t)(MCDB_MMAP_SZ-1));
       #if defined(__GLIBC__)/* glibc emulates if not natively supported by fs */
         if ((errno = posix_fallocate(m->fd, (off_t)m->osz,
                                      (off_t)(m->fsz-m->osz))) == 0)
