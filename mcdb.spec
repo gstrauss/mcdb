@@ -1,5 +1,5 @@
 %define name mcdb
-%define version 0.05
+%define version 0.06
 
 Name:    %{name}
 Version: %{version}
