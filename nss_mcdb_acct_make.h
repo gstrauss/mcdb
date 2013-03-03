@@ -30,14 +30,14 @@
 
 /* buf size passed should be _SC_GETPW_R_SIZE_MAX + NSS_PW_HDRSZ (not checked)*/
 size_t
-nss_mcdb_acct_make_passwd_datastr(char * restrict buf, const size_t bufsz,
-			          const struct passwd * const restrict pw)
+nss_mcdb_acct_make_passwd_datastr(char * restrict, const size_t,
+			          const struct passwd * const restrict)
   __attribute_nonnull__;
 
 /* buf size passed should be _SC_GETGR_R_SIZE_MAX + NSS_GR_HDRSZ (not checked)*/
 size_t
-nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
-			         const struct group * const restrict gr)
+nss_mcdb_acct_make_group_datastr(char * restrict, const size_t,
+			         const struct group * const restrict)
   __attribute_nonnull__;
 
 
@@ -135,36 +135,36 @@ nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
 
 bool
 nss_mcdb_acct_make_passwd_encode(
-  struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  struct nss_mcdb_make_winfo * const restrict,
+  const void * const restrict)
   __attribute_nonnull__;
 
 bool
 nss_mcdb_acct_make_group_encode(
-  struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  struct nss_mcdb_make_winfo * const restrict,
+  const void * const restrict)
   __attribute_nonnull__;
 
 
 bool
 nss_mcdb_acct_make_group_flush(
-  struct nss_mcdb_make_winfo * const restrict w)
+  struct nss_mcdb_make_winfo * const restrict)
   __attribute_nonnull__;
 
 
 bool
 nss_mcdb_acct_make_passwd_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict, char * restrict)
   __attribute_nonnull__;
 
 bool
 nss_mcdb_acct_make_group_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict, char * restrict)
   __attribute_nonnull__;
 
 bool
 nss_mcdb_acct_make_shadow_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict, char * restrict)
   __attribute_nonnull__;
 
 

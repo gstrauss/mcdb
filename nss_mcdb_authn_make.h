@@ -32,8 +32,8 @@
 
 /* buf size passed should be _SC_GETPW_R_SIZE_MAX + NSS_SP_HDRSZ (not checked)*/
 size_t
-nss_mcdb_authn_make_spwd_datastr(char * restrict buf, const size_t bufsz,
-				 const struct spwd * const restrict sp)
+nss_mcdb_authn_make_spwd_datastr(char * restrict, const size_t,
+				 const struct spwd * const restrict)
   __attribute_nonnull__;
 
 #endif /* !defined(_AIX) && !defined(__CYGWIN__) */
@@ -41,14 +41,14 @@ nss_mcdb_authn_make_spwd_datastr(char * restrict buf, const size_t bufsz,
 
 bool
 nss_mcdb_authn_make_spwd_encode(
-  struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  struct nss_mcdb_make_winfo * const restrict,
+  const void * const restrict)
   __attribute_nonnull__;
 
 
 bool
 nss_mcdb_authn_make_shadow_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict, char * restrict)
   __attribute_nonnull__;
 
 

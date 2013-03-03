@@ -35,7 +35,7 @@ extern "C" {
 #endif
 
 int
-mcdb_makefn_start (struct mcdb_make * restrict, const char * restrict fname,
+mcdb_makefn_start (struct mcdb_make * restrict, const char * restrict,
                    void * (*)(size_t), void (*)(void *))
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
