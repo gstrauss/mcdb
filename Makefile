@@ -171,7 +171,7 @@ $(PIC_OBJS): CFLAGS+=$(FPIC)
 ifeq ($(OSNAME),Linux)
 libnss_mcdb.so.2: LDFLAGS+=-Wl,-soname,$(@F) -Wl,--version-script,nss_mcdb.map
 endif
-libnss_mcdb.so.2: mcdb.o \
+libnss_mcdb.so.2: mcdb.o uint32.o \
                   nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
@@ -290,7 +290,7 @@ lib32/libnss_mcdb.so.2: \
 endif
 lib32/libnss_mcdb.so.2: ABI_FLAGS=-m32
 lib32/libnss_mcdb.so.2: $(addprefix lib32/, \
-  mcdb.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o)
+  mcdb.o uint32.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o)
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
