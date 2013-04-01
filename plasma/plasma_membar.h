@@ -460,18 +460,6 @@
  * http://msdn.microsoft.com/en-us/library/f99tchzc%28v=vs.100%29.aspx */
 #ifdef _MSC_VER
 #include <intrin.h>
-/* NB: caller needs to include proper header (e.g. #include <windows.h>)
- *     for MemoryBarrier()
- * http://stackoverflow.com/questions/257134/weird-compile-error-dealing-with-winnt-h */
-#if 0  /* do not set these in header; calling file should determine need */
-/* http://support.microsoft.com/kb/166474 */
-#define VC_EXTRALEAN
-#define WIN32_LEAN_AND_MEAN
-#include <wtypes.h>
-#include <windef.h>
-#include <winnt.h>
-#include <xmmintrin.h>
-#endif
 #pragma intrinsic(_ReadWriteBarrier)
 #pragma intrinsic(_ReadBarrier)
 #pragma intrinsic(_WriteBarrier)
@@ -491,7 +479,25 @@
 #define plasma_membar_ld_acq()      _ReadWriteBarrier()
 #define plasma_membar_st_rel()      _ReadWriteBarrier()
 #define plasma_membar_rmw_acq_rel() _ReadWriteBarrier()
+/* prefer using intrinsics directly instead of winnt.h macro */
+#if defined(_M_AMD64)
+#pragma intrinsic(__faststorefence)
+#define plasma_membar_seq_cst()     __faststorefence()
+#else
 #define plasma_membar_seq_cst()     MemoryBarrier()
+#endif
+/* NB: caller needs to include proper header for MemoryBarrier()
+ *     (e.g. #include <windows.h>)
+ * http://stackoverflow.com/questions/257134/weird-compile-error-dealing-with-winnt-h */
+#if 0  /* do not set these in header; calling file should determine need */
+/* http://support.microsoft.com/kb/166474 */
+#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
+#include <wtypes.h>
+#include <windef.h>
+#include <winnt.h>
+#include <xmmintrin.h>
+#endif
 /* http://msdn.microsoft.com/en-us/library/ms684208.aspx (MemoryBarrier())
  * MemoryBarrier() can be faster than _mm_mfence() on some architectures,
  * (e.g. AMD) due to the serializing effects of locking the bus being sufficient

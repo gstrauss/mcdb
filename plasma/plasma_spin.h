@@ -34,11 +34,22 @@
 
 #if defined(_MSC_VER)
 
-  /* http://msdn.microsoft.com/en-us/library/windows/desktop/ms687419%28v=vs.85%29.aspx */
-  /* NB: caller needs to include proper header (e.g. #include <windows.h>)
-   *     for YieldProcessor()
-   * http://stackoverflow.com/questions/257134/weird-compile-error-dealing-with-winnt-h */
+  /* prefer using intrinsics directly instead of winnt.h macro */
+  #include <intrin.h>
+  #if defined(__x86_64__) || defined(__i386__)
+  #pragma intrinsic(_mm_pause)
+  #define plasma_spin_pause()  _mm_pause()
+  #elif defined(__ia64__)
+  #pragma intrinsic(__yield)
+  #define plasma_spin_pause()  __yield()
+  #else
+  #define plasma_spin_pause()  YieldProcessor()
+  #endif
   #if 0  /* do not set these in header; calling file should determine need */
+  /* http://msdn.microsoft.com/en-us/library/windows/desktop/ms687419%28v=vs.85%29.aspx */
+  /* NB: caller needs to include proper header for YieldProcessor()
+   *     (e.g. #include <windows.h>)
+   * http://stackoverflow.com/questions/257134/weird-compile-error-dealing-with-winnt-h */
   /* http://support.microsoft.com/kb/166474 */
   #define VC_EXTRALEAN
   #define WIN32_LEAN_AND_MEAN
@@ -46,7 +57,6 @@
   #include <windef.h>
   #include <winnt.h>
   #endif
-  #define plasma_spin_pause()  YieldProcessor()
 
 #elif defined(__x86_64__) || defined(__i386__)
 
