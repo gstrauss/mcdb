@@ -271,7 +271,7 @@
 
 #if defined(__ppc__)   || defined(_ARCH_PPC)  || \
     defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
-#define plasma_membar_ccfence()     __asm__ __volatile__ ("fence":::"memory")
+#define plasma_membar_ccfence()     __asm__ __volatile__ ("":::"memory")
 #define plasma_membar_LoadLoad()    __asm__ __volatile__ ("lwsync":::"memory")
 #define plasma_membar_StoreStore()  __asm__ __volatile__ ("lwsync":::"memory")
 #define plasma_membar_ld_ctrldep()  __asm__ __volatile__ ("lwsync":::"memory")
