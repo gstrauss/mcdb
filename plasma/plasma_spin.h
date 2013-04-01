@@ -91,17 +91,32 @@
    * See thorough DELAY_SPIN implementation in Solaris kernel:
    * https://github.com/joyent/illumos-joyent/blob/master/usr/src/common/atomic/sparcv9/atomic.s
    * https://hg.openindiana.org/upstream/illumos/illumos-gate/rev/7c80b70bb8de
-   * Much more simplistic (and less thorough) implementation:
+   *
+   * Simpler:
+   * https://github.com/joyent/illumos-joyent/blob/master/usr/src/lib/libc/capabilities/sun4v/common/smt_pause.s
    */
+  #if 0  /* barrier only prevents compiler from optimizing away a spin loop */
   #if (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x5110) \
    || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110)
-  /* http://www.oracle.com/technetwork/server-storage/solarisstudio/documentation/oss-compiler-barriers-176055.pdf */
+  /* http://www.oracle.com/technetwork/server-storage/solarisstudio/documentation/oss-compiler-barriers-176055.pdf
+   * http://www.oracle.com/technetwork/server-storage/solarisstudio/documentation/oss-memory-barriers-fences-176056.pdf */
   #include <mbarrier.h>
   #define plasma_spin_pause()  __compiler_barrier()
-  /* XXX: TODO: SPARC-T4 and newer come with a 'pause' instruction */
   #else
   #define plasma_spin_pause()  __asm __volatile__("membar #LoadLoad":::"memory")
   #endif
+  #endif /* barrier only prevents compiler from optimizing away a spin loop */
+
+  /* Note: SPARC-T4 and newer come with a 'pause' instruction.
+   * The the length of the pause can be modified by writing to ASR 27
+   *   e.g.  wr %%g0, 128, %%asr27
+   * However, for compatibility with all SPARC, do a generic pause by reading
+   * the condition code register a few times.  If instead of inline assembly,
+   * this was implemented as a routine in a shared library, then a function
+   * optimized for the specific architecture and model could be used */
+  #define plasma_spin_pause()  __asm __volatile__ ("rd %%ccr, %%g0 \n\t " \
+                                                   "rd %%ccr, %%g0 \n\t " \
+                                                   "rd %%ccr, %%g0":::"memory")
 
 #elif defined(__ppc__)   || defined(_ARCH_PPC)  || \
       defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
