@@ -1,5 +1,5 @@
 /*
- * code_attributes - portability macros for compiler-specific code attributes
+ * plasma_attrs - portability macros for compiler-specific code attributes
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -19,16 +19,18 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INCLUDED_CODE_ATTRIBUTES_H
-#define INCLUDED_CODE_ATTRIBUTES_H
+#ifndef INCLUDED_PLASMA_ATTRS_H
+#define INCLUDED_PLASMA_ATTRS_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef __STDC_C99
+#if !defined(__STDC_C99) && !defined(__C99_RESTRICT)
+/*(__C99_RESTRICT defined in xlc/xlC -qkeyword=restrict or some -qlanglevel= )*/
+/* msvc: http://msdn.microsoft.com/en-us/library/5ft82fed.aspx */
 #ifndef restrict
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
 #define restrict __restrict
 #else
 #define restrict
@@ -46,7 +48,7 @@ extern "C" {
 #define C99INLINE
 #else
 #ifndef C99INLINE
-#if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
+#if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) || defined(__clang__)
 #define C99INLINE inline
 #else /* (GCC extern inline was prior to C99 standard; gcc 4.3+ supports C99) */
 #define C99INLINE extern inline
@@ -61,6 +63,8 @@ extern "C" {
  *
  * Note: below not an exhaustive list of attributes
  * Attributes exist at above URL that are not listed below
+ *
+ * http://clang.llvm.org/docs/LanguageExtensions.html
  */
 
 #ifdef __linux__
@@ -73,6 +77,13 @@ extern "C" {
 
 #ifndef __has_builtin         /* clang */
 #define __has_builtin(x) 0
+#endif
+
+#ifndef __has_feature         /* clang */
+#define __has_feature(x) 0
+#endif
+#ifndef __has_extension       /* clang */
+#define __has_extension(x)  __has_feature(x)
 #endif
 
 #ifndef __GNUC_PREREQ
@@ -300,16 +311,16 @@ extern "C" {
 #include <machine/sys/inline.h>
 #define __builtin_prefetch(addr,rw,locality)                        \
         ((rw) ? _Asm_lfetch_excl(_LFTYPE_NONE,                      \
-                                   (locality) == 0 ? _LFHINT_NONE : \
-                                   (locality) == 1 ? _LFHINT_NT1  : \
-                                   (locality) == 2 ? _LFHINT_NT2  : \
-                                                     _LFHINT_NTA,   \
+                                   (locality) == 0 ? _LFHINT_NTA  : \
+                                   (locality) == 1 ? _LFHINT_NT2  : \
+                                   (locality) == 2 ? _LFHINT_NT1  : \
+                                                     _LFHINT_NONE,  \
                                  (void *)(addr))                    \
               : _Asm_lfetch(     _LFTYPE_NONE,                      \
-                                   (locality) == 0 ? _LFHINT_NONE : \
-                                   (locality) == 1 ? _LFHINT_NT1  : \
-                                   (locality) == 2 ? _LFHINT_NT2  : \
-                                                     _LFHINT_NTA,   \
+                                   (locality) == 0 ? _LFHINT_NTA  : \
+                                   (locality) == 1 ? _LFHINT_NT2  : \
+                                   (locality) == 2 ? _LFHINT_NT1  : \
+                                                     _LFHINT_NONE,  \
                                  (void *)(addr)))
 #endif
 /* default (do-nothing macros) */
@@ -326,6 +337,9 @@ extern "C" {
 
 #define retry_eintr_do_while(x,c)   /* caller must #include <errno.h> */   \
   do {(x);} while (__builtin_expect((c),0) && __builtin_expect(errno==EINTR, 1))
+
+/* Interestingly, GNU Linux systems might provide similar macro
+ * TEMP_FAILURE_RETRY(expression) in unistd.h when defined(_GNU_SOURCE) */
 
 
 #ifdef __cplusplus

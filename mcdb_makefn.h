@@ -26,7 +26,7 @@
 #define INCLUDED_MCDB_MAKEFN_H
 
 #include "mcdb_make.h"
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 #include <sys/types.h>  /* size_t */
 

@@ -40,7 +40,7 @@ enum {
 #endif
 
 #include "nss_mcdb.h"
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 /* TODO: implemented only on Linux; other platforms incomplete/missing */
 #if defined(__linux__)

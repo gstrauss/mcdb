@@ -50,7 +50,7 @@
 #include "mcdb_make.h"
 #include "mcdb_error.h"
 #include "nointr.h"
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 #include <errno.h>
 #include <sys/mman.h>  /* mmap(), munmap() */

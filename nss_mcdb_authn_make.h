@@ -23,7 +23,7 @@
 #define INCLUDED_NSS_MCDB_AUTHN_MAKE_H
 
 #include "nss_mcdb_make.h"
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 
 #if !defined(_AIX) && !defined(__CYGWIN__)

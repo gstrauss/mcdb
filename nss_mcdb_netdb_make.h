@@ -23,7 +23,7 @@
 #define INCLUDED_NSS_MCDB_NETDB_MAKE_H
 
 #include "nss_mcdb_make.h"
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 #include <netdb.h>
 

@@ -61,7 +61,7 @@
 #include "mcdb.h"
 #include "nointr.h"
 #include "uint32.h"
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

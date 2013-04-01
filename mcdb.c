@@ -59,7 +59,8 @@
 #include "mcdb.h"
 #include "nointr.h"
 #include "uint32.h"
-#include "code_attributes.h"
+#include "plasma/plasma_membar.h"
+#include "plasma/plasma_attrs.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -415,6 +416,7 @@ bool
 mcdb_mmap_refresh_check(const struct mcdb_mmap * const restrict map)
 {
     struct stat st;
+    plasma_membar_ld_datadep(); /*(thread ld order dep b/w map and map->ptr)*/
     return (map->ptr == NULL
             || ( (
                   #ifdef AT_FDCWD
@@ -542,8 +544,8 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
         && pthread_mutex_lock(&mcdb_global_mutex) != 0)
         return NULL;
 
-    /*map = *mapptr;*/  /*(ought to be preceded by StoreLoad memory barrier)*/
-    map = *(struct mcdb_mmap * volatile * restrict)mapptr;
+    plasma_membar_ccfence();/*(compiler fence sufficient w/pthread_mutex_lock)*/
+    map = *mapptr;
     if (map == NULL || (map->ptr == NULL && register_use_incr)) {
         /* unlock mutex unless both *_HOLD flags are set (caller to do unlock)
          * (see mcdb_mmap_reopen_threadsafe()) */
@@ -616,8 +618,7 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
             if ((rc = mcdb_mmap_reopen(next))) {
                 next->hash_init = (*mapptr)->hash_init;
                 next->hash_fn   = (*mapptr)->hash_fn;
-                /* XXX: TODO should have StoreStore memory barrier here
-                 * (this matters only for custom hash functions) */
+                plasma_membar_StoreStore();
                 (*mapptr)->next = next;
             }
             else

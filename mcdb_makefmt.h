@@ -30,7 +30,7 @@
 #endif
 #include <sys/types.h>  /* size_t */
 
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 #ifdef __cplusplus
 extern "C" {

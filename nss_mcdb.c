@@ -20,6 +20,7 @@
  */
 
 #include "nss_mcdb.h"
+#include "plasma/plasma_membar.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -153,7 +154,7 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
      * and therefore pass custom _nss_mcdb_mmap_fn_free() to not free statics */
     if ((rc = (NULL != mcdb_mmap_create_h(map, NULL, _nss_dbnames[dbtype],
                                           malloc, _nss_mcdb_mmap_fn_free)))) {
-        /*(ought to be preceded by StoreStore memory barrier)*/
+        plasma_membar_StoreStore();
         _nss_mcdb_mmap[dbtype] = map;
     }
 
@@ -190,6 +191,7 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
     /* check if db is open and up-to-date, or else open db
      * (continue with open database if failure refreshing) */
     if (__builtin_expect(_nss_mcdb_mmap[dbtype] != 0, true)) {
+        plasma_membar_ld_datadep(); /*(thread ld order dep access map struct)*/
         /* protocols, rpc, services unlikely to change often in most configs
          * Therefore, skip stat() check if configured (default skips stat())
          * (Implication: must restart nscd if any of these three files change)*/

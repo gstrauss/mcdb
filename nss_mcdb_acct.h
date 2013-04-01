@@ -23,7 +23,7 @@
 #define INCLUDED_NSS_MCDB_ACCT_H
 
 #include "nss_mcdb.h"
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 #include <sys/types.h>  /* (gid_t) */
 #include <pwd.h>        /* (struct passwd) */

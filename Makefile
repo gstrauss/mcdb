@@ -247,9 +247,13 @@ $(PREFIX)/sbin/nss_mcdbctl: nss_mcdbctl $(PREFIX)/sbin
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-.PHONY: install-headers install install-doc
+.PHONY: install-headers install install-doc install-plasma-headers
+install-plasma-headers: plasma/plasma_membar.h plasma/plasma_attrs.h
+	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb/plasma
+	umask 333; \
+	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/plasma/
 install-headers: mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h mcdb_makefn.h \
-                 code_attributes.h nointr.h uint32.h
+                 nointr.h uint32.h | install-plasma-headers
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb
 	umask 333; \
 	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/

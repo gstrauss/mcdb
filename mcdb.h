@@ -69,7 +69,7 @@
 #error "mcdb requires mmap() and msync() support"
 #endif
 
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 #ifdef __cplusplus
 extern "C" {

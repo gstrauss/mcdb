@@ -23,7 +23,7 @@
 #define INCLUDED_NSS_MCDB_H
 
 #include "mcdb.h"
-#include "code_attributes.h"
+#include "plasma/plasma_attrs.h"
 
 #if defined(__linux__)
   #include <nss.h>   /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */

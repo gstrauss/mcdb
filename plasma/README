@@ -1,0 +1,19 @@
+plasma - portability macros for compiler and hardware micro operations
+
+README           - summary (this file)
+
+plasma_attrs.h   - code attributes
+plasma_membar.h  - memory barriers
+plasma_spin.h    - spin loop components
+
+plasma provides portability macros for compiler and hardware micro operations.
+These are short sequences of instructions which implement features provided by
+hardware, though not exposed by the standard C or C++ languages.  Functionality
+is achieved via use of compile intrinsics and inline assembly in order to
+influence compiler and hardware processor behavior.
+
+plasma is an abbreviation of 'PortabLe ASM Actions'.
+(plasma was originally developed with name chasm (Compiler/Hardware ASseMbly),
+ but there is already an old assembler from 1990s named chasm (CHeap ASseMbler))
+
+https://github.com/gstrauss/mcdb provides the latest information about plasma.
