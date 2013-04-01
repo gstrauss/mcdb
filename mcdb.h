@@ -216,7 +216,7 @@ enum mcdb_flags {
   MCDB_REGISTER_MUTEX_UNLOCK_HOLD = 8
 };
 
-extern bool
+extern struct mcdb_mmap *
 mcdb_mmap_thread_registration(struct mcdb_mmap ** restrict, int)
   __attribute_nonnull__;
 extern bool
@@ -232,7 +232,7 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
   mcdb_mmap_refresh_threadsafe(&(mcdb)->map)
 #define mcdb_thread_refresh_self(mcdb) \
   (__builtin_expect((mcdb)->map->next == NULL, true) \
-   || __builtin_expect(mcdb_thread_register(mcdb), true))
+   || __builtin_expect(mcdb_thread_register(mcdb) != NULL, true))
 
 
 #define MCDB_SLOT_BITS 8                  /* 2^8 = 256 */

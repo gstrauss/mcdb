@@ -118,6 +118,8 @@ mcdb_findtagstart(struct mcdb * const restrict m,
         khash = m->map->hash_fn(khash_init, key, klen);
     }
 
+    /* (hash function should not change on refresh,
+     *  else move mcdb_thread_refresh_self() before khash calculation)*/
     (void) mcdb_thread_refresh_self(m);
     /* (ignore rc; continue with previous map in case of failure) */
 
@@ -527,7 +529,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
     }
 }
 
-bool  __attribute_noinline__
+struct mcdb_mmap *  __attribute_noinline__
 mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
                               const int flags)
 {
@@ -538,14 +540,19 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
 
     if (!(flags & MCDB_REGISTER_MUTEX_UNLOCK_HOLD)
         && pthread_mutex_lock(&mcdb_global_mutex) != 0)
-        return false;
+        return NULL;
 
     /*map = *mapptr;*/  /*(ought to be preceded by StoreLoad memory barrier)*/
     map = *(struct mcdb_mmap * volatile * restrict)mapptr;
     if (map == NULL || (map->ptr == NULL && register_use_incr)) {
-        if (!(flags & MCDB_REGISTER_MUTEX_LOCK_HOLD))
+        /* unlock mutex unless both *_HOLD flags are set (caller to do unlock)
+         * (see mcdb_mmap_reopen_threadsafe()) */
+        if ((flags
+             & (MCDB_REGISTER_MUTEX_LOCK_HOLD|MCDB_REGISTER_MUTEX_UNLOCK_HOLD))
+            != (MCDB_REGISTER_MUTEX_LOCK_HOLD|MCDB_REGISTER_MUTEX_UNLOCK_HOLD))
             pthread_mutex_unlock(&mcdb_global_mutex);
-        return !register_use_incr; /* succeed if unregister; fail if register */
+        /* succeed if unregister; fail if register */
+        return (struct mcdb_mmap *)(!register_use_incr); /*(NULL is failure)*/
         /* If registering, possibly detected race condition in which another
          * thread released final reference and mcdb was munmap()'d while current
          * thread waited for lock.  It is now invalid to attempt to register use
@@ -572,7 +579,7 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
         }
         if (!(flags & MCDB_REGISTER_MUNMAP_SKIP)) {
             map->fname = NULL;    /* do not free(map->fname) yet */
-            mcdb_mmap_free(map);
+            mcdb_mmap_free(map);  /*(map free'd but map value still not NULL)*/
             if (register_use_decr)
                 *mapptr = NULL;
         }
@@ -582,7 +589,8 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
     if (!(flags & MCDB_REGISTER_MUTEX_LOCK_HOLD))
         pthread_mutex_unlock(&mcdb_global_mutex);
 
-    return true;
+    /* return map on which incr refcnt to avoid race after unlocking mutex */
+    return map; /*(for decr refcnt, non-NULL is success, even if map free'd)*/
 }
 
 /* theaded programs (while multiple threads are using same struct mcdb_mmap)

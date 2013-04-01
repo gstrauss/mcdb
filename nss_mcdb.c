@@ -200,7 +200,7 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
           default:
             /*(void)mcdb_mmap_refresh_threadsafe(&_nss_mcdb_mmap[dbtype]);*/
             (void)(__builtin_expect(
-               mcdb_mmap_refresh_check_h(_nss_mcdb_mmap[dbtype]), true)
+               !mcdb_mmap_refresh_check_h(_nss_mcdb_mmap[dbtype]), true)
                ||  __builtin_expect(
                mcdb_mmap_reopen_threadsafe_h(&_nss_mcdb_mmap[dbtype]), true));
             break;
@@ -209,9 +209,8 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
     else if (!_nss_mcdb_db_openshared(dbtype))
         return NULL;
 
-    return mcdb_mmap_thread_registration_h(&_nss_mcdb_mmap[dbtype], mcdb_flags)
-      ? _nss_mcdb_mmap[dbtype]
-      : NULL;  /* (fails if obtaining mutex fails, i.e. EAGAIN) */
+    return mcdb_mmap_thread_registration_h(&_nss_mcdb_mmap[dbtype], mcdb_flags);
+    /* (fails only if obtaining mutex fails, i.e. EAGAIN; should not happen) */
 }
 
 INTERNAL nss_status_t  __attribute_noinline__ /*(skip _nss_mcdb_getent inline)*/
