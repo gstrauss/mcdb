@@ -1,5 +1,10 @@
 mcdb change log
 
+mcdb v0.07 (2013.03.31)
+- plasma/* - portability macros for compiler and hardware micro operations
+- mcdb.c, nss_mcdb.c - use plasma_membar.h memory barriers for thread safety
+- mcdb.c - fix race in mcdb_mmap_thread_registration()
+
 mcdb v0.06 (2012.11.18)
 - mcdb_make - fix sign extension bug preventing creation of mcdb > 4 GB
 
