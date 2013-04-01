@@ -553,8 +553,8 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
              & (MCDB_REGISTER_MUTEX_LOCK_HOLD|MCDB_REGISTER_MUTEX_UNLOCK_HOLD))
             != (MCDB_REGISTER_MUTEX_LOCK_HOLD|MCDB_REGISTER_MUTEX_UNLOCK_HOLD))
             pthread_mutex_unlock(&mcdb_global_mutex);
-        /* succeed if unregister; fail if register */
-        return (struct mcdb_mmap *)(!register_use_incr); /*(NULL is failure)*/
+        /* succeed if unregister; fail if register */ /*(NULL is failure)*/
+        return (struct mcdb_mmap *)(uintptr_t)(!register_use_incr);
         /* If registering, possibly detected race condition in which another
          * thread released final reference and mcdb was munmap()'d while current
          * thread waited for lock.  It is now invalid to attempt to register use
