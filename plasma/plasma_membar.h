@@ -355,8 +355,10 @@
 #define plasma_membar_seq_cst()     __mf()
 #endif
 #ifdef __x86_64__
+#undef  plasma_membar_ccfence
 #undef  plasma_membar_seq_cst
-#define plasma_membar_seq_cst()     void_mm_mfence()
+#define plasma_membar_ccfence()     __memory_barrier()
+#define plasma_membar_seq_cst()     _mm_mfence()
 #endif
 #endif
 
