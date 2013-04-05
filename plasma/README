@@ -2,7 +2,7 @@ plasma - portability macros for compiler and hardware micro operations
 
 README           - summary (this file)
 
-plasma_attrs.h   - code attributes
+plasma_attr.h    - code attributes
 plasma_membar.h  - memory barriers
 plasma_spin.h    - spin loop components
 

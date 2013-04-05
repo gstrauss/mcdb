@@ -1,5 +1,5 @@
 /*
- * plasma_attrs - portability macros for compiler-specific code attributes
+ * plasma_attr - portability macros for compiler-specific code attributes
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -19,8 +19,8 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INCLUDED_PLASMA_ATTRS_H
-#define INCLUDED_PLASMA_ATTRS_H
+#ifndef INCLUDED_PLASMA_ATTR_H
+#define INCLUDED_PLASMA_ATTR_H
 
 #ifdef __cplusplus
 extern "C" {

@@ -745,7 +745,7 @@ typedef enum memory_order {
 extern "C" {
 #endif
 
-/*#include "plasma_attrs.h"*/
+/*#include "plasma_attr.h"*/
 
 /* (static inline functions for C99, if present, need to be in an
  *  extern "C" block and/or hidden from C++ or reformated for C++) */
