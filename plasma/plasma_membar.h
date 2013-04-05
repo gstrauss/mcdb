@@ -218,7 +218,8 @@
 #else
 #define plasma_membar_ccfence()     __asm__ __volatile__("":::"memory")
 #endif
-#define plasma_membar_LoadLoad()    __asm__ __volatile__("dmb oshld":::"memory")
+/*#define plasma_membar_LoadLoad()    __asm__ __volatile__("dmb oshld":::"memory")*/
+#define plasma_membar_LoadLoad()    __asm__ __volatile__("dmb osh":::"memory")
 #define plasma_membar_StoreStore()  __asm__ __volatile__("dmb oshst":::"memory")
 #define plasma_membar_ld_ctrldep()  __asm__ __volatile__("isb":::"memory")
 #define plasma_membar_ld_datadep()  do { } while (0)
