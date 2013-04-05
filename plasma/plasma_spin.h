@@ -39,6 +39,8 @@
   #if defined(__x86_64__) || defined(__i386__)
   #pragma intrinsic(_mm_pause)
   #define plasma_spin_pause()  _mm_pause()
+  /* (if pause not supported by older x86 assembler, "rep nop" is equivalent)*/
+  /*#define plasma_spin_pause()  __asm rep nop */
   #elif defined(__ia64__)
   #pragma intrinsic(__yield)
   #define plasma_spin_pause()  __yield()
@@ -76,6 +78,7 @@
 
 #elif defined(__ia64__)
 
+  /* http://www.intel.com/content/www/us/en/processors/itanium/itanium-architecture-vol-3-manual.html  volume 3 page 145 (3:145) */
   #define plasma_spin_pause()  __asm__ __volatile__ ("hint @pause":::"memory")
 
 #elif defined(__arm__)
