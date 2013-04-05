@@ -25,7 +25,7 @@
 #ifndef INCLUDED_MCDB_ERROR_H
 #define INCLUDED_MCDB_ERROR_H
 
-#include "plasma/plasma_attrs.h"
+#include "plasma/plasma_attr.h"
 
 #ifdef __cplusplus
 extern "C" {

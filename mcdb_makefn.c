@@ -49,7 +49,7 @@
 #include "mcdb_make.h"
 #include "mcdb_error.h"
 #include "nointr.h"
-#include "plasma/plasma_attrs.h"
+#include "plasma/plasma_attr.h"
 
 #include <errno.h>
 #include <sys/types.h>

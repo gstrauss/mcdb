@@ -23,7 +23,7 @@
 #define INCLUDED_NSS_MCDB_AUTHN_H
 
 #include "nss_mcdb.h"
-#include "plasma/plasma_attrs.h"
+#include "plasma/plasma_attr.h"
 
 
 void _nss_mcdb_setspent(void);

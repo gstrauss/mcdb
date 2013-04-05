@@ -170,7 +170,7 @@ an example larger_mcdb:
 
 compiler intrinsics/builtins not (yet) tested on all platforms
 --------------------------------------------------------------
-The compiler intrinsics/builtins in code_attributes.h have been tested on i686
+The compiler intrinsics/builtins in plasma_attr.h have been tested on i686
 and x86_64 platforms, but have not (yet) been tested on all other platforms.
 They were written from vendor documentation available on the internet, but I do
 not have private access to all those platforms in order to test.  Please send

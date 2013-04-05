@@ -26,7 +26,7 @@
 #define INCLUDED_MCDB_MAKE_H
 
 #include "mcdb.h"  /* MCDB_SLOTS */
-#include "plasma/plasma_attrs.h"
+#include "plasma/plasma_attr.h"
 
 #include <sys/types.h> /* size_t */
 #include <stdint.h>

@@ -60,7 +60,7 @@
 #include "nointr.h"
 #include "uint32.h"
 #include "plasma/plasma_membar.h"
-#include "plasma/plasma_attrs.h"
+#include "plasma/plasma_attr.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

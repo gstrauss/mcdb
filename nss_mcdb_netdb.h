@@ -77,7 +77,7 @@ enum {
 #endif
 
 #include "nss_mcdb.h"
-#include "plasma/plasma_attrs.h"
+#include "plasma/plasma_attr.h"
 
 #include <netdb.h>
 #ifdef __sun

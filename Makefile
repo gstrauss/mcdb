@@ -248,7 +248,7 @@ $(PREFIX)/sbin/nss_mcdbctl: nss_mcdbctl $(PREFIX)/sbin
 	&& /bin/mv -f $@.$$$$ $@
 
 .PHONY: install-headers install install-doc install-plasma-headers
-install-plasma-headers: plasma/plasma_membar.h plasma/plasma_attrs.h
+install-plasma-headers: plasma/plasma_membar.h plasma/plasma_attr.h
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb/plasma
 	umask 333; \
 	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/plasma/

@@ -23,7 +23,7 @@
 #define INCLUDED_NSS_MCDB_MAKE_H
 
 #include "mcdb_make.h"
-#include "plasma/plasma_attrs.h"
+#include "plasma/plasma_attr.h"
 
 #include <stdbool.h>
 
