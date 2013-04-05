@@ -537,6 +537,7 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
 {
     struct mcdb_mmap *map;
     struct mcdb_mmap *next = NULL;
+    struct mcdb_mmap *unmap = NULL;
     const bool register_use_incr = ((flags & MCDB_REGISTER_USE_INCR) != 0);
     #define register_use_decr (!register_use_incr)
 
@@ -576,20 +577,29 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
         /* (above handles refcnt decremented to zero and refcnt already zero) */
         while ((next = map->next) != NULL && next->refcnt == 0) {
             map->next = next->next;
-            next->fname = NULL;   /* do not free(next->fname) yet */
-            mcdb_mmap_free(next);
+            next->next = unmap;
+            (unmap = next)->fname = NULL;   /* do not free(next->fname) yet */
         }
         if (!(flags & MCDB_REGISTER_MUNMAP_SKIP)) {
-            map->fname = NULL;    /* do not free(map->fname) yet */
-            mcdb_mmap_free(map);  /*(map free'd but map value still not NULL)*/
+            map->next = unmap;
+            (unmap = map)->fname = NULL;    /* do not free(map->fname) yet */
             if (register_use_decr)
                 *mapptr = NULL;
+            /*(map will be free'd but map value still not NULL for return val)*/
         }
     }
     #undef register_use_decr
 
     if (!(flags & MCDB_REGISTER_MUTEX_LOCK_HOLD))
         pthread_mutex_unlock(&mcdb_global_mutex);
+
+    /* release unused maps after releasing mutex to minimize time holding lock
+     * (although if flags indicate to hold mutex, then it will still be held) */
+    next = unmap;
+    while (next != NULL) {
+        next = (unmap = next)->next;
+        mcdb_mmap_free(unmap);
+    }
 
     /* return map on which incr refcnt to avoid race after unlocking mutex */
     return map; /*(for decr refcnt, non-NULL is success, even if map free'd)*/
