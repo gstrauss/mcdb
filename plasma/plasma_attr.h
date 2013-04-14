@@ -49,9 +49,13 @@ extern "C" {
 #else
 #ifndef C99INLINE
 #if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) || defined(__clang__)
-#define C99INLINE inline
+#  ifdef _MSC_VER
+#  define C99INLINE __inline
+#  else
+#  define C99INLINE inline
+#  endif
 #else /* (GCC extern inline was prior to C99 standard; gcc 4.3+ supports C99) */
-#define C99INLINE extern inline
+#  define C99INLINE extern inline
 #endif
 #endif
 #endif
@@ -332,7 +336,7 @@ extern "C" {
 
 #define retry_eintr_while(x) \
   /*@-whileempty@*/                 /* caller must #include <errno.h> */   \
-  while (__builtin_expect((x),0) && __builtin_expect(errno == EINTR, 1)) ; \
+  do {} while (__builtin_expect((x),0) && __builtin_expect(errno == EINTR, 1)) \
   /*@=whileempty@*/
 
 #define retry_eintr_do_while(x,c)   /* caller must #include <errno.h> */   \
