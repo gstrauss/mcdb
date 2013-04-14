@@ -104,7 +104,7 @@
  * Some compilers might not properly inline the assembly if optimization is
  * disabled (e.g. Sun Studio and CAS instructions).  Some instructions, such
  * as __isync on POWER, place additional requirements on how the instructions
- * must be used for effectiveness, e.g. after a load-cmp-branch sequence.
+ * must be used for effectiveness, e.g. after a load-compare-branch sequence.
  * On x86 (ix86, x86_64), fast-string operations should be followed by a store
  * release memory barrier (sfence) and a store to a native-sized type for
  * proper memory ordering on different processor which checks the native-sized
@@ -460,7 +460,9 @@
 
 /* MSVC compile /Oi (Generate Intrinsic Functions) to enable all intrinsics
  * http://technet.microsoft.com/en-us/subscriptions/26td21ds%28v=vs.100%29.aspx
- * http://msdn.microsoft.com/en-us/library/f99tchzc%28v=vs.100%29.aspx */
+ * http://msdn.microsoft.com/en-us/library/f99tchzc%28v=vs.100%29.aspx
+ * http://msdn.microsoft.com/en-us/library/windows/desktop/f20w0x5e%28v=vs.85%29.aspx
+ * MS Visual Studio 2008 improved compatibility between intrin.h, other hdrs */
 #ifdef _MSC_VER
 #include <intrin.h>
 #pragma intrinsic(_ReadWriteBarrier)
@@ -631,6 +633,8 @@
 #include <sys/atomic_op.h>
 #undef  plasma_membar_ifence
 #define plasma_membar_ifence()      __sync()
+/* AIX v7r1 provides _sync_cache_range() in libc.a to sync I cache with D cache
+ * http://pic.dhe.ibm.com/infocenter/aix/v7r1/index.jsp?topic=%2Fcom.ibm.aix.libs%2F_.htm */
 #endif
 #endif
 
@@ -654,6 +658,8 @@
  * http://en.cppreference.com/w/cpp/atomic/atomic_thread_fence
  * http://en.cppreference.com/w/cpp/atomic/atomic_signal_fence
  */
+
+#include "plasma_attr.h"
 
 #ifdef __cplusplus
 #if __cplusplus >= 201103L \
@@ -692,11 +698,11 @@
 
 #else /* !__has_extension(c_atomic) && ! __has_extension(cxx_atomic) */
 
-#define plasma_atomic_thread_fence_consume() plasma_membar_ld_datadep()
-#define plasma_atomic_thread_fence_acquire() plasma_membar_ld_acq()
-#define plasma_atomic_thread_fence_release() plasma_membar_st_rel()
-#define plasma_atomic_thread_fence_acq_rel() plasma_membar_rmw_acq_rel()
-#define plasma_atomic_thread_fence_seq_cst() plasma_membar_seq_cst()
+#define plasma_membar_atomic_thread_fence_consume() plasma_membar_ld_datadep()
+#define plasma_membar_atomic_thread_fence_acquire() plasma_membar_ld_acq()
+#define plasma_membar_atomic_thread_fence_release() plasma_membar_st_rel()
+#define plasma_membar_atomic_thread_fence_acq_rel() plasma_membar_rmw_acq_rel()
+#define plasma_membar_atomic_thread_fence_seq_cst() plasma_membar_seq_cst()
 
 #ifdef __cplusplus
 extern "C" {
@@ -724,11 +730,15 @@ typedef enum memory_order {
 #define atomic_thread_fence(order)                                            \
   do {                                                                        \
     switch (order) {                                                          \
-      case memory_order_seq_cst: plasma_atomic_thread_fence_seq_cst(); break; \
-      case memory_order_acq_rel: plasma_atomic_thread_fence_acq_rel(); break; \
-      case memory_order_release: plasma_atomic_thread_fence_release(); break; \
-      case memory_order_acquire: plasma_atomic_thread_fence_acquire(); break; \
-      case memory_order_consume: plasma_atomic_thread_fence_consume(); break; \
+      case memory_order_seq_cst: plasma_membar_atomic_thread_fence_seq_cst(); \                                  break;                                       \
+      case memory_order_acq_rel: plasma_membar_atomic_thread_fence_acq_rel(); \
+                                 break;                                       \
+      case memory_order_release: plasma_membar_atomic_thread_fence_release(); \
+                                 break;                                       \
+      case memory_order_acquire: plasma_membar_atomic_thread_fence_acquire(); \
+                                 break;                                       \
+      case memory_order_consume: plasma_membar_atomic_thread_fence_consume(); \
+                                 break;                                       \
       default: /*case memory_order_relaxed:*/  /* no fence;relaxed */ break;  \
     }                                                                         \
   } while (0)
