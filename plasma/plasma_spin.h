@@ -138,6 +138,8 @@
    * https://www.power.org/documentation/power-instruction-set-architecture-version-2-06/attachment/powerisa_v2-06b_v2_public/  (requires free account)
    * 3.2 "or" Instruction
    *   "or" Shared Resource Hints
+   * Also available as function yield() in libc.a (#include <sys/atomic_op.h>)
+   * http://pic.dhe.ibm.com/infocenter/aix/v7r1/index.jsp?topic=%2Fcom.ibm.aix.basetechref%2Fdoc%2Fbasetrf2%2Fyield.htm
    */
   #define plasma_spin_pause()  __asm__ __volatile__ ("yield":::"memory")
 
