@@ -103,13 +103,16 @@
                                                    (cmpval)) == (cmpval))
    */
 
-#elif defined(__APPLE__) && defined(__MACH__)
-  /* ?? defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
-   *    && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050 */
+#elif defined(__APPLE__)
 
   #include <libkern/OSAtomic.h>
+  #if (   (defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
+           && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050) \
+       || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) \
+           && __IPHONE_OS_VERSION_MIN_REQUIRED-0 >= 20000)   )
   #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
           (OSAtomicCompareAndSwapPtr((cmpval),(newval),(ptr)))
+  #endif
   #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
           (OSAtomicCompareAndSwap64((int64_t)(cmpval),(int64_t)(newval), \
                                     (int64_t *)(ptr)))
@@ -393,6 +396,7 @@ plasma_atomic_CAS_32 (uint32_t * const ptr,
  * Implementing Scalable Atomic Locks for Multi-Core Intel(R) EM64T and IA32 Architectures
  * http://software.intel.com/en-us/articles/implementing-scalable-atomic-locks-for-multi-core-intel-em64t-and-ia32-architectures/
  *
+ * http://stackoverflow.com/questions/5919996/how-to-detect-reliably-mac-os-x-ios-linux-windows-in-c-preprocessor
  */
 
 /* NOTE: *not* handled in plasma_atomic.h: AMD Opteron Rev E hardware bug
