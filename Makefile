@@ -164,7 +164,8 @@ nss_mcdb.o:       CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
 lib32/nss_mcdb.o: CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
 
 PIC_OBJS:= mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
-           nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
+           nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o \
+           plasma/plasma_atomic.o plasma/plasma_spin.o
 $(PIC_OBJS): CFLAGS+=$(FPIC)
 
 # (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
@@ -172,17 +173,19 @@ ifeq ($(OSNAME),Linux)
 libnss_mcdb.so.2: LDFLAGS+=-Wl,-soname,$(@F) -Wl,--version-script,nss_mcdb.map
 endif
 libnss_mcdb.so.2: mcdb.o uint32.o \
-                  nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
+                  nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o \
+                  plasma/plasma_atomic.o plasma/plasma_spin.o
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
 libmcdb.so: LDFLAGS+=-Wl,-soname,$(@F)
 endif
-libmcdb.so: mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o
+libmcdb.so: mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
+            plasma/plasma_atomic.o plasma/plasma_spin.o
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
-           nointr.o uint32.o
+           nointr.o uint32.o plasma/plasma_atomic.o plasma/plasma_spin.o
 	$(AR) -r $@ $^
 
 libnss_mcdb.a: nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
@@ -248,7 +251,8 @@ $(PREFIX)/sbin/nss_mcdbctl: nss_mcdbctl $(PREFIX)/sbin
 	&& /bin/mv -f $@.$$$$ $@
 
 .PHONY: install-headers install install-doc install-plasma-headers
-install-plasma-headers: plasma/plasma_membar.h plasma/plasma_attr.h
+install-plasma-headers: plasma/plasma_atomic.h plasma/plasma_attr.h \
+                        plasma/plasma_membar.h plasma/plasma_spin.h
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb/plasma
 	umask 333; \
 	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/plasma/
@@ -274,7 +278,7 @@ ifeq (,$(MCDB_SKIP32))
 ifeq (,$(RPM_ARCH))
 ifeq (64,$(LIB_BITS))
 ifeq (,$(wildcard lib32))
-  $(shell mkdir lib32)
+  $(shell mkdir -p lib32/plasma)
 endif
 lib32/%.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
@@ -290,7 +294,8 @@ lib32/libnss_mcdb.so.2: \
 endif
 lib32/libnss_mcdb.so.2: ABI_FLAGS=-m32
 lib32/libnss_mcdb.so.2: $(addprefix lib32/, \
-  mcdb.o uint32.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o)
+  mcdb.o uint32.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o \
+  plasma/plasma_atomic.o plasma/plasma_spin.o)
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
@@ -298,7 +303,8 @@ lib32/libmcdb.so: LDFLAGS+=-Wl,-soname,$(@F)
 endif
 lib32/libmcdb.so: ABI_FLAGS=-m32
 lib32/libmcdb.so: $(addprefix lib32/, \
-  mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o)
+  mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
+  plasma/plasma_atomic.o plasma/plasma_spin.o)
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifneq ($(PREFIX_USR),$(PREFIX))
@@ -355,7 +361,7 @@ endif
 .PHONY: clean
 clean:
 	[ "$$($(usr_bin_id) -u)" != "0" ]
-	$(RM) *.o t/*.o
+	$(RM) *.o t/*.o plasma/*.o
 	$(RM) -r lib32
 	$(RM) libmcdb.a libnss_mcdb.a libnss_mcdb_make.a
 	$(RM) libmcdb.so libnss_mcdb.so.2
