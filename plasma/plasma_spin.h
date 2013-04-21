@@ -26,22 +26,25 @@
 #define INCLUDED_PLASMA_SPIN_H
 
 #include "plasma_membar.h"
+#include "plasma_atomic.h"
 
 /* spinlocks / busy-wait loops that pause briefly (versus spinning on nop
  * instructions) benefit modern processors by reducing memory hazards upon loop
  * exit as well as potentially saving CPU power and reducing resource contention
  * with other CPU threads (SMT) (a.k.a strands) on the same core. */
 
+/* plasma_spin_pause() */
+
 #if defined(_MSC_VER)
 
   /* prefer using intrinsics directly instead of winnt.h macro */
   #include <intrin.h>
-  #if defined(__x86_64__) || defined(__i386__)
+  #if defined(_M_AMD64) || defined(_M_IX86)
   #pragma intrinsic(_mm_pause)
   #define plasma_spin_pause()  _mm_pause()
   /* (if pause not supported by older x86 assembler, "rep nop" is equivalent)*/
   /*#define plasma_spin_pause()  __asm rep nop */
-  #elif defined(__ia64__)
+  #elif defined(_M_IA64)
   #pragma intrinsic(__yield)
   #define plasma_spin_pause()  __yield()
   #else
@@ -151,16 +154,113 @@
 #endif
 
 
+/* plasma_spin_yield() */
+
+#if defined(_MSC_VER)
+  /* prototype defined in different headers in different MS Windows versions */
+  VOID WINAPI Sleep(_In_ DWORD dwMilliseconds);
+  BOOL WINAPI SwitchToThread(void);
+  /* attempt switch to another thread on same CPU, else sleep 1ms */
+  #define plasma_spin_yield() do { if (!SwitchToThread()) Sleep(1); } while (0)
+#else /* assume unix if not MS Windows */
+  #include <unistd.h>  /* _POSIX_PRIORITY_SCHEDULING */
+  #ifdef _POSIX_PRIORITY_SCHEDULING
+  #include <sched.h>
+  #define plasma_spin_yield() sched_yield()          /* yield CPU to scheduler*/
+  #else
+  #include <poll.h>
+  #define plasma_spin_yield() poll(NULL, 0, 1)       /* sleep 1ms */
+  #endif
+#endif
+
+
+/* plasma_spin_lock_init()
+ * plasma_spin_lock_acquire()
+ * plasma_spin_lock_acquire_try()
+ * plasma_spin_lock_acquire_spinloop() 
+ * plasma_spin_lock_acquire_spindecay() 
+ * plasma_spin_lock_release()
+ *
+ * Performance notes:
+ * - locks should be spread out in memory and not share same cache line
+ *   (to avoid false sharing); recommend 128-byte separation
+ *   recommend adding padding on both sides of lock structure when allocating
+ *   (again, to avoid false sharing), especially if lock struct is on the stack
+ * - not bothering to do non-atomic pre-check of spin->lck prior to atomic
+ *   attempt to acquire the lock since branch prediction and pipelining will
+ *   likely result in the atomic instruction being started anyway.  When there
+ *   is significant contention, it might make sense to directly call
+ *   plasma_spin_lock_acquire_spinloop() or plasma_spin_lock_acquire_spindecay()
+ *   instead of plasma_spin_lock_acquire()
+ * - plasma_spin_lock_t lck member is intentionally not volatile
+ *   (avoid compiler volatile effects)
+ * - prefer using real mutex for highly contended locks; OS-provided mutex are
+ *   implemented as adaptive mutex in most modern operating system standard libs
+ *   (uncontended mutexes are locked in user-space, and contended mutexes spin
+ *   in user-space for a short period before falling back to the kernel to
+ *   arbitrate) (other options include semaphores, wait queues, event objects)
+ * Future:
+ * - might consider adding thread-id (tid) to plasma_spin_lock_t
+ */
+
+typedef struct plasma_spin_lock_t {
+    uint32_t lck;
+} plasma_spin_lock_t;
+
+#ifdef __STDC_C99
+#define PLASMA_SPIN_LOCK_INITIALIZER { .lck = PLASMA_ATOMIC_LOCK_INITIALIZER }
+#else
+#define PLASMA_SPIN_LOCK_INITIALIZER { PLASMA_ATOMIC_LOCK_INITIALIZER }
+#endif
+
+#define plasma_spin_lock_init(spin) \
+        ((spin)->lck = PLASMA_ATOMIC_LOCK_INITIALIZER)
+
+#define plasma_spin_lock_release(spin) \
+        plasma_atomic_lock_release(&(spin)->lck)
+
+#define plasma_spin_lock_acquire_try(spin) \
+        plasma_atomic_lock_acquire(&(spin)->lck)
+
+#define plasma_spin_lock_acquire(spin) \
+       (plasma_spin_lock_acquire_try(spin) \
+        || plasma_spin_lock_acquire_spinloop(spin))
+
+/* plasma_spin_lock_acquire() is intended for use protecting small critical
+ * sections that do not contain any (zero, zilch, nada) blocking calls,
+ * e.g. for use when the cost of obtaining a mutex is always greater than
+ * the cost of executing the instructions in the critical section.
+ *
+ * plasma_spin_lock_acquire_spindecay() 
+ *   spin loop hybrid with adjustable spin counts for levels of backoff/decay
+ *     (pause count, (pause x 32) count, yield count)
+ *     e.g. plasma_spin_lock_acquire_spindecay(spin, 32, 64, 8)
+ *   returns true if lock obtained, false if backoff counts exhausted (decayed)
+ * - again, caller should avoid blocking operations inside critical section
+ * - for potential use with moderately contended locks (YMMV)
+ * - for contended cases after measuring this does better than basic spinloop
+ * - adjust spin count to your needs after testing your application
+ * Note that if spin often reaches yield level without obtaining lock, then 
+ * performance suffers and a real mutex is probably a better choice.  Though
+ * yielding the CPU aims to prevent continual spin for long periods of time
+ * when something else is wrong, spinning fruitlessly is still expensive and
+ * many threads spinning results in fewer resources available for real work. */
 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*#include "plasma_attr.h"*/
+#include "plasma_attr.h"
 
-/* (static inline functions for C99, if present, need to be in an
- *  extern "C" block and/or hidden from C++ or reformated for C++) */
+bool
+plasma_spin_lock_acquire_spinloop (plasma_spin_lock_t * const spin)
+  __attribute_nonnull__;
+
+bool
+plasma_spin_lock_acquire_spindecay (plasma_spin_lock_t * const spin,
+                                    int pause, int pause32, int yield)
+  __attribute_nonnull__;
 
 #ifdef __cplusplus
 }
@@ -191,4 +291,15 @@ extern "C" {
  *   "But really you shouldn't EVER do a spin-wait on Windows. There's no reason for it. Any place you are tempted to use a spin-wait, use an "eventcount" instead and do a proper wait. (perhaps after a few spins, but only if you have very good reason to believe those spins actually help)
  *   "BTW I've written about the balanced set manager in detail here :
 http://cbloomrants.blogspot.com/2010/09/09-12-10-defficiency-of-windows-multi.html "
+ *
+ * SwitchToThread()
+ * http://msdn.microsoft.com/en-us/library/windows/desktop/ms686352%28v=vs.85%29.aspx
+ *
+ * Sleep(1)
+ * http://msdn.microsoft.com/en-us/library/windows/desktop/ms686298%28v=vs.85%29.aspx
+ * http://www.bluebytesoftware.com/blog/2006/08/23/PriorityinducedStarvationWhySleep1IsBetterThanSleep0AndTheWindowsBalanceSetManager.aspx
+ *
+ * timeBeginPeriod(1)  (set default system quantum to 1ms instead of 10-15ms)
+ * http://msdn.microsoft.com/en-us/library/windows/desktop/dd757624%28v=vs.85%29.aspx
+ * http://cbloomrants.blogspot.com/2010/09/09-12-10-defficiency-of-windows-multi.html
  */
