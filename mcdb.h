@@ -211,9 +211,7 @@ mcdb_mmap_refresh_check(const struct mcdb_mmap * restrict)
 enum mcdb_flags {
   MCDB_REGISTER_USE_DECR = 0,
   MCDB_REGISTER_USE_INCR = 1,
-  MCDB_REGISTER_MUNMAP_SKIP = 2,
-  MCDB_REGISTER_MUTEX_LOCK_HOLD = 4,
-  MCDB_REGISTER_MUTEX_UNLOCK_HOLD = 8
+  MCDB_REGISTER_MUNMAP_SKIP = 2
 };
 
 extern struct mcdb_mmap *

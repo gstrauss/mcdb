@@ -75,9 +75,13 @@
 #ifdef _THREAD_SAFE
 #include <pthread.h>       /* pthread_mutex_t, pthread_mutex_{lock,unlock}() */
 static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
+#include "plasma/plasma_spin.h" /* plasma_spin_lock_t, plasma_spin_lock_*() */
+static plasma_spin_lock_t mcdb_global_spinlock = PLASMA_SPIN_LOCK_INITIALIZER;
 #else
 #define pthread_mutex_lock(mutexp) 0
 #define pthread_mutex_unlock(mutexp) (void)0
+#define plasma_spin_lock_acquire(spin) (void)0
+#define plasma_spin_lock_release(spin) (void)0
 #endif
 
 #ifndef O_CLOEXEC /* O_CLOEXEC available since Linux 2.6.23 */
@@ -541,19 +545,11 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
     const bool register_use_incr = ((flags & MCDB_REGISTER_USE_INCR) != 0);
     #define register_use_decr (!register_use_incr)
 
-    if (!(flags & MCDB_REGISTER_MUTEX_UNLOCK_HOLD)
-        && pthread_mutex_lock(&mcdb_global_mutex) != 0)
-        return NULL;
+    plasma_spin_lock_acquire(&mcdb_global_spinlock);
 
-    plasma_membar_ccfence();/*(compiler fence sufficient w/pthread_mutex_lock)*/
     map = *mapptr;
     if (map == NULL || (map->ptr == NULL && register_use_incr)) {
-        /* unlock mutex unless both *_HOLD flags are set (caller to do unlock)
-         * (see mcdb_mmap_reopen_threadsafe()) */
-        if ((flags
-             & (MCDB_REGISTER_MUTEX_LOCK_HOLD|MCDB_REGISTER_MUTEX_UNLOCK_HOLD))
-            != (MCDB_REGISTER_MUTEX_LOCK_HOLD|MCDB_REGISTER_MUTEX_UNLOCK_HOLD))
-            pthread_mutex_unlock(&mcdb_global_mutex);
+        plasma_spin_lock_release(&mcdb_global_spinlock);
         /* succeed if unregister; fail if register */ /*(NULL is failure)*/
         return (struct mcdb_mmap *)(uintptr_t)(!register_use_incr);
         /* If registering, possibly detected race condition in which another
@@ -590,8 +586,7 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
     }
     #undef register_use_decr
 
-    if (!(flags & MCDB_REGISTER_MUTEX_LOCK_HOLD))
-        pthread_mutex_unlock(&mcdb_global_mutex);
+    plasma_spin_lock_release(&mcdb_global_spinlock);
 
     /* release unused maps after releasing mutex to minimize time holding lock
      * (although if flags indicate to hold mutex, then it will still be held) */
@@ -606,8 +601,8 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
 }
 
 /* theaded programs (while multiple threads are using same struct mcdb_mmap)
- * must reopen and register (update refcnt on previous and new mcdb_mmap) while
- * holding a lock, or else there are race conditions with refcnt'ing. */
+ * must be registered with current *mapptr before calling this routine, or else
+ * there is a race condition where map might be removed out from under us. */
 bool  __attribute_noinline__
 mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
 {
@@ -639,13 +634,8 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
     }
     /* else rc = true;  (map->next already updated e.g. while obtaining lock) */
 
-    if (rc) {
-        const int mcdb_flags_hold_lock =
-            MCDB_REGISTER_USE_INCR
-          | MCDB_REGISTER_MUTEX_UNLOCK_HOLD
-          | MCDB_REGISTER_MUTEX_LOCK_HOLD;
-        rc = mcdb_mmap_thread_registration_h(mapptr, mcdb_flags_hold_lock);
-    }
+    if (rc)
+        rc = mcdb_mmap_thread_registration_h(mapptr, MCDB_REGISTER_USE_INCR);
 
     pthread_mutex_unlock(&mcdb_global_mutex);
     return rc;
