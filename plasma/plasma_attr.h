@@ -63,10 +63,12 @@ extern "C" {
 
 /*
  * http://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
+ * http://gcc.gnu.org/onlinedocs/gcc/Attribute-Syntax.html
  * /usr/include/sys/cdefs.h (GNU/Linux systems)
+ * http://ohse.de/uwe/articles/gcc-attributes.html
  *
- * Note: below not an exhaustive list of attributes
- * Attributes exist at above URL that are not listed below
+ * Note: below is not an exhaustive list of attributes
+ * Attributes exist at above URLs that are not listed below
  *
  * http://clang.llvm.org/docs/LanguageExtensions.html
  */
@@ -114,6 +116,22 @@ extern "C" {
 #endif
 #ifndef __attribute_noinline__
 #define __attribute_noinline__
+#endif
+
+#if (defined(__GNUC__) && __GNUC_PREREQ(3,1)) \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || __has_attribute(always_inline)
+#ifndef __attribute_always_inline__
+#define __attribute_always_inline__  __attribute__((always_inline))
+#endif
+#elif defined(MSC_VER)
+/* http://msdn.microsoft.com/en-us/library/z8y1yy88.aspx */
+#ifndef __attribute_always_inline__
+#define __attribute_always_inline__  __forceinline
+#endif
+#endif
+#ifndef __attribute_always_inline__
+#define __attribute_always_inline__  C99INLINE
 #endif
 
 #if __GNUC_PREREQ(2,5) \
