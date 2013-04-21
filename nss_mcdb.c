@@ -234,8 +234,7 @@ nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     struct mcdb_mmap *map = m->map;
-    const int mcdb_flags =
-        MCDB_REGISTER_USE_DECR | MCDB_REGISTER_MUNMAP_SKIP;
+    const int mcdb_flags = MCDB_REGISTER_USE_DECR | MCDB_REGISTER_MUNMAP_SKIP;
     m->map = NULL;  /* set thread-local ptr NULL even though munmap skipped */
     return (map == NULL || _nss_mcdb_db_relshared(map, mcdb_flags))
       ? NSS_STATUS_SUCCESS
@@ -318,14 +317,8 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 {
     struct mcdb m;
     nss_status_t status;
-    const int mcdb_flags_lock =
-      MCDB_REGISTER_USE_INCR | MCDB_REGISTER_MUTEX_LOCK_HOLD;
 
-    /* Queries to mcdb are quick, so attempt to reduce locking overhead.
-     * Set mcdb_flags to get and release mcdb_global_mutex once instead of
-     * grab/release mutex to register, then grab/release mutex to unregister */
-
-    m.map = _nss_mcdb_db_getshared(dbtype, mcdb_flags_lock);
+    m.map = _nss_mcdb_db_getshared(dbtype, MCDB_REGISTER_USE_INCR);
     if (__builtin_expect(m.map == NULL, false)) {
         *v->errnop = errno;
         return NSS_STATUS_UNAVAIL;
@@ -340,13 +333,9 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
     }
 
     /* set*ent(),get*ent(),end*end() session not open/reused in current thread*/
-    if (_nss_mcdb_st[dbtype].map == NULL) {
-        const int mcdb_flags_unlock =
-            MCDB_REGISTER_USE_DECR
-          | MCDB_REGISTER_MUNMAP_SKIP
-          | MCDB_REGISTER_MUTEX_UNLOCK_HOLD;
-        _nss_mcdb_db_relshared(m.map, mcdb_flags_unlock);
-    }
+    if (_nss_mcdb_st[dbtype].map == NULL)
+        _nss_mcdb_db_relshared(m.map, MCDB_REGISTER_USE_DECR
+                                     |MCDB_REGISTER_MUNMAP_SKIP);
 
     return status;
 }
