@@ -25,10 +25,19 @@
 #ifndef INCLUDED_PLASMA_ATOMIC_H
 #define INCLUDED_PLASMA_ATOMIC_H
 
+#include <inttypes.h>
 #include "plasma_attr.h"
 #include "plasma_membar.h"
 
-/* plasma_atomic_CAS_ptr - atomic pointer compare-and-swap (CAS)
+/*
+ * plasma_atomic_lock_acquire - basic lock providing acquire semantics
+ * plasma_atomic_lock_release - basic unlock providing release semantics
+ * plasma_atomic_lock_init (or PLASMA_ATOMIC_LOCK_INITIALIZER)
+ *
+ * NB: unlike pthread mutex, plasma_atomic_lock_acquire() provides acquire
+ * semantics and -not- sequential consistency (which would include StoreLoad)
+ *
+ * plasma_atomic_CAS_ptr - atomic pointer compare-and-swap (CAS)
  * plasma_atomic_CAS_64  - atomic 64-bit  compare-and-swap (CAS)
  * plasma_atomic_CAS_32  - atomic 32-bit  compare-and-swap (CAS)
  *
@@ -69,7 +78,8 @@
  * NB: Note: 64-bit ops might not be available when code is compiled 32-bits.
  *     (depends on the platform and compiler intrinsic support)
  *
- * FUTURE: Current plasma_atomic implementation done with compiler intrinsics.
+ * FUTURE: Detect and employ C11 atomics where available
+ * FUTURE: Current plasma_atomic implementation is done w/ compiler intrinsics.
  *         Intrinsics might provide stronger (slower) memory barriers than
  *         required.  Might provide assembly code implementations with more
  *         precise barriers and to support additional compilers on each platform
@@ -80,28 +90,24 @@
   #include <intrin.h>
   #pragma intrinsic(_InterlockedCompareExchange)
   #pragma intrinsic(_InterlockedCompareExchange64)
+  #pragma intrinsic(_InterlockedCompareExchangePointer)
+  #pragma intrinsic(_InterlockedExchange)
+  #pragma intrinsic(_InterlockedExchange64)
+  #pragma intrinsic(_InterlockedExchangePointer)
 
+  #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
+          (_InterlockedCompareExchangePointer((ptr),(newval),(cmpval)) \
+                                                                  == (cmpval))
   #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
           (_InterlockedCompareExchange64((ptr),(newval),(cmpval)) == (cmpval))
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           (_InterlockedCompareExchange((ptr),(newval),(cmpval)) == (cmpval))
-
-  /* NB: caller needs to include proper header for InterlockedCompareExchange*()
-   *     (e.g. #include <windows.h>) */
-  /* do not set these in header; calling file should determine need
-   * http://support.microsoft.com/kb/166474
-  #define VC_EXTRALEAN
-  #define WIN32_LEAN_AND_MEAN
-  #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
-          (InterlockedCompareExchangePointerNoFence((ptr),(newval), \
-                                                          (cmpval)) == (cmpval))
-  #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
-          (InterlockedCompareExchange64NoFence((ptr),(newval), \
-                                                     (cmpval)) == (cmpval))
-  #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
-          (InterlockedCompareExchangeNoFence((ptr),(newval), \
-                                                   (cmpval)) == (cmpval))
-   */
+  #define plasma_atomic_xchg_ptr_impl(ptr, newval) \
+          (_InterlockedExchangePointer((ptr),(newval)))
+  #define plasma_atomic_xchg_64_impl(ptr, newval) \
+          (_InterlockedExchange64((ptr),(newval)))
+  #define plasma_atomic_xchg_32_impl(ptr, newval) \
+          (_InterlockedExchange((ptr),(newval)))
 
 #elif defined(__APPLE__)
 
@@ -129,6 +135,12 @@
           (atomic_cas_64((ptr),(cmpval),(newval)) == (cmpval))
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           (atomic_cas_32((ptr),(cmpval),(newval)) == (cmpval))
+  #define plasma_atomic_xchg_ptr_impl(ptr, newval) \
+          (atomic_swap_ptr((ptr),(newval)))
+  #define plasma_atomic_xchg_64_impl(ptr, newval) \
+          (atomic_swap_64((ptr),(newval)))
+  #define plasma_atomic_xchg_32_impl(ptr, newval) \
+          (atomic_swap_32((ptr),(newval)))
 
 #elif (defined(__ppc__)   || defined(_ARCH_PPC)  || \
        defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)) \
@@ -193,78 +205,159 @@
 #elif !defined(PLASMA_ATOMIC_MUTEX_FALLBACK)
   /* (mutex-based fallback implementation enabled by preprocessor define) */
 
-  #error "compare-and-swap not implemented for platform+compiler; suggestions?"
+  #error "plasma atomics not implemented for platform+compiler; suggestions?"
 
 #endif
 
 /* default plasma_atomic_CAS_ptr_impl() (if not previously defined) */
 #ifndef plasma_atomic_CAS_ptr_impl
   #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
-    #define plasma_atomic_CAS_ptr_impl(ptr,  cmpval,  newval) \
+    #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
             plasma_atomic_CAS_64_impl((uint64_t *)(ptr), \
                                       (uint64_t)(cmpval),(uint64_t)(newval))
   #else
-    #define plasma_atomic_CAS_ptr_impl(ptr,  cmpval,  newval) \
+    #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
             plasma_atomic_CAS_32_impl((uint32_t *)(ptr), \
                                       (uint32_t)(cmpval),(uint32_t)(newval))
   #endif
 #endif
 
 
-/* basic lock (32-bit) (0 == unlocked, 1 == locked)
- * provides acquire semantics on lock, release semantics on unlock
- * NB: unlike a mutex, plasma_atomic_lock_acquire() provides acquire semantics
- * and -not- sequential consistency (which would include StoreLoad barrier) */
+/* op sequences/combinations which provide barriers
+ * (each macro is not necessarily defined for each platforms) */
 
-/* default plasma_atomic_lock_* implementation */
-#define PLASMA_ATOMIC_LOCK_INITIALIZER 0
-#define plasma_atomic_lock_init(ptr) (*(ptr) = 0)
-#ifndef plasma_atomic_lock_acquire
-#define plasma_atomic_lock_acquire(ptr) \
-        (plasma_atomic_CAS_32(ptr, 0, 1) \
-          && (plasma_membar_atomic_thread_fence_acq_rel(), true))
-#endif
-#ifndef plasma_atomic_lock_release
-#define plasma_atomic_lock_release(ptr) \
-        (plasma_membar_atomic_thread_fence_release(), *(ptr) = 0)
-#endif
 
-/* (some platforms might have better mechanism for basic 32-bit lock) */
-#if defined(__x86_64__) || defined(__i386__)
-  /* CAS is implemented on x86 with LOCK prefix on xchg or cmpxchg instructions
-   * (results in full memory barrier, so do not repeat barrier (see above)) */
-  #undef  plasma_atomic_lock_acquire
-  #define plasma_atomic_lock_acquire(ptr) \
-          plasma_atomic_CAS_32_impl((ptr), 0, 1)
-#elif defined(__sparc) || defined(__sparc__)
-  /* TSO (total store order) on SPARC, so do not repeat barrier (see above)) */
-  #undef  plasma_atomic_lock_acquire
-  #define plasma_atomic_lock_acquire(ptr) \
-          plasma_atomic_CAS_32_impl((ptr), 0, 1)
-#elif defined(__ia64__)
-  /* Itanium can extend ld and st instructions with .acq and .rel modifiers
-   * Itanium volatile variables have implicit ld.acq and st.rel semantics
-   * (so avoid separate barrier added above in default lock implementation) */
-  #undef  plasma_atomic_lock_release
-  #define plasma_atomic_lock_release(ptr) \
-          (plasma_membar_ccfence(), *((volatile int * restrict)(ptr)) = 0)
+#if defined(__ia64__) || defined(_M_IA64)
+  /* Itanium can extend ld and st instructions with .acq and .rel modifiers */
   #if (defined(__HP_cc__) || defined(__HP_aCC__))
-    #undef  plasma_atomic_lock_acquire
-    #undef  plasma_atomic_lock_release
-    #define plasma_atomic_lock_acquire(ptr) \
-            !_Asm_xchg(_SZ_W, (ptr), 1, _LDHINT_NONE)
-            /* 'xchg' instruction has 'acquire' semantics on Itanium */
-    #define plasma_atomic_lock_release(ptr) \
-            _Asm_st_volatile(_SZ_W, _STHINT_NONE, (ptr), 0)
-            /* _Asm_st_volatile has 'release' semantics on Itanium
-             * even if code compiled with +Ovolatile=__unordered */
-  #elif defined (_MSC_VER)
-    #pragma intrinsic(_InterlockedCompareExchange_acq)
-    #undef  plasma_atomic_lock_acquire
-    #define plasma_atomic_lock_acquire(ptr, cmpval, newval) \
-            (_InterlockedCompareExchange_acq((ptr),(newval),(cmpval))==(cmpval))
+    /* _Asm_st_volatile has 'release' semantics on Itanium
+     * even if code compiled with +Ovolatile=__unordered */
+    #define plasma_atomic_st_64_release_impl(ptr,newval) \
+            _Asm_st_volatile(_SZ_D, _STHINT_NONE, (ptr), (newval))
+    #define plasma_atomic_st_32_release_impl(ptr,newval) \
+            _Asm_st_volatile(_SZ_W, _STHINT_NONE, (ptr), (newval))
+  #else
+    /* Itanium volatile variables have implicit ld.acq and st.rel semantics */
+    #define plasma_atomic_st_64_release_impl(ptr,newval) \
+            plasma_membar_ccfence(); \
+            (*((volatile int * restrict)(ptr)) = (newval))
+    #define plasma_atomic_st_32_release_impl(ptr,newval) \
+            plasma_membar_ccfence(); \
+            (*((volatile int * restrict)(ptr)) = (newval))
+  #endif
+  #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
+    #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
+            plasma_atomic_st_64_release_impl((ptr),(newval))
+  #else
+    #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
+            plasma_atomic_st_32_release_impl((ptr),(newval))
+  #endif
+
+#else
+
+  #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
+          plasma_membar_atomic_thread_fence_release(); (*(ptr) = (newval))
+  #define plasma_atomic_st_64_release_impl(ptr,newval) \
+          plasma_membar_atomic_thread_fence_release(); (*(ptr) = (newval))
+  #define plasma_atomic_st_32_release_impl(ptr,newval) \
+          plasma_membar_atomic_thread_fence_release(); (*(ptr) = (newval))
+
+#endif
+
+
+#if defined (_MSC_VER)
+
+  #if defined(_M_IA64)
+    #pragma intrinsic(_InterlockedExchange_acq)
+    #pragma intrinsic(_InterlockedExchange64_acq)
+    #pragma intrinsic(_InterlockedExchangePointer_acq)
+    #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
+            (_InterlockedExchangePointer_acq((ptr),(newval)))
+    #define plasma_atomic_xchg_64_acquire_impl(ptr, newval) \
+            (_InterlockedExchange64_acq((ptr),(newval)))
+    #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
+            (_InterlockedExchange_acq((ptr),(newval)))
+  #elif defined(_M_AMD64) || defined(_M_IX86)
+    /* (LOCK implied on xchg on x86 and results in full memory barrier) */
+    #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
+            (_InterlockedExchangePointer((ptr),(newval)))
+    #define plasma_atomic_xchg_64_acquire_impl(ptr, newval) \
+            (_InterlockedExchange64((ptr),(newval)))
+    #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
+            (_InterlockedExchange((ptr),(newval)))
+  #endif
+
+#elif defined(__sun)
+  /* TSO (total store order) on SPARC, so acquire barrier is implicit */
+  #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
+          plasma_atomic_xchg_ptr_impl((ptr),(newval))
+  #define plasma_atomic_xchg_64_acquire_impl(ptr, newval) \
+          plasma_atomic_xchg_64_impl((ptr),(newval))
+  #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
+          plasma_atomic_xchg_32_impl((ptr),(newval))
+
+#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+  /* Note: gcc __sync_lock_test_and_set() limitation documented at
+   *   http://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html
+   * "Many targets have only minimal support for such locks, and do not support
+   *  a full exchange operation. In this case, a target may support reduced
+   *  functionality here by which the only valid value to store is the immediate
+   *  constant 1. The exact value actually stored in *ptr is implementation
+   *  defined."
+   * Note: gcc __sync_lock_release adds mfence on x86, and is not used in 
+   * plasma_atomic.h since mfence barrier is stronger than needed for release
+   * barrier provided by plasma_atomic_lock_release() for cacheable memory */
+  #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
+          __sync_lock_test_and_set((ptr), (newval))
+  #define plasma_atomic_xchg_64_acquire_impl(ptr, newval) \
+          __sync_lock_test_and_set((ptr), (newval))
+  #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
+          __sync_lock_test_and_set((ptr), (newval))
+
+#elif defined(__ia64__) \
+   && (defined(__HP_cc__) || defined(__HP_aCC__))
+
+  /* 'xchg' instruction has 'acquire' semantics on Itanium */
+  #define plasma_atomic_xchg_64_acquire_impl(ptr,newval) \
+          _Asm_xchg(_SZ_D, (ptr), (newval), _LDHINT_NONE)
+  #define plasma_atomic_xchg_32_acquire_impl(ptr,newval) \
+          _Asm_xchg(_SZ_W, (ptr), (newval), _LDHINT_NONE)
+  #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
+    #define plasma_atomic_xchg_ptr_acquire_impl(ptr,newval) \
+            plasma_atomic_xchg_64_acquire_impl((ptr),(newval))
+  #else
+    #define plasma_atomic_xchg_ptr_acquire_impl(ptr,newval) \
+            plasma_atomic_xchg_32_acquire_impl((ptr),(newval))
+  #endif
+
+#endif
+
+
+/* default plasma_atomic_xchg_ptr,64,32_impl() (if not previously defined) */
+#if !defined(plasma_atomic_xchg_64_impl) \
+  && defined(plasma_atomic_xchg_64_acquire_impl)
+  #define plasma_atomic_xchg_64_impl(ptr,newval) \
+          plasma_atomic_xchg_64_acquire_impl((ptr),(newval))
+#endif
+#if !defined(plasma_atomic_xchg_32_impl) \
+  && defined(plasma_atomic_xchg_32_acquire_impl)
+  #define plasma_atomic_xchg_32_impl(ptr,newval) \
+          plasma_atomic_xchg_32_acquire_impl((ptr),(newval))
+#endif
+#ifndef plasma_atomic_xchg_ptr_impl
+  #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
+    #ifdef plasma_atomic_xchg_64_impl
+      #define plasma_atomic_xchg_ptr_impl(ptr, newval) \
+              plasma_atomic_xchg_64_impl((uint64_t *)(ptr),(uint64_t)(newval))
+    #endif
+  #else
+    #ifdef plasma_atomic_xchg_32_impl
+      #define plasma_atomic_xchg_ptr_impl(ptr, newval) \
+              plasma_atomic_xchg_32_impl((uint32_t *)(ptr),(uint32_t)(newval))
+    #endif
   #endif
 #endif
+
 
 
 #include <stdint.h>   /* <inttypes.h> is more portable on pre-C99 systems */
@@ -297,12 +390,14 @@ extern "C" {
 /* create inline routines to encapsulate
  * - avoid multiple use of macro param cmpval
  * - coerce values into registers or at least variables (instead of constants),
- *   (might be required for some intrinsics) */
+ *   (address of var and/or integer promotion required for some intrinsics) */
 
+__attribute_regparm__((3))
 bool  C99INLINE
 plasma_atomic_CAS_ptr (void ** const ptr, void *cmpval, void * const newval)
   __attribute_nonnull_x__((1));
 #if !defined(NO_C99INLINE)
+__attribute_regparm__((3))
 bool  C99INLINE
 plasma_atomic_CAS_ptr (void ** const ptr, void *cmpval, void * const newval)
 {
@@ -310,11 +405,13 @@ plasma_atomic_CAS_ptr (void ** const ptr, void *cmpval, void * const newval)
 }
 #endif
 
+__attribute_regparm__((3))
 bool  C99INLINE
 plasma_atomic_CAS_64 (uint64_t * const ptr,
                       uint64_t cmpval, const uint64_t newval)
   __attribute_nonnull__;
 #if !defined(NO_C99INLINE)
+__attribute_regparm__((3))
 bool  C99INLINE
 plasma_atomic_CAS_64 (uint64_t * const ptr,
                       uint64_t cmpval, const uint64_t newval)
@@ -323,11 +420,13 @@ plasma_atomic_CAS_64 (uint64_t * const ptr,
 }
 #endif
 
+__attribute_regparm__((3))
 bool  C99INLINE
 plasma_atomic_CAS_32 (uint32_t * const ptr,
                       uint32_t cmpval, const uint32_t newval)
   __attribute_nonnull__;
 #if !defined(NO_C99INLINE)
+__attribute_regparm__((3))
 bool  C99INLINE
 plasma_atomic_CAS_32 (uint32_t * const ptr,
                       uint32_t cmpval, const uint32_t newval)
@@ -347,6 +446,65 @@ plasma_atomic_CAS_32 (uint32_t * const ptr,
         plasma_atomic_CAS_32((uint32_t *)(ptr),  \
                              (uint32_t)(cmpval),(uint32_t)(newval))
 
+/* basic lock (32-bit) (0 == unlocked, 1 == locked)
+ *   plasma_atomic_lock_acquire - basic lock providing acquire semantics
+ *   plasma_atomic_lock_release - basic unlock providing release semantics
+ *   plasma_atomic_lock_init (or PLASMA_ATOMIC_LOCK_INITIALIZER)
+ * NB: unlike pthread_mutex_t, plasma_atomic_lock_acquire() provides acquire
+ * semantics and -not- sequential consistency (which would include StoreLoad) */
+#define PLASMA_ATOMIC_LOCK_INITIALIZER 0
+#define plasma_atomic_lock_init(ptr) (*(ptr) = 0)
+
+__attribute_regparm__((1))
+void  C99INLINE
+plasma_atomic_lock_release (uint32_t * const ptr)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((1))
+void  C99INLINE
+plasma_atomic_lock_release (uint32_t * const ptr)
+{
+    plasma_atomic_st_32_release_impl(ptr, 0);
+}
+#endif
+
+__attribute_regparm__((1))
+bool  C99INLINE
+plasma_atomic_lock_acquire (uint32_t * const ptr)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((1))
+bool  C99INLINE
+plasma_atomic_lock_acquire (uint32_t * const ptr)
+{
+  #ifdef plasma_atomic_xchg_32_acquire_impl
+
+    /* basic lock is bi-state; xchg prior val of 0 means lock obtained */
+    return !plasma_atomic_xchg_32_acquire_impl(ptr, 1);
+
+  #else
+
+    #ifdef plasma_atomic_xchg_32_impl
+      #define plasma_atomic_lock_nobarrier(ptr) \
+              !plasma_atomic_xchg_32_impl((ptr), 1)
+              /* basic lock is bi-state; prior val of 0 means lock obtained */
+    #else
+      #define plasma_atomic_lock_nobarrier(ptr) \
+              plasma_atomic_CAS_32((ptr), 0, 1)
+    #endif
+    /* (use separate statements; gcc does not handle __asm in comma operator) */
+    /*return (plasma_atomic_lock_nobarrier(ptr)
+     *        && (plasma_membar_atomic_thread_fence_acq_rel(), true));*/
+    if (plasma_atomic_lock_nobarrier(ptr)) {
+        plasma_membar_atomic_thread_fence_acq_rel();
+        return true;
+    }
+    return false;
+
+  #endif
+}
+#endif
+
 
 #ifdef __cplusplus
 }
@@ -363,8 +521,11 @@ plasma_atomic_CAS_32 (uint32_t * const ptr,
  * http://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html
  *
  * MSVC
- * http://msdn.microsoft.com/en-us/library/windows/desktop/ms686360%28v=vs.85%29.aspx#interlocked_functions
- * http://msdn.microsoft.com/en-us/library/windows/desktop/ttk2z1ws%28v=vs.85%29.aspx
+ * http://msdn.microsoft.com/en-us/library/ms686360%28v=vs.85%29.aspx
+ * http://msdn.microsoft.com/en-us/library/ttk2z1ws%28v=vs.90%29.aspx
+ * http://msdn.microsoft.com/en-us/library/1s26w950%28v=vs.90%29.aspx
+ * http://msdn.microsoft.com/en-us/library/1b4s3xf5%28v=vs.90%29.aspx
+ * http://msdn.microsoft.com/en-us/library/853x471w%28v=VS.90%29.aspx
  *
  * OSX
  * OSAtomic.h Reference
@@ -373,6 +534,8 @@ plasma_atomic_CAS_32 (uint32_t * const ptr,
  * Solaris
  * atomic_cas (3C)
  * http://docs.oracle.com/cd/E23824_01/html/821-1465/atomic-cas-3c.html
+ * atomic_swap (3C)
+ * http://docs.oracle.com/cd/E23824_01/html/821-1465/atomic-swap-3c.html
  *
  * AIX on POWER and xlC
  * Synchronization and atomic built-in functions
@@ -381,8 +544,10 @@ plasma_atomic_CAS_32 (uint32_t * const ptr,
  * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlcpp121.aix.doc%2Fcompiler_ref%2Fbif_compare_and_swap_compare_and_swaplp.html
  * http://pic.dhe.ibm.com/infocenter/aix/v7r1/index.jsp?topic=%2Fcom.ibm.aix.basetechref%2Fdoc%2Fbasetrf1%2Fcompare_and_swap.htm
  * http://www.ibm.com/developerworks/systems/articles/powerpc.html
- * xlC v12.1 adds gcc-compatible intrinsic, but also adds full memory barrier
+ * xlC v12.1 adds gcc-compatible intrinsics
+ * (xlC might add full memory barriers for __sync_bool_compare_and_swap())
  * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlcpp121.aix.doc%2Fcompiler_ref%2Fbif_gcc_atomic_bool_comp_swap.html
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlcpp121.aix.doc%2Fcompiler_ref%2Fbifs_sync_atomic.html
  *
  * HP-UX on Itanium
  * Implementing Spinlocks on the Intel (R) Itanium (R) Architecture and PA-RISC

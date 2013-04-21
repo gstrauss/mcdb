@@ -37,32 +37,55 @@
 
 /* inlined functions defined in header
  * (generate external linkage definition in C99-compliant compilers)
- * (need to -duplicate- definition from header for non-C99-compliant compiler)
+ * (need to -duplicate- definition from header for non-C99-compliant compilers)
  */
 #if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
+__attribute_regparm__((3))
 extern inline
 bool
 plasma_atomic_CAS_ptr (void ** const restrict ptr,
                        void * restrict cmpval, void * const restrict newval);
+__attribute_regparm__((3))
 bool
 plasma_atomic_CAS_ptr (void ** const restrict ptr,
                        void * restrict cmpval, void * const restrict newval);
 
+__attribute_regparm__((3))
 extern inline
 bool
 plasma_atomic_CAS_64 (uint64_t * const restrict ptr,
                       uint64_t cmpval, const uint64_t newval);
+__attribute_regparm__((3))
 bool
 plasma_atomic_CAS_64 (uint64_t * const restrict ptr,
                       uint64_t cmpval, const uint64_t newval);
 
+__attribute_regparm__((3))
 extern inline
 bool
 plasma_atomic_CAS_32 (uint32_t * const restrict ptr,
                       uint32_t cmpval, const uint32_t newval);
+__attribute_regparm__((3))
 bool
 plasma_atomic_CAS_32 (uint32_t * const restrict ptr,
                       uint32_t cmpval, const uint32_t newval);
+
+__attribute_regparm__((1))
+extern inline
+void
+plasma_atomic_lock_release (uint32_t * const ptr);
+__attribute_regparm__((1))
+void
+plasma_atomic_lock_release (uint32_t * const ptr);
+
+__attribute_regparm__((1))
+extern inline
+bool
+plasma_atomic_lock_acquire (uint32_t * const ptr);
+__attribute_regparm__((1))
+bool
+plasma_atomic_lock_acquire (uint32_t * const ptr);
+
 #endif
 
 
