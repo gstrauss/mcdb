@@ -84,10 +84,10 @@ struct mcdb_mmap {
   uint32_t (*hash_fn)(uint32_t, const void * restrict, size_t); /* hash func */
   uintptr_t size;             /* mmap size */
   time_t mtime;               /* mmap file mtime */
-  struct mcdb_mmap * volatile next;    /* updated (new) mcdb_mmap */
-  void * (*fn_malloc)(size_t);         /* fn ptr to malloc() */
-  void (*fn_free)(void *);             /* fn ptr to free() */
-  volatile uint32_t refcnt;            /* registered access reference count */
+  struct mcdb_mmap *next;     /* updated (new) mcdb_mmap */
+  void * (*fn_malloc)(size_t);/* fn ptr to malloc() */
+  void (*fn_free)(void *);    /* fn ptr to free() */
+  uint32_t refcnt;            /* registered access reference count */
   int dfd;                    /* fd open to dir in which mmap file resides */
   char *fname;                /* basename of mmap file, relative to dir fd */
   char fnamebuf[64];          /* buffer in which to store short fname */
