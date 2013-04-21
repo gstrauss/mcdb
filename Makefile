@@ -109,7 +109,7 @@ ifeq ($(OSNAME),SunOS)
 endif
 
 # heavy handed dependencies
-_DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) Makefile
+_DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) $(wildcard plasma/*.h) Makefile
 
 # C99
 STDC99?=-std=c99
