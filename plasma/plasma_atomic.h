@@ -239,11 +239,13 @@
   #else
     /* Itanium volatile variables have implicit ld.acq and st.rel semantics */
     #define plasma_atomic_st_64_release_impl(ptr,newval) \
-            plasma_membar_ccfence(); \
-            (*((volatile int * restrict)(ptr)) = (newval))
+            do { plasma_membar_ccfence(); \
+                 *((volatile int * restrict)(ptr)) = (newval); \
+            } while (0)
     #define plasma_atomic_st_32_release_impl(ptr,newval) \
-            plasma_membar_ccfence(); \
-            (*((volatile int * restrict)(ptr)) = (newval))
+            do { plasma_membar_ccfence(); \
+                 *((volatile int * restrict)(ptr)) = (newval); \
+            } while (0)
   #endif
   #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
     #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
@@ -256,11 +258,14 @@
 #else
 
   #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
-          plasma_membar_atomic_thread_fence_release(); (*(ptr) = (newval))
+          do { plasma_membar_atomic_thread_fence_release(); *(ptr) = (newval); \
+          } while (0)
   #define plasma_atomic_st_64_release_impl(ptr,newval) \
-          plasma_membar_atomic_thread_fence_release(); (*(ptr) = (newval))
+          do { plasma_membar_atomic_thread_fence_release(); *(ptr) = (newval); \
+          } while (0)
   #define plasma_atomic_st_32_release_impl(ptr,newval) \
-          plasma_membar_atomic_thread_fence_release(); (*(ptr) = (newval))
+          do { plasma_membar_atomic_thread_fence_release(); *(ptr) = (newval); \
+          } while (0)
 
 #endif
 
