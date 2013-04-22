@@ -154,22 +154,40 @@
 #endif
 
 
-/* plasma_spin_yield() */
+/* plasma_spin_yield()
+ *   attempt switch to another thread on same CPU, else sleep 1ms */
 
 #if defined(_MSC_VER)
   /* prototype defined in different headers in different MS Windows versions */
   VOID WINAPI Sleep(_In_ DWORD dwMilliseconds);
   BOOL WINAPI SwitchToThread(void);
-  /* attempt switch to another thread on same CPU, else sleep 1ms */
-  #define plasma_spin_yield() do { if (!SwitchToThread()) Sleep(1); } while (0)
+  #define plasma_spin_yield() do {if (!SwitchToThread()) Sleep(1);} while (0)
 #else /* assume unix if not MS Windows */
   #include <unistd.h>  /* _POSIX_PRIORITY_SCHEDULING */
+  #include <poll.h>
   #ifdef _POSIX_PRIORITY_SCHEDULING
   #include <sched.h>
-  #define plasma_spin_yield() sched_yield()          /* yield CPU to scheduler*/
+  #define plasma_spin_yield() do {if (!sched_yield()) poll(NULL,0,1);} while (0)
   #else
-  #include <poll.h>
-  #define plasma_spin_yield() poll(NULL, 0, 1)       /* sleep 1ms */
+  #define plasma_spin_yield() poll(NULL, 0, 1)
+  #endif
+#endif
+
+#if defined(__APPLE__)
+  /* use Mach kernel thread_switch() to reduce priority inversion spinning
+   * http://web.mit.edu/darwin/src/modules/xnu/osfmk/man/thread_switch.html
+   * http://www.gnu.org/software/hurd/gnumach-doc/Hand_002dOff-Scheduling.html
+   * http://stackoverflow.com/questions/12949028/spin-lock-implementations-osspinlock?rq=1
+   */
+  #include <TargetConditionals.h>
+  #if TARGET_OS_MAC
+    #include <mach/thread_switch.h>
+    #undef  plasma_spin_yield
+    #define plasma_spin_yield() \
+    do {if (thread_switch(THREAD_NULL,SWITCH_OPTION_DEPRESS,1) != KERN_SUCCESS \
+            && !sched_yield()) \
+            poll(NULL, 0, 1); \
+    } while (0) /* (untested!) */
   #endif
 #endif
 
@@ -180,6 +198,27 @@
  * plasma_spin_lock_acquire_spinloop() 
  * plasma_spin_lock_acquire_spindecay() 
  * plasma_spin_lock_release()
+ *
+ * plasma_spin_lock_acquire() is intended for use protecting small critical
+ * sections that do not contain any (zero, zilch, nada) blocking calls,
+ * e.g. for use when the cost of obtaining a mutex or the cost of a context
+ * switch is greater than the cost of executing the instructions in the
+ * critical section.
+ *
+ * plasma_spin_lock_acquire_spindecay() 
+ *   spin loop hybrid with adjustable spin counts for levels of backoff/decay
+ *     (pause count, (pause x 32) count, yield count)
+ *     e.g. plasma_spin_lock_acquire_spindecay(spin, 32, 64, 8)
+ *   returns true if lock obtained, false if backoff counts exhausted (decayed)
+ * - again, caller should avoid blocking operations inside critical section
+ * - for potential use with moderately contended locks (YMMV)
+ * - for contended cases after measuring this does better than basic spinloop
+ * - adjust spin count to your needs after testing your application
+ * Note that if spin often reaches yield level without obtaining lock, then 
+ * performance suffers and a real mutex is probably a better choice.  Though
+ * yielding the CPU aims to prevent continual spin for long periods of time
+ * when something else is wrong, spinning fruitlessly is still expensive and
+ * many threads spinning results in fewer resources available for real work.
  *
  * Performance notes:
  * - locks should be spread out in memory and not share same cache line
@@ -199,22 +238,51 @@
  *   (uncontended mutexes are locked in user-space, and contended mutexes spin
  *   in user-space for a short period before falling back to the kernel to
  *   arbitrate) (other options include semaphores, wait queues, event objects)
- * Future:
- * - might consider adding thread-id (tid) to plasma_spin_lock_t
+ * - prefer Apple OSSpinLock* implementation where available
+ *   On uniprocessor systems, spinlock implementation does not needlessly spin.
+ *   (A sizable number of mobile devices are uniprocessor and single core.)
  */
 
+
+#if defined(__APPLE__) \
+ && defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
+ && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1070   /* OSSpinLock in OSX 10.7 */
+#include <libkern/OSAtomic.h>
+#define plasma_spin_lock_init(spin) \
+        ((spin)->lck=OS_SPINLOCK_INIT, (spin)->udata32=0, (spin)->udata64=0)
+#define PLASMA_SPIN_LOCK_INITIALIZER           { OS_SPINLOCK_INIT, 0, 0 }
+#define plasma_spin_lock_release(spin)           OSSpinLockUnlock(&(spin)->lck)
+#define plasma_spin_lock_acquire_try(spin)       OSSpinLockTry(&(spin)->lck)
+#define plasma_spin_lock_acquire(spin)           OSSpinLockLock(&(spin)->lck)
+#define plasma_spin_lock_acquire_spinloop(spin)  OSSpinLockLock(&(spin)->lck)
+/* (OSSpinLock currently defined by libkern/OSAtomic.h as int32_t) */
+typedef OSSpinLock plasma_spin_lock_lock_t;
+#else
+typedef uint32_t plasma_spin_lock_lock_t;
+#endif
+
+
 typedef struct plasma_spin_lock_t {
-    uint32_t lck;
+    plasma_spin_lock_lock_t lck;
+    uint32_t udata32; /* user data 4-bytes */
+    uint64_t udata64; /* user data 8-bytes */
 } plasma_spin_lock_t;
 
+/* default spin lock macro implementation */
+#ifndef PLASMA_SPIN_LOCK_INITIALIZER
+
 #ifdef __STDC_C99
-#define PLASMA_SPIN_LOCK_INITIALIZER { .lck = PLASMA_ATOMIC_LOCK_INITIALIZER }
+#define PLASMA_SPIN_LOCK_INITIALIZER { .lck = PLASMA_ATOMIC_LOCK_INITIALIZER, \
+                                       .udata32 = 0, \
+                                       .udata64 = 0 }
 #else
-#define PLASMA_SPIN_LOCK_INITIALIZER { PLASMA_ATOMIC_LOCK_INITIALIZER }
+#define PLASMA_SPIN_LOCK_INITIALIZER { PLASMA_ATOMIC_LOCK_INITIALIZER, 0, 0 }
 #endif
 
 #define plasma_spin_lock_init(spin) \
-        ((spin)->lck = PLASMA_ATOMIC_LOCK_INITIALIZER)
+        ((spin)->lck = PLASMA_ATOMIC_LOCK_INITIALIZER, \
+         (spin)->udata32 = 0, \
+         (spin)->udata64 = 0)
 
 #define plasma_spin_lock_release(spin) \
         plasma_atomic_lock_release(&(spin)->lck)
@@ -226,25 +294,7 @@ typedef struct plasma_spin_lock_t {
        (plasma_spin_lock_acquire_try(spin) \
         || plasma_spin_lock_acquire_spinloop(spin))
 
-/* plasma_spin_lock_acquire() is intended for use protecting small critical
- * sections that do not contain any (zero, zilch, nada) blocking calls,
- * e.g. for use when the cost of obtaining a mutex is always greater than
- * the cost of executing the instructions in the critical section.
- *
- * plasma_spin_lock_acquire_spindecay() 
- *   spin loop hybrid with adjustable spin counts for levels of backoff/decay
- *     (pause count, (pause x 32) count, yield count)
- *     e.g. plasma_spin_lock_acquire_spindecay(spin, 32, 64, 8)
- *   returns true if lock obtained, false if backoff counts exhausted (decayed)
- * - again, caller should avoid blocking operations inside critical section
- * - for potential use with moderately contended locks (YMMV)
- * - for contended cases after measuring this does better than basic spinloop
- * - adjust spin count to your needs after testing your application
- * Note that if spin often reaches yield level without obtaining lock, then 
- * performance suffers and a real mutex is probably a better choice.  Though
- * yielding the CPU aims to prevent continual spin for long periods of time
- * when something else is wrong, spinning fruitlessly is still expensive and
- * many threads spinning results in fewer resources available for real work. */
+#endif /* default spin lock macro implementation */
 
 
 #ifdef __cplusplus
@@ -253,9 +303,11 @@ extern "C" {
 
 #include "plasma_attr.h"
 
+#ifndef plasma_spin_lock_acquire_spinloop
 bool
 plasma_spin_lock_acquire_spinloop (plasma_spin_lock_t * const spin)
   __attribute_nonnull__;
+#endif
 
 bool
 plasma_spin_lock_acquire_spindecay (plasma_spin_lock_t * const spin,
@@ -280,6 +332,9 @@ plasma_spin_lock_acquire_spindecay (plasma_spin_lock_t * const spin,
  * http://software.intel.com/en-us/articles/implementing-scalable-atomic-locks-for-multi-core-intel-em64t-and-ia32-architectures/
  * http://stackoverflow.com/questions/11923151/is-there-any-simple-way-to-improve-performance-of-this-spinlock-function
  * http://stackoverflow.com/questions/11959374/fastest-inline-assembly-spinlock
+ * http://locklessinc.com/articles/priority_locks/
+ * http://locklessinc.com/articles/locks/
+ * http://www.embedded.com/electronics-blogs/beginner-s-corner/4023947/Introduction-to-Priority-Inversion
  *
  * http://www.1024cores.net/home/lock-free-algorithms/tricks/spinning
  *   "On Linux passive spinning is implemented with pthread_yield(), or nanosleep() for "deeper" spin."  [Ed: pthread_yield() not portable; sched_yield() is]
@@ -302,4 +357,7 @@ http://cbloomrants.blogspot.com/2010/09/09-12-10-defficiency-of-windows-multi.ht
  * timeBeginPeriod(1)  (set default system quantum to 1ms instead of 10-15ms)
  * http://msdn.microsoft.com/en-us/library/windows/desktop/dd757624%28v=vs.85%29.aspx
  * http://cbloomrants.blogspot.com/2010/09/09-12-10-defficiency-of-windows-multi.html
+ *
+ * Apple OSAtomic.h Reference
+ * https://developer.apple.com/library/mac/#documentation/System/Reference/OSAtomic_header_reference/Reference/reference.html#//apple_ref/doc/uid/TP40011482
  */

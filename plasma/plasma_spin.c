@@ -24,6 +24,7 @@
 
 #include "plasma_spin.h"
 
+#ifndef plasma_spin_lock_acquire_spinloop
 bool
 plasma_spin_lock_acquire_spinloop (plasma_spin_lock_t * const spin)
 {
@@ -35,12 +36,14 @@ plasma_spin_lock_acquire_spinloop (plasma_spin_lock_t * const spin)
     } while (!plasma_atomic_lock_acquire(lck)); /*(includes barrier)*/
     return true;
 }
+#endif
 
 bool
 plasma_spin_lock_acquire_spindecay (plasma_spin_lock_t * const spin,
                                     int pause, int pause32, int yield)
 {
-    uint32_t * const lck = &spin->lck;
+    /* ((uint32_t *) cast also works for Apple OSSpinLock, which is int32_t) */
+    uint32_t * const lck = (uint32_t *)&spin->lck;
     do {
         while (*(volatile uint32_t *)lck) {
             if (pause) {
