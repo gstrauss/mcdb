@@ -974,6 +974,15 @@ extern "C" {
  * statement might result in a compiler warning for an empty statement.  One
  * workaround (employed within) is to expand the macro to 'do { } while (0)'
  * which avoids the compiler warning and will be optimized away by the compiler.
+ * More insidious, if the macro which expands to multiple statements is used in
+ * an if-else that does not use brackets (if { } else { }), then the behavior of
+ * the program might change silently.  'if (x) foo();' with foo() expanding to
+ * xyx(); abc() becomes the following, and abc() gets executed unconditionally:
+ *   if (x)
+ *     xyx();
+ *   abc();
+ * Wrapping multiple statements in macro expansion in do { } while (0) protects
+ * against such unwanted behavior.
  *
  * A note about optimizing barriers for current hardware: if a binary is created
  * on an architecture that has implemented relatively strong memory ordering
