@@ -358,5 +358,6 @@ bool
 nss_mcdb_refresh_check(const enum nss_dbtype dbtype)
 {
     return (0 <= (int)dbtype && dbtype < NSS_DBTYPE_SENTINEL)
-        && mcdb_mmap_refresh_check_h(&_nss_mcdb_mmap_st[dbtype]);
+        && _nss_mcdb_mmap[dbtype] != NULL
+        && mcdb_mmap_refresh_check_h(_nss_mcdb_mmap[dbtype]);
 }
