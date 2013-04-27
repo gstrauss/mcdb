@@ -73,13 +73,9 @@
 #include <stdint.h>    /* SIZE_MAX */
 
 #ifdef _THREAD_SAFE
-#include <pthread.h>       /* pthread_mutex_t, pthread_mutex_{lock,unlock}() */
-static pthread_mutex_t mcdb_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 #include "plasma/plasma_spin.h" /* plasma_spin_lock_t, plasma_spin_lock_*() */
 static plasma_spin_lock_t mcdb_global_spinlock = PLASMA_SPIN_LOCK_INITIALIZER;
 #else
-#define pthread_mutex_lock(mutexp) 0
-#define pthread_mutex_unlock(mutexp) (void)0
 #define plasma_spin_lock_acquire(spin) (void)0
 #define plasma_spin_lock_release(spin) (void)0
 #endif
@@ -377,7 +373,8 @@ mcdb_mmap_free(struct mcdb_mmap * const restrict map)
             map->fn_free(map->fname);
             map->fname = NULL;
         }
-        map->fn_free(map);
+        if (!map->allocated)
+            map->fn_free(map);
     }
 }
 
@@ -445,7 +442,7 @@ mcdb_mmap_refresh_check(const struct mcdb_mmap * const restrict map)
  *
  *   maintenance thread: mcdb_mmap_refresh_threadsafe(&map) (periodic/triggered)
  *   querying threads:   mcdb_thread_register(m)
- *   querying threads:   mcdb_find(m,key,klen)          (repeat for may lookups)
+ *   querying threads:   mcdb_find(m,key,klen)         (repeat for many lookups)
  *   querying threads:   mcdb_thread_unregister(m)
  *
  *   maintenance thread: mcdb_mmap_destroy(map)
@@ -463,7 +460,10 @@ mcdb_mmap_refresh_check(const struct mcdb_mmap * const restrict map)
  *
  * Note: use return value from mcdb_mmap_create().  If an error occurs during
  * mcdb_mmap_create(), fn_free(map) is called, whether or not map or NULL was
- * passed as first argument to mcdb_mmap_create().
+ * passed as first argument to mcdb_mmap_create().  If non-NULL map is passed
+ * in to mcdb_mmap_create(), then it is -not- free'd by mcdb_mmap_destroy(),
+ * though internal allocations and resources are free'd.  If NULL map is passed
+ * in, then it is free'd with mcdb_mmap_destroy() since mcdb allocated the map.
  */
 __attribute_noinline__
 struct mcdb_mmap *
@@ -474,6 +474,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
 {
     char *fbuf;
     size_t flen;
+    const int allocated = (map != NULL);
 
     if (fn_malloc == NULL)
         return NULL;
@@ -483,6 +484,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
     memset(map, '\0', sizeof(struct mcdb_mmap));
     map->fn_malloc = fn_malloc;
     map->fn_free   = fn_free;
+    map->allocated = allocated;
     map->dfd       = -1;
     flen           = strlen(fname);
 
@@ -545,10 +547,17 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
     const bool register_use_incr = ((flags & MCDB_REGISTER_USE_INCR) != 0);
     #define register_use_decr (!register_use_incr)
 
-    plasma_spin_lock_acquire(&mcdb_global_spinlock);
+    /* use file-scoped global spinlock to protect scan of multiple mcdb_mmap's
+     * (care has been taken to avoid blocking operations while holding lock) */
+
+    if (__builtin_expect( (!(flags & MCDB_REGISTER_ALREADY_LOCKED)), 1))
+        (void) plasma_spin_lock_acquire(&mcdb_global_spinlock);
+    plasma_membar_ccfence();
 
     map = *mapptr;
-    if (map == NULL || (map->ptr == NULL && register_use_incr)) {
+
+    if (__builtin_expect( (map == NULL), 0)
+        || (__builtin_expect( (map->ptr == NULL), 0) && register_use_incr)) {
         plasma_spin_lock_release(&mcdb_global_spinlock);
         /* succeed if unregister; fail if register */ /*(NULL is failure)*/
         return (struct mcdb_mmap *)(uintptr_t)(!register_use_incr);
@@ -570,33 +579,31 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
     }
 
     if ((register_use_decr || next != NULL) && --map->refcnt == 0) {
-        /* (above handles refcnt decremented to zero and refcnt already zero) */
-        while ((next = map->next) != NULL && next->refcnt == 0) {
+        while ((next = map->next) != NULL && (next->refcnt & ~0x40000000) == 0){
             map->next = next->next;
             next->next = unmap;
             (unmap = next)->fname = NULL;   /* do not free(next->fname) yet */
         }
-        if (!(flags & MCDB_REGISTER_MUNMAP_SKIP)) {
-            map->next = unmap;
-            (unmap = map)->fname = NULL;    /* do not free(map->fname) yet */
-            if (register_use_decr)
-                *mapptr = NULL;
-            /*(map will be free'd but map value still not NULL for return val)*/
-        }
+        if (next != NULL)
+            next->refcnt &= ~0x40000000;    /* unmark; now oldest map in chain*/
+        map->next = unmap;
+        (unmap = map)->fname = NULL;        /* do not free(map->fname) yet */
+        if (register_use_decr)
+            *mapptr = NULL;
+        /*(map will be free'd but map value still not NULL for return val)*/
     }
     #undef register_use_decr
 
     plasma_spin_lock_release(&mcdb_global_spinlock);
 
-    /* release unused maps after releasing mutex to minimize time holding lock
-     * (although if flags indicate to hold mutex, then it will still be held) */
+    /* release unused maps after releasing lock to minimize time holding lock */
     next = unmap;
     while (next != NULL) {
         next = (unmap = next)->next;
         mcdb_mmap_free(unmap);
     }
 
-    /* return map on which incr refcnt to avoid race after unlocking mutex */
+    /* return map on which incr refcnt to avoid race after unlocking */
     return map; /*(for decr refcnt, non-NULL is success, even if map free'd)*/
 }
 
@@ -606,39 +613,45 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
 bool  __attribute_noinline__
 mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
 {
-    bool rc = true;
+    struct mcdb_mmap * const map = *mapptr;
+    struct mcdb_mmap *next;
+    bool rc;
 
-    if (pthread_mutex_lock(&mcdb_global_mutex) != 0)
+    /* use high bit of refcnt to guard that one thread attempts reopen
+     * (must lock since others modify refcnt while holding same spinlock) */
+    (void) plasma_spin_lock_acquire(&mcdb_global_spinlock);
+    if (map->next != NULL)
+        return                              /* registration releases spinlock */
+          mcdb_mmap_thread_registration_h(mapptr, MCDB_REGISTER_USE_INCR
+                                                 |MCDB_REGISTER_ALREADY_LOCKED);
+    if ((rc = (map->refcnt < 0x80000000u))) /*(0!=(map->refcnt & 0x80000000u))*/
+        map->refcnt |= 0x80000000u;
+    plasma_spin_lock_release(&mcdb_global_spinlock);
+    if (!rc)
+        return true; /*other threads return, even though mcdb not reopened yet*/
+
+    if (__builtin_expect( (map->fn_malloc == NULL), 0)
+        || (next = map->fn_malloc(sizeof(struct mcdb_mmap))) == NULL)
+        return false; /*(misconfigured mcdb_mmap or map->fn_malloc failed)*/
+
+    memcpy(next, map, sizeof(struct mcdb_mmap));
+    next->ptr = NULL; /*(skip munmap() in mcdb_mmap_reopen())*/
+    if (map->fname == map->fnamebuf)
+        next->fname = next->fnamebuf;
+    rc = mcdb_mmap_reopen(next);
+    if (__builtin_expect((!rc), 0)) {
+        map->fn_free(next);
         return false;
-
-    if ((*mapptr)->next == NULL) {
-        const struct mcdb_mmap * const map = *mapptr;
-        struct mcdb_mmap *next;
-        if (map->fn_malloc != NULL  /*(else caller misconfigured mcdb_mmap)*/
-            && (next = map->fn_malloc(sizeof(struct mcdb_mmap))) != NULL) {
-            memcpy(next, map, sizeof(struct mcdb_mmap));
-            next->ptr = NULL;       /*(skip munmap() in mcdb_mmap_reopen())*/
-            if (map->fname == map->fnamebuf)
-                next->fname = next->fnamebuf;
-            if ((rc = mcdb_mmap_reopen(next))) {
-                next->hash_init = (*mapptr)->hash_init;
-                next->hash_fn   = (*mapptr)->hash_fn;
-                plasma_membar_StoreStore();
-                (*mapptr)->next = next;
-            }
-            else
-                map->fn_free(next);
-        }
-        else
-            rc = false; /* map->fn_malloc failed */
     }
-    /* else rc = true;  (map->next already updated e.g. while obtaining lock) */
-
-    if (rc)
-        rc = mcdb_mmap_thread_registration_h(mapptr, MCDB_REGISTER_USE_INCR);
-
-    pthread_mutex_unlock(&mcdb_global_mutex);
-    return rc;
+    next->hash_init = map->hash_init;
+    next->hash_fn   = map->hash_fn;
+    next->refcnt   |= 0x40000000u;    /* flag to indicate not oldest in chain */
+    plasma_membar_StoreStore();
+    map->next       = next;
+    (void) plasma_spin_lock_acquire(&mcdb_global_spinlock);
+    map->refcnt    &= ~0x80000000u;         /* registration releases spinlock */
+    return mcdb_mmap_thread_registration_h(mapptr,MCDB_REGISTER_USE_INCR
+                                                 |MCDB_REGISTER_ALREADY_LOCKED);
 }
 
 

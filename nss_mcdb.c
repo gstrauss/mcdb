@@ -110,19 +110,6 @@ static void _nss_mcdb_atexit(void)
 }
 #endif
 
-/* custom free for mcdb_mmap_* routines to not free initial static storage */
-static void
-_nss_mcdb_mmap_fn_free(void * const v)
-{
-    /* do not free initial static storage */
-    if (   v >=(void *)&_nss_mcdb_mmap_st[0]
-        && v < (void *)&_nss_mcdb_mmap_st[_nss_num_dbs]  )
-        return;
-
-    /* otherwise free() allocated memory */
-    free(v);
-}
-
 static bool  __attribute_noinline__
 _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
   __attribute_cold__  __attribute_warn_unused_result__;
@@ -151,9 +138,10 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
     /* pass full path in fname instead of separate dirname and basename
      * (not using openat(), fstatat() where someone might close dfd on us)
      * use static storage for initial struct mcdb_mmap for each dbtype
-     * and therefore pass custom _nss_mcdb_mmap_fn_free() to not free statics */
+     * to avoid malloc allocation in short-lived programs, and to maintain
+     * a reference to maps to keep them available. */
     if ((rc = (NULL != mcdb_mmap_create_h(map, NULL, _nss_dbnames[dbtype],
-                                          malloc, _nss_mcdb_mmap_fn_free)))) {
+                                          malloc, free)))) {
         plasma_membar_StoreStore();
         _nss_mcdb_mmap[dbtype] = map;
     }
@@ -172,17 +160,15 @@ _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
 static bool _nss_mcdb_stayopen = true;
 
 /* release shared mcdb_mmap */
-#define _nss_mcdb_db_relshared(map,flags) \
-  mcdb_mmap_thread_registration_h(&(map),(flags))
+#define _nss_mcdb_db_relshared(map) \
+  mcdb_mmap_thread_registration_h(&(map), MCDB_REGISTER_USE_DECR)
 
 /* get shared mcdb_mmap */
-static struct mcdb_mmap *  __attribute_regparm__((2))
-_nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
-                       const int mcdb_flags)
+static struct mcdb_mmap *  __attribute_regparm__((1))
+_nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
   __attribute_warn_unused_result__;
-static struct mcdb_mmap *  __attribute_regparm__((2))
-_nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
-                       const int mcdb_flags)
+static struct mcdb_mmap *  __attribute_regparm__((1))
+_nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
 {
     /* reuse set*ent(),get*ent(),end*end() session if open in current thread */
     if (_nss_mcdb_st[dbtype].map != NULL)
@@ -211,7 +197,8 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype,
     else if (!_nss_mcdb_db_openshared(dbtype))
         return NULL;
 
-    return mcdb_mmap_thread_registration_h(&_nss_mcdb_mmap[dbtype], mcdb_flags);
+    return mcdb_mmap_thread_registration_h(&_nss_mcdb_mmap[dbtype],
+                                           MCDB_REGISTER_USE_INCR);
     /* (fails only if obtaining mutex fails, i.e. EAGAIN; should not happen) */
 }
 
@@ -220,9 +207,7 @@ nss_mcdb_setent(const enum nss_dbtype dbtype,
                 const int stayopen  __attribute_unused__)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
-    const int mcdb_flags = MCDB_REGISTER_USE_INCR;
-    if (m->map != NULL
-        || (m->map = _nss_mcdb_db_getshared(dbtype, mcdb_flags)) != NULL) {
+    if (m->map != NULL || (m->map = _nss_mcdb_db_getshared(dbtype)) != NULL) {
         m->hpos = (uintptr_t)(m->map->ptr + MCDB_HEADER_SZ);
         return NSS_STATUS_SUCCESS;
     }
@@ -234,9 +219,8 @@ nss_mcdb_endent(const enum nss_dbtype dbtype)
 {
     struct mcdb * const restrict m = &_nss_mcdb_st[dbtype];
     struct mcdb_mmap *map = m->map;
-    const int mcdb_flags = MCDB_REGISTER_USE_DECR | MCDB_REGISTER_MUNMAP_SKIP;
-    m->map = NULL;  /* set thread-local ptr NULL even though munmap skipped */
-    return (map == NULL || _nss_mcdb_db_relshared(map, mcdb_flags))
+    m->map = NULL;  /* set thread-local ptr NULL */
+    return (map == NULL || _nss_mcdb_db_relshared(map))
       ? NSS_STATUS_SUCCESS
       : NSS_STATUS_UNAVAIL; /* (fails if obtaining mutex fails, i.e. EAGAIN) */
 }
@@ -318,7 +302,7 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
     struct mcdb m;
     nss_status_t status;
 
-    m.map = _nss_mcdb_db_getshared(dbtype, MCDB_REGISTER_USE_INCR);
+    m.map = _nss_mcdb_db_getshared(dbtype);
     if (__builtin_expect(m.map == NULL, false)) {
         *v->errnop = errno;
         return NSS_STATUS_UNAVAIL;
@@ -334,8 +318,7 @@ nss_mcdb_get_generic(const enum nss_dbtype dbtype,
 
     /* set*ent(),get*ent(),end*end() session not open/reused in current thread*/
     if (_nss_mcdb_st[dbtype].map == NULL)
-        _nss_mcdb_db_relshared(m.map, MCDB_REGISTER_USE_DECR
-                                     |MCDB_REGISTER_MUNMAP_SKIP);
+        _nss_mcdb_db_relshared(m.map);
 
     return status;
 }

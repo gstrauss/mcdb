@@ -87,11 +87,16 @@ struct mcdb_mmap {
   struct mcdb_mmap *next;     /* updated (new) mcdb_mmap */
   void * (*fn_malloc)(size_t);/* fn ptr to malloc() */
   void (*fn_free)(void *);    /* fn ptr to free() */
-  uint32_t refcnt;            /* registered access reference count */
-  int dfd;                    /* fd open to dir in which mmap file resides */
   char *fname;                /* basename of mmap file, relative to dir fd */
-  char fnamebuf[64];          /* buffer in which to store short fname */
+  char fnamebuf[112];         /* buffer in which to store short fname */
+  int allocated;              /* flag if struct allocated in mcdb_mmap_create */
+  int dfd;                    /* fd open to dir in which mmap file resides */
+  uint32_t refcnt;            /* registered access reference count */
 };
+/* aside: char fnamebuf[] sized to separate 'next' and 'refcnt' by 128 bytes
+ * (L2 cache lines on modern hardware are 64-bytes and 128-bytes)
+ * (32-bit pointers are 4-byte; 64-bit pointers are 8-byte)
+ * (separate cache lines for high-frequency read-only data and modified data) */
 
 struct mcdb {
   struct mcdb_mmap *map;
@@ -211,7 +216,7 @@ mcdb_mmap_refresh_check(const struct mcdb_mmap * restrict)
 enum mcdb_flags {
   MCDB_REGISTER_USE_DECR = 0,
   MCDB_REGISTER_USE_INCR = 1,
-  MCDB_REGISTER_MUNMAP_SKIP = 2
+  MCDB_REGISTER_ALREADY_LOCKED = 2
 };
 
 extern struct mcdb_mmap *
