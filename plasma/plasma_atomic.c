@@ -40,6 +40,10 @@
  * (need to -duplicate- definition from header for non-C99-compliant compilers)
  */
 #if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
+#ifdef __clang__
+#undef  __attribute_regparm__
+#define __attribute_regparm__(x)
+#endif
 __attribute_regparm__((3))
 extern inline
 bool
@@ -86,6 +90,16 @@ __attribute_regparm__((1))
 bool
 plasma_atomic_lock_acquire (uint32_t * const ptr);
 
+#endif
+
+#ifdef __clang__
+const void * const plasma_atomic_c_force_func_emit[] = {
+  (void *)plasma_atomic_CAS_ptr,
+  (void *)plasma_atomic_CAS_64,
+  (void *)plasma_atomic_CAS_32,
+  (void *)plasma_atomic_lock_release,
+  (void *)plasma_atomic_lock_acquire
+};
 #endif
 
 
