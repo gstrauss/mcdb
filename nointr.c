@@ -67,3 +67,14 @@ int nointr_openat(int, const char * restrict, int, mode_t);
 #endif
 
 #endif
+
+#ifdef __clang__
+const void * const nointr_c_force_func_emit[] = {
+  (void *)nointr_dup,
+  (void *)nointr_open,
+  (void *)nointr_close,
+  (void *)nointr_ftruncate,
+  (void *)nointr_write,
+  (void *)nointr_openat
+};
+#endif

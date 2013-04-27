@@ -71,6 +71,21 @@ uint16_t uint16_from_ascii4uphex(const char * restrict);
 uint16_t uint16_from_ascii4uphex(const char * restrict);
 #endif
 
+#ifdef __clang__
+const void * const uint32_c_force_func_emit[] = {
+  (void *)uint32_strunpack,
+  (void *)uint32_strunpack_bigendian,
+  (void *)uint32_strpack,
+  (void *)uint32_strpack_bigendian,
+  (void *)uint32_hash_djb,
+  (void *)uint32_hash_identity,
+  (void *)uint32_to_ascii8uphex,
+  (void *)uint16_to_ascii4uphex,
+  (void *)uint32_from_ascii8uphex,
+  (void *)uint16_from_ascii4uphex
+};
+#endif
+
 
 /* convert string of 8 ASCII hex chars to unsigned 32-bit value
  * (used to convert architecture-independent string data to numerical data)
