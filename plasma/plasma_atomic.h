@@ -232,6 +232,7 @@
 
 
 #if defined(__ia64__) || defined(_M_IA64)
+
   /* Itanium can extend ld and st instructions with .acq and .rel modifiers */
   #if (defined(__HP_cc__) || defined(__HP_aCC__))
     /* _Asm_st_volatile has 'release' semantics on Itanium
@@ -244,11 +245,11 @@
     /* Itanium volatile variables have implicit ld.acq and st.rel semantics */
     #define plasma_atomic_st_64_release_impl(ptr,newval) \
             do { plasma_membar_ccfence(); \
-                 *((volatile int * restrict)(ptr)) = (newval); \
+                 *((volatile int64_t * restrict)(ptr)) = (int64_t)(newval); \
             } while (0)
     #define plasma_atomic_st_32_release_impl(ptr,newval) \
             do { plasma_membar_ccfence(); \
-                 *((volatile int * restrict)(ptr)) = (newval); \
+                 *((volatile int32_t * restrict)(ptr)) = (int32_t)(newval); \
             } while (0)
   #endif
   #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
@@ -272,6 +273,13 @@
           } while (0)
 
 #endif
+
+#define plasma_atomic_st_ptr_release(ptr,newval) \
+        plasma_atomic_st_ptr_release_impl((ptr),(newval))
+#define plasma_atomic_st_64_release(ptr,newval) \
+        plasma_atomic_st_64_release_impl((ptr),(newval))
+#define plasma_atomic_st_32_release(ptr,newval) \
+        plasma_atomic_st_32_release_impl((ptr),(newval))
 
 
 #if defined (_MSC_VER)
@@ -473,7 +481,7 @@ __attribute_regparm__((1))
 void  C99INLINE
 plasma_atomic_lock_release (uint32_t * const ptr)
 {
-    plasma_atomic_st_32_release_impl(ptr, 0);
+    plasma_atomic_st_32_release(ptr, 0);
 }
 #endif
 
