@@ -163,6 +163,10 @@
     #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
             __compare_and_swap((ptr),&(cmpval),(newval))
             /* !__check_lock_mp((ptr),(cmpval),(newval)) */
+    #define plasma_atomic_xchg_64_impl(ptr, newval) \
+            __fetch_and_swaplp((ptr),(newval))
+    #define plasma_atomic_xchg_32_impl(ptr, newval) \
+            __fetch_and_swap((ptr),(newval))
   #else
     #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
             compare_and_swaplp((ptr),&(cmpval),(newval))
@@ -553,6 +557,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
  * (xlC might add full memory barriers for __sync_bool_compare_and_swap())
  * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlcpp121.aix.doc%2Fcompiler_ref%2Fbif_gcc_atomic_bool_comp_swap.html
  * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlcpp121.aix.doc%2Fcompiler_ref%2Fbifs_sync_atomic.html
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlc121.aix.doc%2Fcompiler_ref%2Fbif_fetch_and_swap_fetch_and_swaplp.html
  *
  * HP-UX on Itanium
  * Implementing Spinlocks on the Intel (R) Itanium (R) Architecture and PA-RISC
