@@ -82,7 +82,12 @@
 #elif defined(__ia64__)
 
   /* http://www.intel.com/content/www/us/en/processors/itanium/itanium-architecture-vol-3-manual.html  volume 3 page 145 (3:145) */
-  #define plasma_spin_pause()  __asm__ __volatile__ ("hint @pause":::"memory")
+  #if (defined(__HP_cc__) || defined(__HP_aCC__))
+    #define plasma_spin_pause()  _Asm_hint(_HINT_PAUSE)
+  #else
+    #define plasma_spin_pause()  __asm__ __volatile__ ("hint @pause":::"memory")
+  #endif
+
 
 #elif defined(__arm__)
 
