@@ -78,6 +78,11 @@
  * NB: Note: 64-bit ops might not be available when code is compiled 32-bits.
  *     (depends on the platform and compiler intrinsic support)
  *
+ * NB: in contrast to C11 pattern where atomic_xxx() implies sequential
+ *     consistency and atomic_xxx_explicit() specifies memory_order,
+ *     plasma_atomic_xxx_T(), where T is type, implies memory_order_relaxed
+ *     (i.e. no barrier), and plasma_atomic_xxx_T_mmm species memory_order.
+ *
  * FUTURE: Detect and employ C11 atomics where available
  * FUTURE: Current plasma_atomic implementation is done w/ compiler intrinsics.
  *         Intrinsics might provide stronger (slower) memory barriers than
@@ -103,11 +108,11 @@
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           (_InterlockedCompareExchange((ptr),(newval),(cmpval)) == (cmpval))
   #define plasma_atomic_xchg_ptr_impl(ptr, newval) \
-          (_InterlockedExchangePointer((ptr),(newval)))
+          _InterlockedExchangePointer((ptr),(newval))
   #define plasma_atomic_xchg_64_impl(ptr, newval) \
-          (_InterlockedExchange64((ptr),(newval)))
+          _InterlockedExchange64((ptr),(newval))
   #define plasma_atomic_xchg_32_impl(ptr, newval) \
-          (_InterlockedExchange((ptr),(newval)))
+          _InterlockedExchange((ptr),(newval))
 
 #elif defined(__APPLE__)
 
@@ -231,6 +236,12 @@
  * (each macro is not necessarily defined for each platforms) */
 
 
+/*
+ * plasma_atomic_st_ptr_release - atomic pointer store with release semantics
+ * plasma_atomic_st_64_release  - atomic uint64_t store with release semantics
+ * plasma_atomic_st_32_release  - atomic uint32_t store with release semantics
+ */
+
 #if defined(__ia64__) || defined(_M_IA64)
 
   /* Itanium can extend ld and st instructions with .acq and .rel modifiers */
@@ -289,19 +300,19 @@
     #pragma intrinsic(_InterlockedExchange64_acq)
     #pragma intrinsic(_InterlockedExchangePointer_acq)
     #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
-            (_InterlockedExchangePointer_acq((ptr),(newval)))
+            _InterlockedExchangePointer_acq((ptr),(newval))
     #define plasma_atomic_xchg_64_acquire_impl(ptr, newval) \
-            (_InterlockedExchange64_acq((ptr),(newval)))
+            _InterlockedExchange64_acq((ptr),(newval))
     #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
-            (_InterlockedExchange_acq((ptr),(newval)))
+            _InterlockedExchange_acq((ptr),(newval))
   #elif defined(_M_AMD64) || defined(_M_IX86)
     /* (LOCK implied on xchg on x86 and results in full memory barrier) */
     #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
-            (_InterlockedExchangePointer((ptr),(newval)))
+            _InterlockedExchangePointer((ptr),(newval))
     #define plasma_atomic_xchg_64_acquire_impl(ptr, newval) \
-            (_InterlockedExchange64((ptr),(newval)))
+            _InterlockedExchange64((ptr),(newval))
     #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
-            (_InterlockedExchange((ptr),(newval)))
+            _InterlockedExchange((ptr),(newval))
   #endif
 
 #elif defined(__sun)
