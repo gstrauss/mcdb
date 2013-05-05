@@ -90,7 +90,35 @@ __attribute_regparm__((1))
 bool
 plasma_atomic_lock_acquire (uint32_t * const ptr);
 
-#endif
+#ifdef plasma_atomic_fetch_add_u64_implreturn
+
+__attribute_regparm__((2))
+extern inline
+void *
+plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval);
+__attribute_regparm__((2))
+void *
+plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval);
+
+__attribute_regparm__((2))
+extern inline
+uint64_t
+plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval);
+__attribute_regparm__((2))
+uint64_t
+plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval);
+
+__attribute_regparm__((2))
+extern inline
+uint32_t
+plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval);
+__attribute_regparm__((2))
+uint32_t
+plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval);
+
+#endif /* plasma_atomic_fetch_add_u64_implreturn */
+
+#endif /* !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) */
 
 #ifdef __clang__
 const void * const plasma_atomic_c_force_func_emit[] = {
@@ -99,6 +127,11 @@ const void * const plasma_atomic_c_force_func_emit[] = {
   (void *)plasma_atomic_CAS_32,
   (void *)plasma_atomic_lock_release,
   (void *)plasma_atomic_lock_acquire
+ #ifdef plasma_atomic_fetch_add_u64_implreturn
+  ,(void *)plasma_atomic_fetch_add_ptr
+  ,(void *)plasma_atomic_fetch_add_u64
+  ,(void *)plasma_atomic_fetch_add_u32
+ #endif
 };
 #endif
 

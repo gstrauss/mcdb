@@ -534,6 +534,184 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
 #endif
 
 
+/*
+ * plasma_atomic_fetch_add_ptr - atomic pointer  fetch and add
+ * plasma_atomic_fetch_add_u64 - atomic uint64_t fetch and add
+ * plasma_atomic_fetch_add_u32 - atomic uint32_t fetch and add
+ */
+
+#if defined (_MSC_VER)
+
+  /* NB: untested with signed types; might not wrap around at INT_MAX, INT_MIN
+   * (Microsoft provides prototypes that take signed values)
+   * (result might need to be cast back to original type)
+   * (MS Windows is LLP64 ABI, so 'long' is 32-bits even when compiler 64-bit)*/
+  #pragma intrinsic(_InterlockedExchangeAdd)
+  #pragma intrinsic(_InterlockedExchangeAdd64)
+  #define plasma_atomic_fetch_add_u64_impl(ptr, addval) \
+          _InterlockedExchangeAdd64((__int64 *)(ptr),(__int64)(addval))
+  #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
+          _InterlockedExchangeAdd((long *)(ptr),(long)(addval))
+
+#elif defined(__sun)
+
+  #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
+          atomic_add_ptr((ptr),(ssize_t)(addval))
+  #define plasma_atomic_fetch_add_u64_impl(ptr,addval) \
+          atomic_add_64((uint64_t *)(ptr),(int64_t)(addval))
+  #define plasma_atomic_fetch_add_u32_impl(ptr,addval) \
+          atomic_add_32((uint32_t *)(ptr),(int32_t)(addval))
+
+#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+
+  #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
+          __sync_fetch_and_add((ptr),(addval))
+  #define plasma_atomic_fetch_add_u64_impl(ptr,addval) \
+          __sync_fetch_and_add((ptr),(addval))
+  #define plasma_atomic_fetch_add_u32_impl(ptr,addval) \
+          __sync_fetch_and_add((ptr),(addval))
+
+#elif defined(__APPLE__)
+
+  /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
+   * NB: untested with signed types; might not wrap around at INT_MAX, INT_MIN
+   * (Apple provides prototypes that take signed values)
+   * (result might need to be cast back to original type)
+   * NB: subtract addval from result in order to return the original value;
+   *     OSAtomicAdd*() returns the resulting value, not the original value */
+  #define plasma_atomic_fetch_add_u64_impl(ptr, addval) \
+          (OSAtomicAdd64((int64_t)(addval),(int64_t *)(ptr))-(int64_t)(addval))
+  #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
+          (OSAtomicAdd32((int32_t)(addval),(int32_t *)(ptr))-(int32_t)(addval))
+
+#elif defined(__ia64__) \
+   && (defined(__HP_cc__) || defined(__HP_aCC__))
+
+  /* NB: _Asm_fetchadd supports only -16, -8, -4, -1, 1, 4, 8, 16 !!!
+   *                   and must be an immediate value, not a variable.
+   *     If HP compiler supported something akin to GNU __builtin_constant_p(),
+   *     then a macro could expand and check if addval is constant and legal,
+   *     or else could fallback to call a routine which implemented the atomic
+   *     add via compare and swap.  ** Not implemented here **
+   *     Alternatives: implement in Itanium assembly or always use a CAS impl
+   *     (possibly by holding a spinlock around the desired operation)
+   * _Asm_fetchadd supports optional _Asm_fence arg for .acq or .rel modifiers
+   *   (not used here) */
+  #define plasma_atomic_fetch_add_u64_impl(ptr, addval) \
+          _Asm_fetchadd(_FASZ_D,_SEM_REL,(ptr),(addval),_LDHINT_NONE)
+  #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
+          _Asm_fetchadd(_FASZ_W,_SEM_REL,(ptr),(addval),_LDHINT_NONE)
+  /* FUTURE: if creating _acquire versions of these macros for use in locks
+   * instead of xchg or CAS, _Asm_sem should be _SEM_ACQ instead of _SEM_REL and
+   * additional (optional) _Asm_fence argument might be needed to cause the .acq
+   * assembly instruction modifier to be emitted. */
+
+#elif (defined(__ppc__)   || defined(_ARCH_PPC)  || \
+       defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)) \
+   && (defined(__IBMC__) || defined(__IBMCPP__))
+
+  /* use xlC load-linked/store-conditional intrinsics to build atomic ops
+   * (xlC v12 supports GNUC-style __sync_fetch_and_add(), not earlier vers) */
+
+  /* __ldarx() is only valid in 64-bit mode according to IBM docs, so the cast
+   * to (long *) is valid.  If this macro is used in code compiled 32-bit, then
+   * the cast will truncate the values.  Eliminate cast if valid in 32-bits. */
+  #define plasma_atomic_fetch_add_u64_implreturn(ptr, addval)             \
+    do {                                                                  \
+        register uint64_t plasma_atomic_tmp;                              \
+        do { plasma_atomic_tmp = (uint64_t)__ldarx((long *)(ptr))         \
+        } while (__builtin_expect(                                        \
+                   !(__stdcx((long *)(ptr),                               \
+                             (long)(plasma_atomic_tmp + (addval)))), 0)); \
+        return plasma_atomic_tmp;                                         \
+    } while (0)
+
+  #define plasma_atomic_fetch_add_u32_implreturn(ptr, addval)             \
+    do {                                                                  \
+        register uint32_t plasma_atomic_tmp;                              \
+        do { plasma_atomic_tmp = (uint32_t)__lwarx((int *)(ptr))          \
+        } while (__builtin_expect(                                        \
+                   !(__stdcx((int *)(ptr),                                \
+                             (int)(plasma_atomic_tmp + (addval)))), 0));  \
+        return plasma_atomic_tmp;                                         \
+    } while (0)
+
+#endif
+
+#ifndef plasma_atomic_fetch_add_ptr_impl
+  /*(64-bit Windows is LLP64, not LP64 ABI, so different macro for 64-bit ptr)*/
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
+    #ifdef  plasma_atomic_fetch_add_u64_impl
+    #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
+            plasma_atomic_fetch_add_u64_impl((ptr),(addval))
+    #endif
+  #else
+    #ifdef  plasma_atomic_fetch_add_u32_impl
+    #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
+            plasma_atomic_fetch_add_u32_impl((ptr),(addval))
+    #endif
+  #endif
+#endif
+
+/* FUTURE: might make into inline function for consistent return type casting
+ * and to avoid potential multiple evaluation of macro arguments */
+#ifndef plasma_atomic_fetch_add_u64_implreturn
+
+  #define plasma_atomic_fetch_add_ptr(ptr,addval) \
+          plasma_atomic_fetch_add_ptr_impl((ptr),(addval))
+  #define plasma_atomic_fetch_add_u64(ptr,addval) \
+          plasma_atomic_fetch_add_u64_impl((ptr),(addval))
+  #define plasma_atomic_fetch_add_u32(ptr,addval) \
+          plasma_atomic_fetch_add_u32_impl((ptr),(addval))
+
+#else  /* defined(plasma_atomic_fetch_add_u64_implreturn) */
+
+__attribute_regparm__((2))
+void *  C99INLINE
+plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((2))
+void *  C99INLINE
+plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval)
+{
+  #if defined(_LP64) || defined(__LP64__)
+    plasma_atomic_fetch_add_u64_implreturn(ptr, addval);
+  #else
+    plasma_atomic_fetch_add_u32_implreturn(ptr, addval);
+  #endif
+}
+#endif
+
+__attribute_regparm__((2))
+uint64_t  C99INLINE
+plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((2))
+uint64_t  C99INLINE
+plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval)
+{
+    plasma_atomic_fetch_add_u64_implreturn(ptr, addval);
+}
+#endif
+
+__attribute_regparm__((2))
+uint32_t  C99INLINE
+plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((2))
+uint32_t  C99INLINE
+plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
+{
+    plasma_atomic_fetch_add_u32_implreturn(ptr, addval);
+}
+#endif
+
+#endif /* defined(plasma_atomic_fetch_add_u64_implreturn) */
+
+
 #ifdef __cplusplus
 }
 #endif
@@ -554,6 +732,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
  * http://msdn.microsoft.com/en-us/library/1s26w950%28v=vs.90%29.aspx
  * http://msdn.microsoft.com/en-us/library/1b4s3xf5%28v=vs.90%29.aspx
  * http://msdn.microsoft.com/en-us/library/853x471w%28v=VS.90%29.aspx
+ * http://msdn.microsoft.com/en-us/library/191ca0sk%28v=vs.90%29.aspx
  *
  * OSX
  * OSAtomic.h Reference
@@ -564,6 +743,8 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
  * http://docs.oracle.com/cd/E23824_01/html/821-1465/atomic-cas-3c.html
  * atomic_swap (3C)
  * http://docs.oracle.com/cd/E23824_01/html/821-1465/atomic-swap-3c.html
+ * atomic_add (3C)
+ * http://docs.oracle.com/cd/E19253-01/816-5168/6mbb3hr0s/index.html
  *
  * AIX on POWER and xlC
  * Synchronization and atomic built-in functions
@@ -577,6 +758,9 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
  * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlcpp121.aix.doc%2Fcompiler_ref%2Fbif_gcc_atomic_bool_comp_swap.html
  * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlcpp121.aix.doc%2Fcompiler_ref%2Fbifs_sync_atomic.html
  * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlc121.aix.doc%2Fcompiler_ref%2Fbif_fetch_and_swap_fetch_and_swaplp.html
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/topic/com.ibm.xlcpp121.aix.doc/compiler_ref/bifs_sync_load.html
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/topic/com.ibm.xlcpp121.aix.doc/compiler_ref/bifs_sync_store.html
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlc121.aix.doc%2Fcompiler_ref%2Fbif_gcc_atomic_fetch_add.html
  *
  * HP-UX on Itanium
  * Implementing Spinlocks on the Intel (R) Itanium (R) Architecture and PA-RISC
