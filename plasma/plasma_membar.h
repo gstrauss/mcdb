@@ -730,6 +730,7 @@ typedef enum memory_order {
 #define atomic_thread_fence(order)                                            \
   do {                                                                        \
     switch (order) {                                                          \
+      default: /*(bad input; deliver proper behavior with strongest barrier)*/\
       case memory_order_seq_cst: plasma_membar_atomic_thread_fence_seq_cst(); \                                  break;                                       \
       case memory_order_acq_rel: plasma_membar_atomic_thread_fence_acq_rel(); \
                                  break;                                       \
@@ -738,8 +739,7 @@ typedef enum memory_order {
       case memory_order_acquire: plasma_membar_atomic_thread_fence_acquire(); \
                                  break;                                       \
       case memory_order_consume: plasma_membar_atomic_thread_fence_consume(); \
-                                 break;                                       \
-      default: /*case memory_order_relaxed:*/  /* no fence;relaxed */ break;  \
+      case memory_order_relaxed: break;                                       \
     }                                                                         \
   } while (0)
 #endif
