@@ -274,13 +274,13 @@
 #else
 
   #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
-          do { plasma_membar_atomic_thread_fence_release(); *(ptr) = (newval); \
+          do { atomic_thread_fence(memory_order_release); *(ptr) = (newval); \
           } while (0)
   #define plasma_atomic_st_64_release_impl(ptr,newval) \
-          do { plasma_membar_atomic_thread_fence_release(); *(ptr) = (newval); \
+          do { atomic_thread_fence(memory_order_release); *(ptr) = (newval); \
           } while (0)
   #define plasma_atomic_st_32_release_impl(ptr,newval) \
-          do { plasma_membar_atomic_thread_fence_release(); *(ptr) = (newval); \
+          do { atomic_thread_fence(memory_order_release); *(ptr) = (newval); \
           } while (0)
 
 #endif
@@ -520,11 +520,8 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
       #define plasma_atomic_lock_nobarrier(ptr) \
               plasma_atomic_CAS_32((ptr), 0, 1)
     #endif
-    /* (use separate statements; gcc does not handle __asm in comma operator) */
-    /*return (plasma_atomic_lock_nobarrier(ptr)
-     *        && (plasma_membar_atomic_thread_fence_acq_rel(), true));*/
     if (plasma_atomic_lock_nobarrier(ptr)) {
-        plasma_membar_atomic_thread_fence_acq_rel();
+        atomic_thread_fence(memory_order_acq_rel);
         return true;
     }
     return false;

@@ -659,18 +659,22 @@
  * http://en.cppreference.com/w/cpp/atomic/atomic_signal_fence
  */
 
+#define plasma_membar_atomic_thread_fence_consume() plasma_membar_ld_datadep()
+#define plasma_membar_atomic_thread_fence_acquire() plasma_membar_ld_acq()
+#define plasma_membar_atomic_thread_fence_release() plasma_membar_st_rel()
+#define plasma_membar_atomic_thread_fence_acq_rel() plasma_membar_rmw_acq_rel()
+#define plasma_membar_atomic_thread_fence_seq_cst() plasma_membar_seq_cst()
+
 #include "plasma_attr.h"
 
 #ifdef __cplusplus
 #if __cplusplus >= 201103L \
- || (defined(__GNUC__) && __GNUC_PREREQ(4,7)) || __has_extension(cxx_atomic) \
  || HAVE_ATOMIC
  /* XXX: ... add atomic header detection for other C++ compilers ... */
 #include <atomic>
 #endif
 #else
 #if __STDC_VERSION__ >= 201112L \
- || __has_extension(c_atomic) \
  || HAVE_STDATOMIC_H
  /* stdatomic.h does not appear to be provided by gcc-4.7 for C
   *   http://gcc.gnu.org/ml/gcc-help/2011-01/msg00372.html
@@ -689,6 +693,42 @@
 
 #ifndef ATOMIC_VAR_INIT  /* implement C11/C++11 memory order atomic fences */
 
+#ifndef __ATOMIC_RELAXED
+#define __ATOMIC_RELAXED  0
+#endif
+#ifndef __ATOMIC_CONSUME
+#define __ATOMIC_CONSUME  1
+#endif
+#ifndef __ATOMIC_ACQUIRE
+#define __ATOMIC_ACQUIRE  2
+#endif
+#ifndef __ATOMIC_RELEASE
+#define __ATOMIC_RELEASE  3
+#endif
+#ifndef __ATOMIC_ACQ_REL
+#define __ATOMIC_ACQ_REL  4
+#endif
+#ifndef __ATOMIC_SEQ_CST
+#define __ATOMIC_SEQ_CST  5
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum memory_order {
+  memory_order_relaxed = __ATOMIC_RELAXED,
+  memory_order_consume = __ATOMIC_CONSUME,
+  memory_order_acquire = __ATOMIC_ACQUIRE,
+  memory_order_release = __ATOMIC_RELEASE,
+  memory_order_acq_rel = __ATOMIC_ACQ_REL,
+  memory_order_seq_cst = __ATOMIC_SEQ_CST
+} memory_order;
+
+#ifdef __cplusplus
+}
+#endif
+
 #if __has_extension(c_atomic) || __has_extension(cxx_atomic)
 
 /*(same __has_extension() tests as above; will not reach if have atomic hdrs)*/
@@ -696,30 +736,12 @@
 #define atomic_signal_fence(order)  __c11_atomic_signal_fence(order)
 #define atomic_thread_fence(order)  __c11_atomic_thread_fence(order)
 
-#else /* !__has_extension(c_atomic) && ! __has_extension(cxx_atomic) */
+#elif defined(__GNUC__) && __GNUC_PREREQ(4,7)
 
-#define plasma_membar_atomic_thread_fence_consume() plasma_membar_ld_datadep()
-#define plasma_membar_atomic_thread_fence_acquire() plasma_membar_ld_acq()
-#define plasma_membar_atomic_thread_fence_release() plasma_membar_st_rel()
-#define plasma_membar_atomic_thread_fence_acq_rel() plasma_membar_rmw_acq_rel()
-#define plasma_membar_atomic_thread_fence_seq_cst() plasma_membar_seq_cst()
+#define atomic_thread_fence(order)  __atomic_thread_fence(order)
+#define atomic_signal_fence(order)  __atomic_signal_fence(order)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef enum memory_order {
-  memory_order_relaxed = 0,
-  memory_order_consume,
-  memory_order_acquire,
-  memory_order_release,
-  memory_order_acq_rel,
-  memory_order_seq_cst
-} memory_order;
-
-#ifdef __cplusplus
-}
-#endif
+#else
 
 #ifndef atomic_signal_fence
 #define atomic_signal_fence(order) \
@@ -744,7 +766,7 @@ typedef enum memory_order {
   } while (0)
 #endif
 
-#endif /* !__has_extension(c_atomic) && ! __has_extension(cxx_atomic) */
+#endif
 
 #endif /* ATOMIC_VAR_INIT (implement C11/C++11 memory order atomic fences) */
 
