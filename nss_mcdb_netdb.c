@@ -625,15 +625,18 @@ nss_mcdb_netdb_hostent_decode(struct mcdb * const restrict m,
     size_t he_mem_num;
     size_t he_lst_num;
     union { uint32_t u[NSS_HE_HDRSZ>>2]; uint16_t h[NSS_HE_HDRSZ>>1]; } hdr;
-    const uint32_t type = (uint32_t)(((unsigned char *)buf)[0]<<24)
-                                   |(((unsigned char *)buf)[1]<<16)
-                                   |(((unsigned char *)buf)[2]<<8)
-                                   | ((unsigned char *)buf)[3];
+    const uint32_t type = (((uint32_t)((unsigned char *)buf)[0])<<24)
+                         |(((uint32_t)((unsigned char *)buf)[1])<<16)
+                         |(((uint32_t)((unsigned char *)buf)[2])<<8)
+                         |            ((unsigned char *)buf)[3];
 
     /* match type (e.g. AF_INET, AF_INET6), if not zero (AF_UNSPEC) */
     if (type != 0) { /*network byte order; big-endian*/
         const unsigned char *atyp = (unsigned char *)dptr+NSS_H_ADDRTYPE;
-        while (type != ((atyp[0]<<24)|(atyp[1]<<16)|(atyp[2]<<8)|atyp[3])) {
+        while (type != ((((uint32_t)atyp[0])<<24)
+                       |(((uint32_t)atyp[1])<<16)
+                       |(((uint32_t)atyp[2])<<8)
+                       |            atyp[3]  )) {
             if (mcdb_findtagnext_h(m, v->key, v->klen, v->tagc)) {
                 dptr = (char *)mcdb_dataptr(m);
                 atyp = (unsigned char *)dptr+NSS_H_ADDRTYPE;
