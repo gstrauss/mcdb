@@ -260,6 +260,12 @@
  */
 
 
+/* FUTURE: replace with atomic_load_explicit(lck, memory_order_acquire)
+ *         when available portably and ptr is an _Atomic type.
+ *         (might use typeof(ptr) for T if widely supported; not evaluated) */
+#define plasma_spin_load(T,ptr) (*(volatile T)(ptr))
+
+
 #if defined(__APPLE__) \
  && defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
  && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1070   /* OSSpinLock in OSX 10.7 */
