@@ -35,9 +35,15 @@
 
 /* plasma_spin_pause() */
 
+/* The asm memory constraint (:::"memory") is not required for pause, but
+ * if provided acts as a compiler fence to disable compiler optimization,
+ * e.g. in a spin loop where the spin variable is (incorrectly) not a load
+ * of _Atomic with memory_order_acquire, or is not volatile. */
+
 #if defined(_MSC_VER)
 
   /* prefer using intrinsics directly instead of winnt.h macro */
+  /* http://software.intel.com/en-us/forums/topic/296168 */
   #include <intrin.h>
   #if defined(_M_AMD64) || defined(_M_IX86)
   #pragma intrinsic(_mm_pause)
@@ -65,19 +71,24 @@
 
 #elif defined(__x86_64__) || defined(__i386__)
 
-  /* http://software.intel.com/en-us/forums/topic/309231
+  /* http://software.intel.com/sites/products/documentation/studio/composer/en-us/2011Update/compiler_c/intref_cls/common/intref_sse2_pause.htm
+   * http://software.intel.com/sites/default/files/m/2/c/d/3/9/25602-17689_w_spinlock.pdf
+   * http://software.intel.com/en-us/forums/topic/309231
    * http://siyobik.info.gf/main/reference/instruction/PAUSE
    * http://stackoverflow.com/questions/7086220/what-does-rep-nop-mean-in-x86-assembly
    * http://stackoverflow.com/questions/7371869/minimum-time-a-thread-can-pause-in-linux
    */
-  #ifdef __clang__
+  #if defined(__clang__) || defined(__INTEL_COMPILER)
+   /* gcc 4.7 xmmintrin.h defined _mm_pause as rep; nop, which is portable to
+    * chips pre-Pentium 4.  Although opcode generated is the same, we want pause
+    *||(defined(__SSE__) && defined(__GNUC__) && __GNUC_PREREQ(4,7))*/
   #include <xmmintrin.h>
   #define plasma_spin_pause()  _mm_pause()
-  #else  /* !__clang__ */
-  #define plasma_spin_pause()  __asm__ __volatile__ ("pause":::"memory")
+  #else
+  #define plasma_spin_pause()  __asm__ __volatile__ ("pause")
   /* (if pause not supported by older x86 assembler, "rep; nop" is equivalent)*/
-  /*#define plasma_spin_pause()  __asm__ __volatile__ ("rep; nop":::"memory")*/
-  #endif /* !__clang__ */
+  /*#define plasma_spin_pause()  __asm__ __volatile__ ("rep; nop")*/
+  #endif
 
 #elif defined(__ia64__)
 
@@ -85,7 +96,7 @@
   #if (defined(__HP_cc__) || defined(__HP_aCC__))
     #define plasma_spin_pause()  _Asm_hint(_HINT_PAUSE)
   #else
-    #define plasma_spin_pause()  __asm__ __volatile__ ("hint @pause":::"memory")
+    #define plasma_spin_pause()  __asm__ __volatile__ ("hint @pause")
   #endif
 
 
@@ -96,7 +107,7 @@
   #ifdef __CC_ARM
   #define plasma_spin_pause()  __yield()
   #else
-  #define plasma_spin_pause()  __asm__ __volatile__ ("yield":::"memory")
+  #define plasma_spin_pause()  __asm__ __volatile__ ("yield")
   #endif
 
 #elif defined(__sparc) || defined(__sparc__)
@@ -137,7 +148,7 @@
    * optimized for the specific architecture and model could be used */
   #define plasma_spin_pause()  __asm __volatile__ ("rd %%ccr, %%g0 \n\t " \
                                                    "rd %%ccr, %%g0 \n\t " \
-                                                   "rd %%ccr, %%g0":::"memory")
+                                                   "rd %%ccr, %%g0")
 
 #elif defined(__ppc__)   || defined(_ARCH_PPC)  || \
       defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
@@ -149,7 +160,7 @@
    * Also available as function yield() in libc.a (#include <sys/atomic_op.h>)
    * http://pic.dhe.ibm.com/infocenter/aix/v7r1/index.jsp?topic=%2Fcom.ibm.aix.basetechref%2Fdoc%2Fbasetrf2%2Fyield.htm
    */
-  #define plasma_spin_pause()  __asm__ __volatile__ ("yield":::"memory")
+  #define plasma_spin_pause()  __asm__ __volatile__ ("yield")
 
 #else
 
