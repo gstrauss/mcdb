@@ -308,8 +308,26 @@ extern "C" {
 #endif
 #endif
 
+#if defined(__clang__) || defined(INTEL_COMPILER) \
+ ||(defined(__SSE__) && defined(__GNUC__) && __GNUC_PREREQ(4,7))
+#include <xmmintrin.h>
+#else
+enum _mm_hint
+{
+  _MM_HINT_T0 =  3,
+  _MM_HINT_T1 =  2,
+  _MM_HINT_T2 =  1,
+  _MM_HINT_NTA = 0
+};
+#endif
+
 /* GCC __builtin_prefetch() http://gcc.gnu.org/projects/prefetch.html */
 #if !defined(__GNUC__) && !__has_builtin(__builtin_prefetch)
+/* http://software.intel.com/sites/products/documentation/studio/composer/en-us/2011Update/compiler_c/intref_cls/common/intref_sse_cacheability.htm */
+#if defined(__INTEL_COMPILER)
+#define __builtin_prefetch(addr,rw,locality) \
+        _mm_prefetch((addr),(locality))
+#endif
 /* xlC __dcbt() http://publib.boulder.ibm.com/infocenter/comphelp/v111v131/
  * (on Power7, might check locality and use __dcbtt() or __dcbstt())*/
 #if defined(__xlc__) || defined(__xlC__)
@@ -336,13 +354,13 @@ extern "C" {
                                    (locality) == 0 ? _LFHINT_NTA  : \
                                    (locality) == 1 ? _LFHINT_NT2  : \
                                    (locality) == 2 ? _LFHINT_NT1  : \
-                                                     _LFHINT_NONE,  \
+                                 /*(locality) == 3*/ _LFHINT_NONE,  \
                                  (void *)(addr))                    \
               : _Asm_lfetch(     _LFTYPE_NONE,                      \
                                    (locality) == 0 ? _LFHINT_NTA  : \
                                    (locality) == 1 ? _LFHINT_NT2  : \
                                    (locality) == 2 ? _LFHINT_NT1  : \
-                                                     _LFHINT_NONE,  \
+                                 /*(locality) == 3*/ _LFHINT_NONE,  \
                                  (void *)(addr)))
 #endif
 /* default (do-nothing macros) */
