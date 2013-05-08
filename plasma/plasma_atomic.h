@@ -42,6 +42,8 @@
  * plasma_atomic_CAS_32  - atomic 32-bit  compare-and-swap (CAS)
  *
  * NB: Intended use is with regular, cacheable memory
+ *     Intended use is on naturally aligned integral types
+ *     Not appropriate for float or double types
  *     Not appropriate for MMIO, SSE, or drivers
  *     Futher information can be found in plasma_membar.h
  *
@@ -627,7 +629,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_add_u64_implreturn(ptr, addval)             \
     do {                                                                  \
         register uint64_t plasma_atomic_tmp;                              \
-        do { plasma_atomic_tmp = (uint64_t)__ldarx((long *)(ptr))         \
+        do { plasma_atomic_tmp = (uint64_t)__ldarx((long *)(ptr));        \
         } while (__builtin_expect(                                        \
                    !(__stdcx((long *)(ptr),                               \
                              (long)(plasma_atomic_tmp + (addval)))), 0)); \
@@ -637,7 +639,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_add_u32_implreturn(ptr, addval)             \
     do {                                                                  \
         register uint32_t plasma_atomic_tmp;                              \
-        do { plasma_atomic_tmp = (uint32_t)__lwarx((int *)(ptr))          \
+        do { plasma_atomic_tmp = (uint32_t)__lwarx((int *)(ptr));         \
         } while (__builtin_expect(                                        \
                    !(__stdcx((int *)(ptr),                                \
                              (int)(plasma_atomic_tmp + (addval)))), 0));  \
