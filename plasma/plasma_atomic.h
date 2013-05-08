@@ -237,6 +237,17 @@
 
 
 /*
+ * plasma_atomic_ld_nopt - load value from ptr, avoiding compiler optimization
+ *
+ * http://software.intel.com/en-us/blogs/2007/11/30/volatile-almost-useless-for-multi-threaded-programming/
+ * intended replacement when ptr is known to be an _Atomic type:
+ *   atomic_load_explicit(ptr, memory_order_???)
+ * (might use typeof(ptr) for T if widely supported; not evaluated)
+ */
+#define plasma_atomic_ld_nopt(T,ptr) (*(volatile T)(ptr))
+
+
+/*
  * plasma_atomic_st_ptr_release - atomic pointer store with release semantics
  * plasma_atomic_st_64_release  - atomic uint64_t store with release semantics
  * plasma_atomic_st_32_release  - atomic uint32_t store with release semantics
