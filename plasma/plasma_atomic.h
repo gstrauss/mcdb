@@ -603,18 +603,42 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
    *     then a macro could expand and check if addval is constant and legal,
    *     or else could fallback to call a routine which implemented the atomic
    *     add via compare and swap.  ** Not implemented here **
-   *     Alternatives: implement in Itanium assembly or always use a CAS impl
-   *     (possibly by holding a spinlock around the desired operation)
+   *     http://www.memoryhole.net/kyle/2007/05/atomic_incrementing.html
    * _Asm_fetchadd supports optional _Asm_fence arg for .acq or .rel modifiers
    *   (not used here) */
-  #define plasma_atomic_fetch_add_u64_impl(ptr, addval) \
-          _Asm_fetchadd(_FASZ_D,_SEM_REL,(ptr),(addval),_LDHINT_NONE)
-  #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
-          _Asm_fetchadd(_FASZ_W,_SEM_REL,(ptr),(addval),_LDHINT_NONE)
+  /*
+   * #define plasma_atomic_fetch_add_u64_impl(ptr, addval) \
+   *         _Asm_fetchadd(_FASZ_D,_SEM_REL,(ptr),(addval),_LDHINT_NONE)
+   * #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
+   *         _Asm_fetchadd(_FASZ_W,_SEM_REL,(ptr),(addval),_LDHINT_NONE)
+   */
   /* FUTURE: if creating _acquire versions of these macros for use in locks
    * instead of xchg or CAS, _Asm_sem should be _SEM_ACQ instead of _SEM_REL and
    * additional (optional) _Asm_fence argument might be needed to cause the .acq
    * assembly instruction modifier to be emitted. */
+
+  /* implement with CAS for portability
+   * use plasma_atomic_ld_nopt to avoid compiler optimization
+   * (would prefer atomic_load_explicit() to get ld8.acq or ld4.acq) */
+  #define plasma_atomic_fetch_add_u64_implreturn(ptr, addval)                \
+    do {                                                                     \
+        register uint64_t plasma_atomic_tmp;                                 \
+        do { plasma_atomic_tmp = plasma_atomic_ld_nopt(uint64_t *,(ptr));    \
+        } while (__builtin_expect(                                           \
+                   !plasma_atomic_CAS_64((ptr), plasma_atomic_tmp,           \
+                                         plasma_atomic_tmp + (addval)), 0)); \
+        return plasma_atomic_tmp;                                            \
+    } while (0)
+
+  #define plasma_atomic_fetch_add_u32_implreturn(ptr, addval)                \
+    do {                                                                     \
+        register uint32_t plasma_atomic_tmp;                                 \
+        do { plasma_atomic_tmp = plasma_atomic_ld_nopt(uint32_t *,(ptr));    \
+        } while (__builtin_expect(                                           \
+                   !plasma_atomic_CAS_32((ptr), plasma_atomic_tmp,           \
+                                         plasma_atomic_tmp + (addval)), 0)); \
+        return plasma_atomic_tmp;                                            \
+    } while (0)
 
 #elif (defined(__ppc__)   || defined(_ARCH_PPC)  || \
        defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)) \
