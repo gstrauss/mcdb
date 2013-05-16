@@ -110,7 +110,8 @@ nss_mcdb_netdb_servent_decode(struct mcdb * restrict,
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
 
-static nss_status_t  __attribute_noinline__
+__attribute_noinline__
+static nss_status_t
 nss_mcdb_netdb_gethost_fill_h_errnop(const nss_status_t status,
                                      int * const restrict h_errnop)
   __attribute_cold__  __attribute_nonnull__;
@@ -529,7 +530,8 @@ _nss_mcdb_getservbyport_r(const int port, const char * const restrict proto,
 }
 
 
-static nss_status_t  __attribute_noinline__
+__attribute_noinline__
+static nss_status_t
 nss_mcdb_netdb_gethost_fill_h_errnop(const nss_status_t status,
                                      int * const restrict h_errnop)
 {

@@ -320,7 +320,8 @@ mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
     map->size = 0;    /* map->size initialization required for mcdb_read() */
 }
 
-bool  __attribute_noinline__
+__attribute_noinline__
+bool
 mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 {
     struct stat st;
@@ -353,7 +354,8 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     return true;
 }
 
-void  __attribute_noinline__
+__attribute_noinline__
+void
 mcdb_mmap_prefault(const struct mcdb_mmap * const restrict map)
 {
     /* improves performance on uncached mcdb (if about to make *many* queries)
@@ -363,7 +365,8 @@ mcdb_mmap_prefault(const struct mcdb_mmap * const restrict map)
                   POSIX_MADV_WILLNEED | POSIX_MADV_RANDOM);
 }
 
-void  __attribute_noinline__
+__attribute_noinline__
+void
 mcdb_mmap_free(struct mcdb_mmap * const restrict map)
 {
     if (map == NULL) return;
@@ -378,7 +381,8 @@ mcdb_mmap_free(struct mcdb_mmap * const restrict map)
     }
 }
 
-void  __attribute_noinline__
+__attribute_noinline__
+void
 mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 {
     if (map == NULL) return;
@@ -389,7 +393,8 @@ mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
     mcdb_mmap_free(map);
 }
 
-bool  __attribute_noinline__
+__attribute_noinline__
+bool
 mcdb_mmap_reopen(struct mcdb_mmap * const restrict map)
 {
     int fd;
@@ -537,7 +542,8 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
     }
 }
 
-struct mcdb_mmap *  __attribute_noinline__
+__attribute_noinline__
+struct mcdb_mmap *
 mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
                               const int flags)
 {
@@ -610,7 +616,8 @@ mcdb_mmap_thread_registration(struct mcdb_mmap ** const restrict mapptr,
 /* theaded programs (while multiple threads are using same struct mcdb_mmap)
  * must be registered with current *mapptr before calling this routine, or else
  * there is a race condition where map might be removed out from under us. */
-bool  __attribute_noinline__
+__attribute_noinline__
+bool
 mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
 {
     struct mcdb_mmap * const map = *mapptr;

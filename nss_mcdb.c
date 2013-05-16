@@ -110,10 +110,12 @@ static void _nss_mcdb_atexit(void)
 }
 #endif
 
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
   __attribute_cold__  __attribute_warn_unused_result__;
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
 {
   #ifdef _THREAD_SAFE
@@ -164,10 +166,12 @@ static bool _nss_mcdb_stayopen = true;
   mcdb_mmap_thread_registration_h(&(map), MCDB_REGISTER_USE_DECR)
 
 /* get shared mcdb_mmap */
-static struct mcdb_mmap *  __attribute_regparm__((1))
+__attribute_regparm__((1))
+static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
   __attribute_warn_unused_result__;
-static struct mcdb_mmap *  __attribute_regparm__((1))
+__attribute_regparm__((1))
+static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
 {
     /* reuse set*ent(),get*ent(),end*end() session if open in current thread */
@@ -202,7 +206,8 @@ _nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
     /* (fails only if obtaining mutex fails, i.e. EAGAIN; should not happen) */
 }
 
-INTERNAL nss_status_t  __attribute_noinline__ /*(skip _nss_mcdb_getent inline)*/
+__attribute_noinline__ /*(skip _nss_mcdb_setent inline)*/
+INTERNAL nss_status_t
 nss_mcdb_setent(const enum nss_dbtype dbtype,
                 const int stayopen  __attribute_unused__)
 {

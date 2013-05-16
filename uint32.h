@@ -76,11 +76,13 @@ extern "C" {
 
 /* C99 inline functions defined in header */
 
-uint32_t  C99INLINE  __attribute_pure__
+C99INLINE  __attribute_pure__
+uint32_t
 uint32_strunpack(const char s[4])
   __attribute_warn_unused_result__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-uint32_t  C99INLINE
+C99INLINE
+uint32_t
 uint32_strunpack(const char s[4])
 {
     const unsigned char * const restrict n = (const unsigned char *)s;
@@ -88,11 +90,13 @@ uint32_strunpack(const char s[4])
 }
 #endif
 
-uint32_t  C99INLINE  __attribute_pure__
+C99INLINE  __attribute_pure__
+uint32_t
 uint32_strunpack_bigendian(const char s[4])
   __attribute_warn_unused_result__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-uint32_t  C99INLINE
+C99INLINE
+uint32_t
 uint32_strunpack_bigendian(const char s[4])
 {
     const unsigned char * const restrict n = (const unsigned char *)s;
@@ -100,22 +104,26 @@ uint32_strunpack_bigendian(const char s[4])
 }
 #endif
 
-void  C99INLINE
+C99INLINE
+void
 uint32_strpack(char s[4], const uint32_t u)
   __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-void  C99INLINE
+C99INLINE
+void
 uint32_strpack(char s[4], const uint32_t u)
 {
     uint32_strpack_macro(s,u);
 }
 #endif
 
-void  C99INLINE
+C99INLINE
+void
 uint32_strpack_bigendian(char s[4], const uint32_t u)
   __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-void  C99INLINE
+C99INLINE
+void
 uint32_strpack_bigendian(char s[4], const uint32_t u)
 {
     uint32_strpack_bigendian_macro(s,u);
@@ -130,12 +138,14 @@ uint32_strpack_bigendian(char s[4], const uint32_t u)
 
 #define uint32_hash_djb_uchar(h,c) (((h) + ((h) << 5)) ^ (c))
 
-uint32_t  C99INLINE  __attribute_pure__
+C99INLINE  __attribute_pure__
+uint32_t
 uint32_hash_djb(uint32_t, const void * restrict, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-uint32_t  C99INLINE
+C99INLINE
+uint32_t
 uint32_hash_djb(uint32_t h, const void * const restrict vbuf, const size_t sz)
 {
     const unsigned char * restrict buf = (const unsigned char *)vbuf;
@@ -146,15 +156,17 @@ uint32_hash_djb(uint32_t h, const void * const restrict vbuf, const size_t sz)
 }
 #endif
 
-uint32_t  C99INLINE  __attribute_pure__
+C99INLINE  __attribute_pure__
+uint32_t
 uint32_hash_identity(uint32_t, const void * restrict, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-uint32_t  C99INLINE
-uint32_hash_identity(uint32_t h       __attribute__((unused)),
+C99INLINE
+uint32_t
+uint32_hash_identity(uint32_t h       __attribute_unused__,
                      const void * const restrict vbuf,
-                     const size_t sz  __attribute__((unused)))
+                     const size_t sz  __attribute_unused__)
 {
     return *(uint32_t *)vbuf;
 }
@@ -229,11 +241,13 @@ uint32_hash_identity(uint32_t h       __attribute__((unused)),
  * (call x = (uint32_to_ascii8uphex(n,buf), buf); to have buf returned)
  * (buf must be at least 8 chars in length; not checked)
  * (buf returned contains exactly 8 chars and is not NUL-terminated) */
-void  C99INLINE
+C99INLINE
+void
 uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
   __attribute_nonnull__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-void  C99INLINE
+C99INLINE
+void
 uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
 {
     const uint32_t n0 = (((uint32_t)n) & 0xF0000000u) >> 28;
@@ -263,11 +277,13 @@ uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
  * (call x = (uint32_to_ascii4uphex(n,buf), buf); to have buf returned)
  * (buf must be at least 8 chars in length; not checked)
  * (buf returned contains exactly 4 chars and is not NUL-terminated) */
-void  C99INLINE
+C99INLINE
+void
 uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
   __attribute_nonnull__  __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-void  C99INLINE
+C99INLINE
+void
 uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
 {
     const uint32_t n0 = (((uint32_t)n) & 0x0000F000u) >> 12;
@@ -285,12 +301,14 @@ uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
 /* convert string of 8 ASCII uppercase hex chars to unsigned 32-bit value
  * (used to convert architecture-independent string data to numerical data)
  * (use when hex chars are known 0..9 A..F) */
-uint32_t  C99INLINE  __attribute_pure__
+C99INLINE  __attribute_pure__
+uint32_t
 uint32_from_ascii8uphex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-uint32_t  C99INLINE
+C99INLINE
+uint32_t
 uint32_from_ascii8uphex(const char * const restrict buf)
 {
     const unsigned char * const b = (const unsigned char *)buf;
@@ -320,12 +338,14 @@ uint32_from_ascii8uphex(const char * const restrict buf)
  * (used to convert architecture-independent string data to numerical data)
  * (operate in 32-bit intermediates to use more native sizes on modern CPUs)
  * (use when hex chars are known 0..9 A..F) */
-uint16_t  C99INLINE  __attribute_pure__
+C99INLINE  __attribute_pure__
+uint16_t
 uint16_from_ascii4uphex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
 #if !defined(NO_C99INLINE)
-uint16_t  C99INLINE
+C99INLINE
+uint16_t
 uint16_from_ascii4uphex(const char * const restrict buf)
 {
     const unsigned char * const b = (const unsigned char *)buf;

@@ -172,7 +172,8 @@ extern void
 mcdb_iter_init(struct mcdb_iter * restrict, struct mcdb * restrict)
   __attribute_nonnull__  __attribute_nothrow__;
 
-extern struct mcdb_mmap *  __attribute_malloc__
+__attribute_malloc__
+extern struct mcdb_mmap *
 mcdb_mmap_create(struct mcdb_mmap * restrict,
                  const char *,const char *,void * (*)(size_t),void (*)(void *))
   __attribute_nonnull_x__((3,4,5))  __attribute_warn_unused_result__;

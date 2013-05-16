@@ -96,7 +96,8 @@ struct mcdb_hplist {
 
 /* routine marked to indicate unlikely branch;
  * __attribute_cold__ can be used instead of __builtin_expect() */
-static int  __attribute_noinline__  __attribute_cold__
+__attribute_noinline__  __attribute_cold__
+static int
 mcdb_make_err(struct mcdb_make * const restrict m, int errnum)
 {
     if (m != NULL) mcdb_make_destroy(m);
@@ -104,7 +105,8 @@ mcdb_make_err(struct mcdb_make * const restrict m, int errnum)
     return -1;
 }
 
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static bool
@@ -151,7 +153,8 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
 #define FSTYPSZ 16
 #endif
 #include <sys/statvfs.h>
-static int  __attribute_noinline__
+__attribute_noinline__
+static int
 mcdb_make_fallocate(const int fd, off_t offset, off_t len)
   __attribute_warn_unused_result__;
 static int
@@ -249,11 +252,13 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
      * OS crashes, then the updated mcdb can be corrupted. */
 }
 
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
                  const bool sequential)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
                  const bool sequential)
 {
@@ -569,7 +574,8 @@ mcdb_make_finish(struct mcdb_make * const restrict m)
  * m->fd is not closed here since mcdb_make_start() takes open file descriptor
  * (caller should cleanup m->fd)
  */
-int __attribute_noinline__
+__attribute_noinline__
+int
 mcdb_make_destroy(struct mcdb_make * const restrict m)
 {
     int rc = 0;

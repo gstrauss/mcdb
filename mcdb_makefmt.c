@@ -97,7 +97,8 @@ struct mcdb_input {
  * cache hits.
  */
 
-static ssize_t  __attribute_noinline__
+__attribute_noinline__
+static ssize_t
 mcdb_bufread_fd (struct mcdb_input * const restrict b)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static ssize_t
@@ -117,7 +118,8 @@ mcdb_bufread_fd (struct mcdb_input * const restrict b)
 }
 
 /* (separate routine from mcdb_bufread_preamble for less frequent code path) */
-static ssize_t  __attribute_noinline__
+__attribute_noinline__
+static ssize_t
 mcdb_bufread_preamble_fill (struct mcdb_input * const restrict b)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static ssize_t
@@ -211,7 +213,8 @@ mcdb_bufread_str (struct mcdb_input * const restrict b, size_t len,
     return (len == 0);
 }
 
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 static bool
@@ -222,7 +225,8 @@ mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
     return (b->datasz - b->pos >= len);
 }
 
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 mcdb_bufread_rec (struct mcdb_make * const restrict m,
                   const size_t klen, const size_t dlen,
                   struct mcdb_input * const restrict b)
@@ -248,7 +252,8 @@ mcdb_bufread_rec (struct mcdb_make * const restrict m,
  */ 
 
 
-int  __attribute_noinline__
+__attribute_noinline__
+int
 mcdb_makefmt_fdintofd (const int inputfd,
                        char * const restrict buf,
                        const size_t bufsz,
@@ -315,7 +320,8 @@ mcdb_makefmt_fdintofd (const int inputfd,
  * so we do not pass struct mcdb_make to mcdb_makefmt_fdintofd().  No big deal
  * and keeps interface simple for direct callers of mcdb_makefmt_fdintofd().
  */
-int  __attribute_noinline__
+__attribute_noinline__
+int
 mcdb_makefmt_fdintofile (const int inputfd,
                          char * const restrict buf, const size_t bufsz,
                          const char * const restrict fname,
@@ -332,7 +338,8 @@ mcdb_makefmt_fdintofile (const int inputfd,
     return rv;
 }
 
-int  __attribute_noinline__
+__attribute_noinline__
+int
 mcdb_makefmt_fileintofile (const char * const restrict infile,
                            const char * const restrict fname,
                            void * (* const fn_malloc)(size_t),

@@ -77,7 +77,8 @@ static char *
   nss_mcdb_acct_make_groupmem_strpool = NULL;
 
 
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 nss_mcdb_acct_make_groupmem_pool_alloc(const size_t sz,
                                        size_t * const restrict pool_sz,
                                        size_t * const restrict pool_idx,
@@ -154,7 +155,8 @@ nss_mcdb_acct_make_groupmem_stralloc(const size_t sz)
     return NULL;
 }
 
-static bool  __attribute_noinline__
+__attribute_noinline__
+static bool
 nss_mcdb_acct_make_grouplist_free(const bool rc)
 {
     uintptr_t * restrict mem;
