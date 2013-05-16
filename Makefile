@@ -103,8 +103,8 @@ ifeq ($(OSNAME),SunOS)
   # -lsocket -lnsl for inet_pton() in nss_mcdb_netdb.o and nss_mcdb_netdb_make.o
   libnss_mcdb.so.2 lib32/libnss_mcdb.so.2 nss_mcdbctl: \
     LDFLAGS+=-lsocket -lnsl
-  # -lrt for fdatasync() in mcdb_make.o
-  libmcdb.so lib32/libmcdb.so mcdbctl nss_mcdbctl: \
+  # -lrt for fdatasync() in mcdb_make.o, for sched_yield() in mcdb.o
+  libmcdb.so lib32/libmcdb.so mcdbctl nss_mcdbctl t/testmcdbrand: \
     LDFLAGS+=-lrt
 endif
 
