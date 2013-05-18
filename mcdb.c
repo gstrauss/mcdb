@@ -621,7 +621,7 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
      * (must lock since others modify refcnt while holding same spinlock) */
     (void) plasma_spin_lock_acquire(&mcdb_global_spinlock);
     if (map->next != NULL)
-        return                              /* registration releases spinlock */
+        return NULL !=                      /* registration releases spinlock */
           mcdb_mmap_thread_registration_h(mapptr, MCDB_REGISTER_USE_INCR
                                                  |MCDB_REGISTER_ALREADY_LOCKED);
     if ((rc = (map->refcnt < 0x80000000u))) /*(0!=(map->refcnt & 0x80000000u))*/
@@ -650,8 +650,9 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
     map->next       = next;
     (void) plasma_spin_lock_acquire(&mcdb_global_spinlock);
     map->refcnt    &= ~0x80000000u;         /* registration releases spinlock */
-    return mcdb_mmap_thread_registration_h(mapptr,MCDB_REGISTER_USE_INCR
-                                                 |MCDB_REGISTER_ALREADY_LOCKED);
+    return NULL !=
+      mcdb_mmap_thread_registration_h(mapptr, MCDB_REGISTER_USE_INCR
+                                             |MCDB_REGISTER_ALREADY_LOCKED);
 }
 
 
