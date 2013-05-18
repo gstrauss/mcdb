@@ -146,9 +146,9 @@
    * the condition code register a few times.  If instead of inline assembly,
    * this was implemented as a routine in a shared library, then a function
    * optimized for the specific architecture and model could be used */
-  #define plasma_spin_pause()  __asm __volatile__ ("rd %%ccr, %%g0 \n\t " \
-                                                   "rd %%ccr, %%g0 \n\t " \
-                                                   "rd %%ccr, %%g0")
+  #define plasma_spin_pause()  __asm __volatile__ ("rd %ccr, %g0 \n\t" \
+                                                   "rd %ccr, %g0 \n\t" \
+                                                   "rd %ccr, %g0")
 
 #elif defined(__ppc__)   || defined(_ARCH_PPC)  || \
       defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
@@ -157,10 +157,9 @@
    * https://www.power.org/documentation/power-instruction-set-architecture-version-2-06/attachment/powerisa_v2-06b_v2_public/  (requires free account)
    * 3.2 "or" Instruction
    *   "or" Shared Resource Hints
-   * Also available as function yield() in libc.a (#include <sys/atomic_op.h>)
-   * http://pic.dhe.ibm.com/infocenter/aix/v7r1/index.jsp?topic=%2Fcom.ibm.aix.basetechref%2Fdoc%2Fbasetrf2%2Fyield.htm
-   */
-  #define plasma_spin_pause()  __asm__ __volatile__ ("yield")
+   * For compatibility use 'or 27,27,27' instead of 'yield' extended mnemonic
+   * (available with POWER 7) */
+  #define plasma_spin_pause()  __asm__ __volatile__ ("or 27,27,27")
 
 #else
 
@@ -180,7 +179,7 @@
   #define plasma_spin_yield() do {if (!SwitchToThread()) Sleep(1);} while (0)
 #else /* assume unix if not MS Windows */
   #include <unistd.h>  /* _POSIX_PRIORITY_SCHEDULING */
-  #include <poll.h>
+  #include <poll.h>    /* might also need _XOPEN_SOURCE=500 or better on _AIX */
   #ifdef _POSIX_PRIORITY_SCHEDULING
   #include <sched.h>
   #define plasma_spin_yield() do {if (!sched_yield()) poll(NULL,0,1);} while (0)
@@ -206,6 +205,13 @@
     } while (0) /* (untested!) */
   #endif
 #endif
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "plasma_attr.h"
 
 
 /* plasma_spin_lock_init()
@@ -313,12 +319,6 @@ typedef struct plasma_spin_lock_t {
 #endif /* default spin lock macro implementation */
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "plasma_attr.h"
-
 #ifndef plasma_spin_lock_acquire_spinloop
 bool
 plasma_spin_lock_acquire_spinloop (plasma_spin_lock_t * const spin)
@@ -371,8 +371,14 @@ http://cbloomrants.blogspot.com/2010/09/09-12-10-defficiency-of-windows-multi.ht
  * http://www.bluebytesoftware.com/blog/2006/08/23/PriorityinducedStarvationWhySleep1IsBetterThanSleep0AndTheWindowsBalanceSetManager.aspx
  *
  * timeBeginPeriod(1)  (set default system quantum to 1ms instead of 10-15ms)
+ * (generally not a good idea to do this for extended periods of time)
  * http://msdn.microsoft.com/en-us/library/windows/desktop/dd757624%28v=vs.85%29.aspx
  * http://cbloomrants.blogspot.com/2010/09/09-12-10-defficiency-of-windows-multi.html
+ * http://msdn.microsoft.com/en-us/library/ms713413%28v=vs.85%29.aspx
+ * http://stackoverflow.com/questions/7590475/why-does-increasing-timer-resolution-via-timebeginperiod-impact-power-consumptio
+ * http://stackoverflow.com/questions/7685762/windows-7-timing-functions-how-to-use-getsystemtimeadjustment-correctly/11743614#11743614
+ * Timers, Timer Resolution, and Development of Efficient Code
+ * http://msdn.microsoft.com/en-us/windows/hardware/gg463266.aspx
  *
  * Apple OSAtomic.h Reference
  * https://developer.apple.com/library/mac/#documentation/System/Reference/OSAtomic_header_reference/Reference/reference.html#//apple_ref/doc/uid/TP40011482

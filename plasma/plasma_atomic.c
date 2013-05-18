@@ -54,6 +54,7 @@ bool
 plasma_atomic_CAS_ptr (void ** const restrict ptr,
                        void * restrict cmpval, void * const restrict newval);
 
+#ifndef plasma_atomic_not_implemented_64
 __attribute_regparm__((3))
 extern inline
 bool
@@ -63,6 +64,7 @@ __attribute_regparm__((3))
 bool
 plasma_atomic_CAS_64 (uint64_t * const restrict ptr,
                       uint64_t cmpval, const uint64_t newval);
+#endif
 
 __attribute_regparm__((3))
 extern inline
@@ -89,17 +91,18 @@ plasma_atomic_lock_acquire (uint32_t * const ptr);
 __attribute_regparm__((1))
 bool
 plasma_atomic_lock_acquire (uint32_t * const ptr);
+
+#ifndef plasma_atomic_fetch_add_u32_impl
+__attribute_regparm__((2))
+extern inline
+void *
+plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval);
+__attribute_regparm__((2))
+void *
+plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval);
+#endif
 
 #ifdef plasma_atomic_fetch_add_u64_implreturn
-
-__attribute_regparm__((2))
-extern inline
-void *
-plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval);
-__attribute_regparm__((2))
-void *
-plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval);
-
 __attribute_regparm__((2))
 extern inline
 uint64_t
@@ -107,7 +110,9 @@ plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval);
 __attribute_regparm__((2))
 uint64_t
 plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval);
+#endif
 
+#ifdef plasma_atomic_fetch_add_u32_implreturn
 __attribute_regparm__((2))
 extern inline
 uint32_t
@@ -115,10 +120,9 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval);
 __attribute_regparm__((2))
 uint32_t
 plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval);
+#endif
 
-#endif /* plasma_atomic_fetch_add_u64_implreturn */
-
-#ifndef plasma_atomic_fetch_or_ptr_impl
+#ifndef plasma_atomic_fetch_or_u32_impl
 __attribute_regparm__((2))
 extern inline
 void *
@@ -128,7 +132,7 @@ void *
 plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval);
 #endif
 
-#ifdef plasma_atomic_fetch_or_64_implreturn
+#ifdef plasma_atomic_fetch_or_u64_implreturn
 __attribute_regparm__((2))
 extern inline
 uint64_t
@@ -138,7 +142,7 @@ uint64_t
 plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval);
 #endif
 
-#ifdef plasma_atomic_fetch_or_32_implreturn
+#ifdef plasma_atomic_fetch_or_u32_implreturn
 __attribute_regparm__((2))
 extern inline
 uint32_t
@@ -149,30 +153,6 @@ plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval);
 #endif
 
 #endif /* !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) */
-
-#ifdef __clang__
-const void * const plasma_atomic_c_force_func_emit[] = {
-  (void *)plasma_atomic_CAS_ptr,
-  (void *)plasma_atomic_CAS_64,
-  (void *)plasma_atomic_CAS_32,
-  (void *)plasma_atomic_lock_release,
-  (void *)plasma_atomic_lock_acquire
- #ifdef plasma_atomic_fetch_add_u64_implreturn
-  ,(void *)plasma_atomic_fetch_add_ptr
-  ,(void *)plasma_atomic_fetch_add_u64
-  ,(void *)plasma_atomic_fetch_add_u32
- #endif
- #ifndef plasma_atomic_fetch_or_ptr_impl
-  ,(void *)plasma_atomic_fetch_or_ptr
- #endif
- #ifdef plasma_atomic_fetch_or_64_implreturn
-  ,(void *)plasma_atomic_fetch_or_u64
- #endif
- #ifdef plasma_atomic_fetch_or_32_implreturn
-  ,(void *)plasma_atomic_fetch_or_u32
- #endif
-};
-#endif
 
 
 /* mutex-based fallback implementation, enabled by preprocessor define */

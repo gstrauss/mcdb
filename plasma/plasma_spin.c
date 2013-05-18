@@ -22,6 +22,12 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef _AIX
+#ifndef _ALL_SOURCE
+#define _ALL_SOURCE
+#endif
+#endif
+
 #include "plasma_spin.h"
 
 #ifndef plasma_spin_lock_acquire_spinloop

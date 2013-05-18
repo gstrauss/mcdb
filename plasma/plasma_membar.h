@@ -753,7 +753,8 @@ typedef enum memory_order {
   do {                                                                        \
     switch (order) {                                                          \
       default: /*(bad input; deliver proper behavior with strongest barrier)*/\
-      case memory_order_seq_cst: plasma_membar_atomic_thread_fence_seq_cst(); \                                  break;                                       \
+      case memory_order_seq_cst: plasma_membar_atomic_thread_fence_seq_cst(); \
+                                 break;                                       \
       case memory_order_acq_rel: plasma_membar_atomic_thread_fence_acq_rel(); \
                                  break;                                       \
       case memory_order_release: plasma_membar_atomic_thread_fence_release(); \
