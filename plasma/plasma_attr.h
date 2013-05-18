@@ -124,7 +124,7 @@ extern "C" {
 #ifndef __attribute_always_inline__
 #define __attribute_always_inline__  __attribute__((always_inline))
 #endif
-#elif defined(MSC_VER)
+#elif defined(_MSC_VER)
 /* http://msdn.microsoft.com/en-us/library/z8y1yy88.aspx */
 #ifndef __attribute_always_inline__
 #define __attribute_always_inline__  __forceinline
@@ -380,6 +380,37 @@ enum _mm_hint
 
 /* Interestingly, GNU Linux systems might provide similar macro
  * TEMP_FAILURE_RETRY(expression) in unistd.h when defined(_GNU_SOURCE) */
+
+
+/* __typeof__() is non-standard, though available on many modern compilers
+ * http://en.wikipedia.org/wiki/Typeof
+ *
+ * gcc and clang support __typeof__()
+ *
+ * Sun Studio 12 C compiler supports __typeof__ extension
+ * http://www.oracle.com/technetwork/systems/cccompare-137792.html
+ * http://www.oracle.com/technetwork/server-storage/solaris10/c-type-137127.html
+ * http://docs.oracle.com/cd/E19205-01/820-4155/c++.html
+ * https://blogs.oracle.com/sga/entry/typeof_and_alignof
+ * Sun Studio C++:
+ *   Keyword typeof is available under -features=gcc command line option.
+ *
+ * xlC supports __typeof__()
+ * The typeof and __typeof__ keywords are supported as follows:
+ *     C only The __typeof__ keyword is recognized under compilation with the xlc invocation command or the -qlanglvl=extc89, -qlanglvl=extc99, or -qlanglvl=extended options. The typeof keyword is only recognized under compilation with -qkeyword=typeof.
+ *     C++ The typeof and __typeof__ keywords are recognized by default.
+ * http://publib.boulder.ibm.com/infocenter/compbgpl/v9v111/index.jsp?topic=/com.ibm.xlcpp9.bg.doc/language_ref/typeof_operator.htm
+ *
+ * HP-UX cc supports __typeof__ when compiled with -Agcc
+ * http://h30499.www3.hp.com/t5/Languages-and-Scripting/HP-UX-IA64-and-HP-C-Is-quot-typeof-quot-keyword-supported/td-p/4529218
+ *
+ * MS Visual Studio 2010 decltype() can be used to implement __typeof__()
+ * http://msdn.microsoft.com/en-us/library/dd537655.aspx
+ * http://stackoverflow.com/questions/70013/how-to-detect-if-im-compiling-code-with-visual-studio-2008
+ */
+#if defined(_MSC_VER) && _MSC_VER >= 1600
+#define __typeof__(x)  decltype(x)
+#endif
 
 
 #ifdef __cplusplus

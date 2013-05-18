@@ -252,9 +252,9 @@
  * http://software.intel.com/en-us/blogs/2007/11/30/volatile-almost-useless-for-multi-threaded-programming/
  * intended replacement when ptr is known to be an _Atomic type:
  *   atomic_load_explicit(ptr, memory_order_???)
- * (might use typeof(ptr) for T if widely supported; not evaluated)
  */
-#define plasma_atomic_ld_nopt(T,ptr) (*(volatile T)(ptr))
+#define plasma_atomic_ld_nopt(ptr) (*(volatile __typeof__(ptr))(ptr))
+#define plasma_atomic_ld_nopt_T(T,ptr) (*(volatile T)(ptr))
 
 
 /*
@@ -648,12 +648,12 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
    * assembly instruction modifier to be emitted. */
 
   /* implement with CAS for portability
-   * use plasma_atomic_ld_nopt to avoid compiler optimization
+   * use plasma_atomic_ld_nopt_T() to avoid compiler optimization
    * (would prefer atomic_load_explicit() to get ld8.acq or ld4.acq) */
   #define plasma_atomic_fetch_add_u64_implreturn(ptr, addval, cast)          \
     do {                                                                     \
         register uint64_t plasma_atomic_tmp;                                 \
-        do { plasma_atomic_tmp = plasma_atomic_ld_nopt(uint64_t *,(ptr));    \
+        do { plasma_atomic_tmp = plasma_atomic_ld_nopt_T(uint64_t *,(ptr));  \
         } while (__builtin_expect(                                           \
                    !plasma_atomic_CAS_64((ptr), plasma_atomic_tmp,           \
                                          plasma_atomic_tmp + (addval)), 0)); \
@@ -663,7 +663,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_add_u32_implreturn(ptr, addval, cast)          \
     do {                                                                     \
         register uint32_t plasma_atomic_tmp;                                 \
-        do { plasma_atomic_tmp = plasma_atomic_ld_nopt(uint32_t *,(ptr));    \
+        do { plasma_atomic_tmp = plasma_atomic_ld_nopt_T(uint32_t *,(ptr));  \
         } while (__builtin_expect(                                           \
                    !plasma_atomic_CAS_32((ptr), plasma_atomic_tmp,           \
                                          plasma_atomic_tmp + (addval)), 0)); \
@@ -908,7 +908,7 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
 #define plasma_atomic_fetch_or_u64_implreturn(ptr, orval, cast)             \
     do {                                                                    \
         register uint64_t plasma_atomic_tmp;                                \
-        do { plasma_atomic_tmp = plasma_atomic_ld_nopt(uint64_t *,(ptr));   \
+        do { plasma_atomic_tmp = plasma_atomic_ld_nopt_T(uint64_t *,(ptr)); \
         } while (__builtin_expect(                                          \
                    !plasma_atomic_CAS_64((ptr), plasma_atomic_tmp,          \
                                          plasma_atomic_tmp | (orval)), 0)); \
@@ -921,7 +921,7 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
 #define plasma_atomic_fetch_or_u32_implreturn(ptr, orval, cast)             \
     do {                                                                    \
         register uint32_t plasma_atomic_tmp;                                \
-        do { plasma_atomic_tmp = plasma_atomic_ld_nopt(uint32_t *,(ptr));   \
+        do { plasma_atomic_tmp = plasma_atomic_ld_nopt_T(uint32_t *,(ptr)); \
         } while (__builtin_expect(                                          \
                    !plasma_atomic_CAS_32((ptr), plasma_atomic_tmp,          \
                                          plasma_atomic_tmp | (orval)), 0)); \
