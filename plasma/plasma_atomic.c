@@ -92,6 +92,36 @@ __attribute_regparm__((1))
 bool
 plasma_atomic_lock_acquire (uint32_t * const ptr);
 
+#ifdef plasma_atomic_load_explicit_szof
+
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
+extern inline
+uint64_t
+plasma_atomic_load_64_impl(const void * const restrict ptr,
+                           const enum memory_order order,
+                           const size_t bytes);
+__attribute_regparm__((3))
+uint64_t
+plasma_atomic_load_64_impl(const void * const restrict ptr,
+                           const enum memory_order order,
+                           const size_t bytes);
+#endif
+
+__attribute_regparm__((3))
+extern inline
+uint32_t
+plasma_atomic_load_32_impl(const void * const restrict ptr,
+                           const enum memory_order order,
+                           const size_t bytes);
+__attribute_regparm__((3))
+uint32_t
+plasma_atomic_load_32_impl(const void * const restrict ptr,
+                           const enum memory_order order,
+                           const size_t bytes);
+
+#endif /* plasma_atomic_load_explicit_szof */
+
 #ifndef plasma_atomic_fetch_add_u32_impl
 __attribute_regparm__((2))
 extern inline

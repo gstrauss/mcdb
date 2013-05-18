@@ -256,6 +256,149 @@
 #define plasma_atomic_ld_nopt(ptr) (*(volatile __typeof__(ptr))(ptr))
 #define plasma_atomic_ld_nopt_T(T,ptr) (*(volatile T)(ptr))
 
+/*
+ * plasma_atomic_load - atomic load with memory_order_seq_cst
+ * plasma_atomic_load_into - atomic load with mem order seq_cst, into var
+ * plasma_atomic_load_explicit - atomic_load, specifying memory order
+ * plasma_atomic_load_explicit_into - atomic load, specifyig mem order, into var
+ */
+#if __has_extension(c_atomic) || __has_extension(cxx_atomic)
+
+#define plasma_atomic_load_explicit(ptr, order) \
+        __c11_atomic_load((ptr),(order))
+#define plasma_atomic_load_explicit_into(lval,ptr,order) \
+        ((lval) = __c11_atomic_load((ptr),(order)))
+
+#elif defined(__GNUC__) && __GNUC_PREREQ(4,7)
+
+#define plasma_atomic_load_explicit(ptr, order) \
+        __atomic_load_n((ptr),(order))
+#define plasma_atomic_load_explicit_into(lval,ptr,order) \
+        __atomic_load((ptr),&(lval),(order))
+
+/*
+ * #elif defined(__ia64__) || defined(_M_IA64)
+ *
+ * XXX: Itanium has ld1, ld2, ld4, ld8 with .acq or .rel suffix modifers
+ *      (not implemented in assembly here, but could be)
+ */
+
+#else
+
+/* (plasma_atomic_load* is technically not valid with memory_order_acq_rel
+ *  or memory_order_release, but do something sane for those cases) */
+#define plasma_atomic_load_explicit_into(lval, ptr, order)       \
+        do { if (order == memory_order_seq_cst)                  \
+                 atomic_thread_fence(memory_order_seq_cst);      \
+             (lval) = *(ptr);                                    \
+             atomic_thread_fence(order);                         \
+        } while (0)
+
+#if defined(__GNUC__) || defined(__clang__)
+
+#define plasma_atomic_load_explicit(ptr, order)                              \
+        (__extension__({                                                     \
+          __typeof__(*(ptr)) plasma_atomic_tmp;                              \
+          plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(order)); \
+          plasma_atomic_tmp;                                                 \
+        }))
+
+#elif (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590) \
+   || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x590)
+
+#define plasma_atomic_load_explicit(ptr, order)                              \
+        ({                                                                   \
+          __typeof__(*(ptr)) plasma_atomic_tmp;                              \
+          plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(order)); \
+          plasma_atomic_tmp;                                                 \
+        })
+
+#else
+
+/* (As of this writing, most general-purpose (and non-embedded) processors have
+ *  32-bit or 64-bit registers, and integer promotion applies to return values
+ *  expanded to fill the register.  32-bit processors, like 32-bit ARM, require
+ *  special instructions for 64-bit atomic load (not implemented here).  Create
+ *  single inline routine for 1,2,4 byte quantities to take advantage of 32-bit
+ *  register sizes, instead of creating different func for each integral size.)
+ */
+#define plasma_atomic_load_explicit_szof(ptr, order)                   \
+        (sizeof(*(ptr)) > 4                                            \
+         ? __typeof__(*(ptr))                                          \
+             plasma_atomic_load_64_impl((ptr),(order),sizeof(*(ptr)))  \
+         : __typeof__(*(ptr))                                          \
+             plasma_atomic_load_32_impl((ptr),(order),sizeof(*(ptr))))
+
+#define plasma_atomic_load_explicit(ptr, order)                        \
+        plasma_atomic_load_explicit_szof((ptr), (order))
+
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
+C99INLINE
+uint64_t
+plasma_atomic_load_64_impl(const void * const restrict ptr,
+                           const enum memory_order order,
+                           const size_t bytes)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((3))
+C99INLINE
+uint64_t
+plasma_atomic_load_64_impl(const void * const restrict ptr,
+                           const enum memory_order order,
+                           const size_t bytes)
+{
+    if (bytes == 8) {
+        uint64_t plasma_atomic_tmp;
+        plasma_atomic_load_explicit_into(plasma_atomic_tmp,
+                                         (const uint64_t *)ptr, order);
+        return plasma_atomic_tmp;
+    }
+    return ~(uint64_t)0;  /* bad input, just return -1 */
+}
+#endif
+#endif
+
+__attribute_regparm__((3))
+C99INLINE
+uint32_t
+plasma_atomic_load_32_impl(const void * const restrict ptr,
+                           const enum memory_order order,
+                           const size_t bytes)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((3))
+C99INLINE
+uint32_t
+plasma_atomic_load_32_impl(const void * const restrict ptr,
+                           const enum memory_order order,
+                           const size_t bytes)
+{
+    union { uint32_t i; uint16_t s; uint8_t c; } plasma_atomic_tmp;
+    switch (bytes) {
+      case 4:   plasma_atomic_load_explicit_into(plasma_atomic_tmp.i,
+                                                 (const uint32_t *)ptr, order);
+                return plasma_atomic_tmp.i;
+      case 2:   plasma_atomic_load_explicit_into(plasma_atomic_tmp.s,
+                                                 (const uint16_t *)ptr, order);
+                return plasma_atomic_tmp.s;
+      case 1:   plasma_atomic_load_explicit_into(plasma_atomic_tmp.c,
+                                                 (const uint8_t *)ptr, order);
+                return plasma_atomic_tmp.c;
+      default:  return ~(uint32_t)0;  /* bad input; just return -1 */
+    }
+}
+#endif
+
+#endif
+
+#endif
+
+#define plasma_atomic_load(ptr) \
+        plasma_atomic_load_explicit((ptr), memory_order_seq_cst)
+#define plasma_atomic_load_into(lval, ptr) \
+        plasma_atomic_load_explicit_into((lval), (ptr), memory_order_seq_cst)
+
 
 /*
  * plasma_atomic_st_ptr_release - atomic pointer store with release semantics
