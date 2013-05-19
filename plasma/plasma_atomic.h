@@ -406,6 +406,61 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 
 
 /*
+ * plasma_atomic_st_nopt - store value to ptr, avoiding compiler optimization
+ *
+ * http://software.intel.com/en-us/blogs/2007/11/30/volatile-almost-useless-for-multi-threaded-programming/
+ * intended replacement when ptr is known to be an _Atomic type:
+ *   atomic_store_explicit(ptr, val, memory_order_???)
+ * Note: 32-bit processors, like 32-bit ARM, require special instructions
+ * for 64-bit atomic store (not implemented here).
+ */
+#define plasma_atomic_st_nopt(ptr,val) \
+        ((*(volatile __typeof__(ptr))(ptr)) = (val))
+#define plasma_atomic_st_nopt_T(T,ptr,val) \
+        ((*(volatile T)(ptr)) = (val))
+
+/*
+ * plasma_atomic_store - atomic store with memory_order_seq_cst
+ * plasma_atomic_store_explicit - atomic_store, specifying memory order
+ */
+#if __has_extension(c_atomic) || __has_extension(cxx_atomic)
+
+#define plasma_atomic_store_explicit(ptr, val, order) \
+        __c11_atomic_store((ptr),(val),(order))
+
+#elif defined(__GNUC__) && __GNUC_PREREQ(4,7)
+
+#define plasma_atomic_store_explicit(ptr, val, order) \
+        __atomic_store_n((ptr),(val),(order))
+
+/*
+ * #elif defined(__ia64__) || defined(_M_IA64)
+ *
+ * XXX: Itanium has st1, st2, st4, st8 with .rel suffix modifer
+ *      (not implemented in assembly here, but could be)
+ */
+
+#else
+
+/* Note: 32-bit processors, like 32-bit ARM, require special instructions
+ * for 64-bit atomic store (not implemented here). */
+/* (plasma_atomic_store* is technically only with memory_order_seq_cst,
+ *  memory_order_release, or memory_order_relaxed, but do something sane
+ *  for other cases) */
+#define plasma_atomic_store_explicit(ptr, val, order)       \
+        do { atomic_thread_fence(order);                    \
+             *(ptr) = (val);                                \
+             if ((order) == memory_order_seq_cst)           \
+                 atomic_thread_fence(memory_order_seq_cst); \
+        } while (0)
+
+#endif
+
+#define plasma_atomic_store(ptr, val) \
+        plasma_atomic_store_explicit((ptr), (val), memory_order_seq_cst)
+
+
+/*
  * plasma_atomic_st_ptr_release - atomic pointer store with release semantics
  * plasma_atomic_st_64_release  - atomic uint64_t store with release semantics
  * plasma_atomic_st_32_release  - atomic uint32_t store with release semantics
