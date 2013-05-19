@@ -212,6 +212,36 @@ uint32_t
 plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval);
 #endif
 
+#ifndef plasma_atomic_fetch_and_u32_impl
+__attribute_regparm__((2))
+extern inline
+void *
+plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval);
+__attribute_regparm__((2))
+void *
+plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval);
+#endif
+
+#ifdef plasma_atomic_fetch_and_u64_implreturn
+__attribute_regparm__((2))
+extern inline
+uint64_t
+plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval);
+__attribute_regparm__((2))
+uint64_t
+plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval);
+#endif
+
+#ifdef plasma_atomic_fetch_and_u32_implreturn
+__attribute_regparm__((2))
+extern inline
+uint32_t
+plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval);
+__attribute_regparm__((2))
+uint32_t
+plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval);
+#endif
+
 #endif /* !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) */
 
 

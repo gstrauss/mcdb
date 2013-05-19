@@ -1386,6 +1386,205 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
 #endif
 
 
+/*
+ * plasma_atomic_fetch_and_ptr - atomic pointer  fetch and and
+ * plasma_atomic_fetch_and_u64 - atomic uint64_t fetch and and
+ * plasma_atomic_fetch_and_u32 - atomic uint32_t fetch and and
+ */
+
+#if defined (_MSC_VER)
+
+  /* (MS Windows is LLP64 ABI, so 'long' is 32-bits even when compiler 64-bit)*/
+  #pragma intrinsic(_InterlockedAnd)
+  #pragma intrinsic(_InterlockedAnd64)
+  #define plasma_atomic_fetch_and_u64_impl(ptr, andval) \
+          _InterlockedAnd64((__int64 *)(ptr),(__int64)(andval))
+  #define plasma_atomic_fetch_and_u32_impl(ptr, andval) \
+          _InterlockedAnd((long *)(ptr),(long)(andval))
+
+#elif defined(__sun)
+
+  #define plasma_atomic_fetch_and_u64_impl(ptr,andval) \
+          atomic_and_64((uint64_t *)(ptr),(uint64_t)(andval))
+  #define plasma_atomic_fetch_and_u32_impl(ptr,andval) \
+          atomic_and_32((uint32_t *)(ptr),(uint32_t)(andval))
+
+#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+
+  #define plasma_atomic_fetch_and_ptr_impl(ptr,andval) \
+          __sync_fetch_and_and((ptr),(andval))
+  #define plasma_atomic_fetch_and_u64_impl(ptr,andval) \
+          __sync_fetch_and_and((ptr),(andval))
+  #define plasma_atomic_fetch_and_u32_impl(ptr,andval) \
+          __sync_fetch_and_and((ptr),(andval))
+
+#elif defined(__APPLE__)
+
+  /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
+   * (could use assembly for missing interfaces;
+   *  but for now, fall back to CAS below) */
+  #include <libkern/OSAtomic.h>
+  #if (   (defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
+           && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050) \
+       || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) \
+           && __IPHONE_OS_VERSION_MIN_REQUIRED-0 >= 30200)   )
+  #define plasma_atomic_fetch_and_u32_impl(ptr, andval) \
+          (OSAtomicAnd32Orig((uint32_t)(andval),(uint32_t *)(ptr)))
+  #endif
+
+#elif defined(__ia64__) \
+   && (defined(__HP_cc__) || defined(__HP_aCC__))
+
+  /* (fall back to implementation below which uses CAS) */
+
+#elif (defined(__ppc__)   || defined(_ARCH_PPC)  || \
+       defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)) \
+   && (defined(__IBMC__) || defined(__IBMCPP__))
+
+  /* use xlC load-linked/store-conditional intrinsics to build atomic ops
+   * (xlC v12 supports GNUC-style __sync_fetch_and_and(), not earlier vers) */
+
+  /* __ldarx() is only valid in 64-bit mode according to IBM docs, so the cast
+   * to (long *) is valid.  If this macro is used in code compiled 32-bit, then
+   * the cast will truncate the values.  Eliminate cast if valid in 32-bits. */
+  #if defined(_LP64) || defined(__LP64__)
+  #define plasma_atomic_fetch_and_u64_implreturn(ptr, andval, cast)       \
+    do {                                                                  \
+        register uint64_t plasma_atomic_tmp;                              \
+        do { plasma_atomic_tmp = (uint64_t)__ldarx((long *)(ptr));        \
+        } while (__builtin_expect(                                        \
+                   !(__stdcx((long *)(ptr),                               \
+                             (long)(plasma_atomic_tmp & (andval)))), 0)); \
+        return (cast)plasma_atomic_tmp;                                   \
+    } while (0)
+  #endif
+
+  #define plasma_atomic_fetch_and_u32_implreturn(ptr, andval, cast)       \
+    do {                                                                  \
+        register uint32_t plasma_atomic_tmp;                              \
+        do { plasma_atomic_tmp = (uint32_t)__lwarx((int *)(ptr));         \
+        } while (__builtin_expect(                                        \
+                   !(__stwcx((int *)(ptr),                                \
+                             (int)(plasma_atomic_tmp & (andval)))), 0));  \
+        return (cast)plasma_atomic_tmp;                                   \
+    } while (0)
+
+#endif
+
+#ifndef plasma_atomic_fetch_and_ptr_impl
+  /*(64-bit Windows is LLP64, not LP64 ABI, so different macro for 64-bit ptr)*/
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
+    #ifdef  plasma_atomic_fetch_and_u64_impl
+    #define plasma_atomic_fetch_and_ptr_impl(ptr,andval) \
+            plasma_atomic_fetch_and_u64_impl((ptr),(andval))
+    #endif
+  #else
+    #ifdef  plasma_atomic_fetch_and_u32_impl
+    #define plasma_atomic_fetch_and_ptr_impl(ptr,andval) \
+            plasma_atomic_fetch_and_u32_impl((ptr),(andval))
+    #endif
+  #endif
+#endif
+
+/* FUTURE: might make into inline function for consistent return type casting
+ * and to avoid potential multiple evaluation of macro arguments */
+#ifdef  plasma_atomic_fetch_and_ptr_impl
+#define plasma_atomic_fetch_and_ptr(ptr,andval) \
+        plasma_atomic_fetch_and_ptr_impl((ptr),(andval))
+#endif
+#ifdef  plasma_atomic_fetch_and_u64_impl
+#define plasma_atomic_fetch_and_u64(ptr,andval) \
+        plasma_atomic_fetch_and_u64_impl((ptr),(andval))
+#endif
+#ifdef  plasma_atomic_fetch_and_u32_impl
+#define plasma_atomic_fetch_and_u32(ptr,andval) \
+        plasma_atomic_fetch_and_u32_impl((ptr),(andval))
+#endif
+
+#if !defined(plasma_atomic_fetch_and_u64_impl) \
+ && !defined(plasma_atomic_fetch_and_u64_implreturn)
+#define plasma_atomic_fetch_and_u64_implreturn(ptr, andval, cast)            \
+    do {                                                                     \
+        register uint64_t plasma_atomic_tmp;                                 \
+        do { plasma_atomic_tmp = plasma_atomic_ld_nopt_T(uint64_t *,(ptr));  \
+        } while (__builtin_expect(                                           \
+                   !plasma_atomic_CAS_64((ptr), plasma_atomic_tmp,           \
+                                         plasma_atomic_tmp & (andval)), 0)); \
+        return (cast)plasma_atomic_tmp;                                      \
+    } while (0)
+#endif
+
+#if !defined(plasma_atomic_fetch_and_u32_impl) \
+ && !defined(plasma_atomic_fetch_and_u32_implreturn)
+#define plasma_atomic_fetch_and_u32_implreturn(ptr, andval, cast)            \
+    do {                                                                     \
+        register uint32_t plasma_atomic_tmp;                                 \
+        do { plasma_atomic_tmp = plasma_atomic_ld_nopt_T(uint32_t *,(ptr));  \
+        } while (__builtin_expect(                                           \
+                   !plasma_atomic_CAS_32((ptr), plasma_atomic_tmp,           \
+                                         plasma_atomic_tmp & (andval)), 0)); \
+        return (cast)plasma_atomic_tmp;                                      \
+    } while (0)
+#endif
+
+#ifndef plasma_atomic_fetch_and_ptr_impl
+__attribute_regparm__((2))
+C99INLINE
+void *
+plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((2))
+C99INLINE
+void *
+plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval)
+{
+  #if defined(_LP64) || defined(__LP64__)
+    plasma_atomic_fetch_and_u64_implreturn(ptr, andval, void *);
+  #else
+    plasma_atomic_fetch_and_u32_implreturn(ptr, andval, void *);
+  #endif
+}
+#endif
+#endif
+
+#ifndef plasma_atomic_not_implemented_64
+#ifdef plasma_atomic_fetch_and_u64_implreturn
+__attribute_regparm__((2))
+C99INLINE
+uint64_t
+plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((2))
+C99INLINE
+uint64_t
+plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval)
+{
+    plasma_atomic_fetch_and_u64_implreturn(ptr, andval, uint64_t);
+}
+#endif
+#endif
+#endif
+
+#ifdef plasma_atomic_fetch_and_u32_implreturn
+__attribute_regparm__((2))
+C99INLINE
+uint32_t
+plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval)
+  __attribute_nonnull__;
+#if !defined(NO_C99INLINE)
+__attribute_regparm__((2))
+C99INLINE
+uint32_t
+plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval)
+{
+    plasma_atomic_fetch_and_u32_implreturn(ptr, andval, uint32_t);
+}
+#endif
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif
@@ -1409,20 +1608,19 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
  * http://msdn.microsoft.com/en-us/library/191ca0sk%28v=vs.90%29.aspx
  * http://msdn.microsoft.com/en-us/library/b11125ze%28v=vs.90%29.aspx
  * http://msdn.microsoft.com/en-us/library/a8swb4hb%28v=vs.90%29.aspx
+ * http://msdn.microsoft.com/en-us/library/dsx2t7yd%28v=vs.90%29.aspx
  *
  * OSX
  * OSAtomic.h Reference
  * http://developer.apple.com/library/mac/#documentation/System/Reference/OSAtomic_header_reference/Reference/reference.html#//apple_ref/doc/uid/TP40011482
  *
  * Solaris
- * atomic_cas (3C)
- * http://docs.oracle.com/cd/E23824_01/html/821-1465/atomic-cas-3c.html
- * atomic_swap (3C)
- * http://docs.oracle.com/cd/E23824_01/html/821-1465/atomic-swap-3c.html
- * atomic_add (3C)
- * http://docs.oracle.com/cd/E19253-01/816-5168/6mbb3hr0s/index.html
- * atomic_or (3C)
- * http://docs.oracle.com/cd/E19253-01/816-5168/6mbb3hr3j/index.html
+ * http://docs.oracle.com/cd/E23824_01/html/821-1465/
+ * http://docs.oracle.com/cd/E19253-01/816-5168/atomic-cas-3c/index.html
+ * http://docs.oracle.com/cd/E19253-01/816-5168/atomic-swap-3c/index.html
+ * http://docs.oracle.com/cd/E19253-01/816-5168/atomic-add-3c/index.html
+ * http://docs.oracle.com/cd/E19253-01/816-5168/atomic-or-3c/index.html
+ * http://docs.oracle.com/cd/E19253-01/816-5168/atomic-and-3c/index.html
  *
  * AIX on POWER and xlC
  * Synchronization and atomic built-in functions
