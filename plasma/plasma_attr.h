@@ -319,7 +319,7 @@ extern "C" {
 #endif
 #endif
 
-#if defined(__clang__) || defined(INTEL_COMPILER) \
+#if defined(__clang__) || defined(INTEL_COMPILER) || defined(_MSC_VER) \
  ||(defined(__SSE__) && defined(__GNUC__) && __GNUC_PREREQ(4,7))
 #include <xmmintrin.h>
 #else
@@ -334,8 +334,17 @@ enum _mm_hint
 
 /* GCC __builtin_prefetch() http://gcc.gnu.org/projects/prefetch.html */
 #if !defined(__GNUC__) && !__has_builtin(__builtin_prefetch)
-/* http://software.intel.com/sites/products/documentation/studio/composer/en-us/2011Update/compiler_c/intref_cls/common/intref_sse_cacheability.htm */
-#if defined(__INTEL_COMPILER)
+/* http://software.intel.com/sites/products/documentation/studio/composer/en-us/2011Update/compiler_c/intref_cls/common/intref_sse_cacheability.htm
+ * http://msdn.microsoft.com/en-us/library/84szxsww%28v=vs.90%29.aspx
+ * On non-x86 systems, MSVC provides PreFetchCacheLine() (not used here)
+ *   void PreFetchCacheLine(int Level, VOID CONST *Address);
+ *   #define __builtin_prefetch(addr,rw,locality) \
+ *           PreFetchCacheLine((locality),(addr))
+ * http://msdn.microsoft.com/en-us/library/windows/desktop/ms684826%28v=vs.85%29.aspx */
+#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+#ifdef _MSC_VER
+#pragma intrinsic(_mm_prefetch)
+#endif
 #define __builtin_prefetch(addr,rw,locality) \
         _mm_prefetch((addr),(locality))
 #endif
