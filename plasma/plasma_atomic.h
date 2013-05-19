@@ -213,7 +213,7 @@
 
 #elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
 
-  /* (note: we assume __sync_* builtins provide compiler optimization fence) */
+  /* (note: __sync_* builtins provide compiler optimization fence) */
   #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
   #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
@@ -252,6 +252,8 @@
  * http://software.intel.com/en-us/blogs/2007/11/30/volatile-almost-useless-for-multi-threaded-programming/
  * intended replacement when ptr is known to be an _Atomic type:
  *   atomic_load_explicit(ptr, memory_order_???)
+ * Note: 32-bit processors, like 32-bit ARM, require special instructions
+ * for 64-bit atomic load (not implemented here).
  */
 #define plasma_atomic_ld_nopt(ptr) (*(volatile __typeof__(ptr))(ptr))
 #define plasma_atomic_ld_nopt_T(T,ptr) (*(volatile T)(ptr))
@@ -260,7 +262,7 @@
  * plasma_atomic_load - atomic load with memory_order_seq_cst
  * plasma_atomic_load_into - atomic load with mem order seq_cst, into var
  * plasma_atomic_load_explicit - atomic_load, specifying memory order
- * plasma_atomic_load_explicit_into - atomic load, specifyig mem order, into var
+ * plasma_atomic_load_explicit_into - atomic load, specifying mem order,into var
  */
 #if __has_extension(c_atomic) || __has_extension(cxx_atomic)
 
@@ -279,19 +281,22 @@
 /*
  * #elif defined(__ia64__) || defined(_M_IA64)
  *
- * XXX: Itanium has ld1, ld2, ld4, ld8 with .acq or .rel suffix modifers
+ * XXX: Itanium has ld1, ld2, ld4, ld8 with .acq suffix modifer
  *      (not implemented in assembly here, but could be)
  */
 
 #else
 
-/* (plasma_atomic_load* is technically not valid with memory_order_acq_rel
- *  or memory_order_release, but do something sane for those cases) */
-#define plasma_atomic_load_explicit_into(lval, ptr, order)       \
-        do { if (order == memory_order_seq_cst)                  \
-                 atomic_thread_fence(memory_order_seq_cst);      \
-             (lval) = *(ptr);                                    \
-             atomic_thread_fence(order);                         \
+/* Note: 32-bit processors, like 32-bit ARM, require special instructions
+ * for 64-bit atomic load (not implemented here). */
+/* (plasma_atomic_load* is technically only valid with memory_order_seq_cst,
+ *  memory_order_acquire, memory_order_consume, or memory_order_relaxed,
+ *  but do something sane for other cases) */
+#define plasma_atomic_load_explicit_into(lval, ptr, order)  \
+        do { if ((order) == memory_order_seq_cst)           \
+                 atomic_thread_fence(memory_order_seq_cst); \
+             (lval) = *(ptr);                               \
+             atomic_thread_fence(order);                    \
         } while (0)
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -329,7 +334,7 @@
          : __typeof__(*(ptr))                                          \
              plasma_atomic_load_32_impl((ptr),(order),sizeof(*(ptr))))
 
-#define plasma_atomic_load_explicit(ptr, order)                        \
+#define plasma_atomic_load_explicit(ptr, order) \
         plasma_atomic_load_explicit_szof((ptr), (order))
 
 #ifndef plasma_atomic_not_implemented_64
