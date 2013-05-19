@@ -509,6 +509,7 @@
  * to provide the barrier.  See comments with __x86_64__ code above.
  * http://stackoverflow.com/questions/6480610/what-is-the-behavior-of-faststorefence 
  * http://stackoverflow.com/questions/12308916/mm-sfence-vs-faststorefence
+ * http://msdn.microsoft.com/en-us/library/t710k390%28v=vs.90%29.aspx
  *
  * Overview of x64 Calling Conventions
  *   http://msdn.microsoft.com/en-us/library/ms235286.aspx */
