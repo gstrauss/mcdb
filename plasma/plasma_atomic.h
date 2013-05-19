@@ -992,6 +992,33 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
 
 
 /*
+ * plasma_atomic_fetch_sub_ptr - atomic pointer  fetch and sub
+ * plasma_atomic_fetch_sub_u64 - atomic uint64_t fetch and sub
+ * plasma_atomic_fetch_sub_u32 - atomic uint32_t fetch and sub
+ */
+
+#if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+
+  #define plasma_atomic_fetch_sub_ptr_impl(ptr,subval) \
+          __sync_fetch_and_sub((ptr),(subval))
+  #define plasma_atomic_fetch_sub_u64_impl(ptr,subval) \
+          __sync_fetch_and_sub((ptr),(subval))
+  #define plasma_atomic_fetch_sub_u32_impl(ptr,subval) \
+          __sync_fetch_and_sub((ptr),(subval))
+
+#else
+
+  #define plasma_atomic_fetch_sub_ptr(ptr,subval) \
+          plasma_atomic_fetch_add_ptr((ptr),-(subval))
+  #define plasma_atomic_fetch_sub_u64(ptr,subval) \
+          plasma_atomic_fetch_add_u64((ptr),-(subval))
+  #define plasma_atomic_fetch_sub_u32(ptr,subval) \
+          plasma_atomic_fetch_add_u32((ptr),-(subval))
+
+#endif
+
+
+/*
  * plasma_atomic_fetch_or_ptr - atomic pointer  fetch and or
  * plasma_atomic_fetch_or_u64 - atomic uint64_t fetch and or
  * plasma_atomic_fetch_or_u32 - atomic uint32_t fetch and or
