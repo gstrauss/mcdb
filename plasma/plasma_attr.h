@@ -32,9 +32,20 @@ extern "C" {
 #ifndef restrict
 #if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
 #define restrict __restrict
+#elif defined(__SUNPRO_C)
+#define restrict _Restrict
 #else
 #define restrict
 #endif
+#endif
+#endif
+
+#if defined(__SUNPRO_C) || defined(__SUNPRO_CC)
+#ifndef __asm__
+#define __asm__ __asm
+#endif
+#ifndef __volatile__
+#define __volatile__ volatile
 #endif
 #endif
 
