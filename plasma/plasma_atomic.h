@@ -263,15 +263,14 @@
  * plasma_atomic_load_into - atomic load with mem order seq_cst, into var
  * plasma_atomic_load_explicit - atomic_load, specifying memory order
  * plasma_atomic_load_explicit_into - atomic load, specifying mem order,into var
+ *
+ * (clang __c11_atomic_load() requires _Atomic type; not used here,
+ *  but clang does support gcc builtin __atomic_load_n() and __atomic_load())
+ *  http://clang-developers.42468.n3.nabble.com/RFC-atomic-support-for-gcc-4-7-compatibility-td3900609.html
  */
-#if __has_extension(c_atomic) || __has_extension(cxx_atomic)
 
-#define plasma_atomic_load_explicit(ptr, order) \
-        __c11_atomic_load((ptr),(order))
-#define plasma_atomic_load_explicit_into(lval,ptr,order) \
-        ((lval) = __c11_atomic_load((ptr),(order)))
-
-#elif defined(__GNUC__) && __GNUC_PREREQ(4,7)
+#if __has_extension(c_atomic) || __has_extension(cxx_atomic) \
+ || (defined(__GNUC__) && __GNUC_PREREQ(4,7))
 
 #define plasma_atomic_load_explicit(ptr, order) \
         __atomic_load_n((ptr),(order))
@@ -422,13 +421,14 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 /*
  * plasma_atomic_store - atomic store with memory_order_seq_cst
  * plasma_atomic_store_explicit - atomic_store, specifying memory order
+ *
+ * (clang __c11_atomic_store() requires _Atomic type; not used here,
+ *  but clang does support gcc builtin __atomic_store_n())
+ *  http://clang-developers.42468.n3.nabble.com/RFC-atomic-support-for-gcc-4-7-compatibility-td3900609.html
  */
-#if __has_extension(c_atomic) || __has_extension(cxx_atomic)
 
-#define plasma_atomic_store_explicit(ptr, val, order) \
-        __c11_atomic_store((ptr),(val),(order))
-
-#elif defined(__GNUC__) && __GNUC_PREREQ(4,7)
+#if __has_extension(c_atomic) || __has_extension(cxx_atomic) \
+ || (defined(__GNUC__) && __GNUC_PREREQ(4,7))
 
 #define plasma_atomic_store_explicit(ptr, val, order) \
         __atomic_store_n((ptr),(val),(order))
