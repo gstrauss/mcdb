@@ -737,7 +737,7 @@ typedef enum memory_order {
 #define atomic_signal_fence(order)  __c11_atomic_signal_fence(order)
 #define atomic_thread_fence(order)  __c11_atomic_thread_fence(order)
 
-#elif defined(__GNUC__) && __GNUC_PREREQ(4,7)
+#elif __GNUC_PREREQ(4,7)
 
 #define atomic_thread_fence(order)  __atomic_thread_fence(order)
 #define atomic_signal_fence(order)  __atomic_signal_fence(order)

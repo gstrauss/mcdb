@@ -118,7 +118,7 @@ extern "C" {
 #define __attribute__(x)
 #endif
 
-#if (defined(__GNUC__) && __GNUC_PREREQ(3,1)) \
+#if __GNUC_PREREQ(3,1) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || __has_attribute(noinline)
 #ifndef __attribute_noinline__
@@ -129,7 +129,7 @@ extern "C" {
 #define __attribute_noinline__
 #endif
 
-#if (defined(__GNUC__) && __GNUC_PREREQ(3,1)) \
+#if __GNUC_PREREQ(3,1) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || __has_attribute(always_inline)
 #ifndef __attribute_always_inline__
@@ -320,7 +320,7 @@ extern "C" {
 #endif
 
 #if defined(__clang__) || defined(INTEL_COMPILER) || defined(_MSC_VER) \
- ||(defined(__SSE__) && defined(__GNUC__) && __GNUC_PREREQ(4,7))
+ ||(__GNUC_PREREQ(4,7) && defined(__SSE__))
 #include <xmmintrin.h>
 #else
 enum _mm_hint

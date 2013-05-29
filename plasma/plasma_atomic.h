@@ -270,7 +270,7 @@
  */
 
 #if __has_extension(c_atomic) || __has_extension(cxx_atomic) \
- || (defined(__GNUC__) && __GNUC_PREREQ(4,7))
+ || __GNUC_PREREQ(4,7)
 
 #define plasma_atomic_load_explicit(ptr, order) \
         __atomic_load_n((ptr),(order))
@@ -428,7 +428,7 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
  */
 
 #if __has_extension(c_atomic) || __has_extension(cxx_atomic) \
- || (defined(__GNUC__) && __GNUC_PREREQ(4,7))
+ || __GNUC_PREREQ(4,7)
 
 #define plasma_atomic_store_explicit(ptr, val, order) \
         __atomic_store_n((ptr),(val),(order))

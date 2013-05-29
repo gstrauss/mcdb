@@ -81,7 +81,7 @@
   #if defined(__clang__) || defined(__INTEL_COMPILER)
    /* gcc 4.7 xmmintrin.h defined _mm_pause as rep; nop, which is portable to
     * chips pre-Pentium 4.  Although opcode generated is the same, we want pause
-    *||(defined(__SSE__) && defined(__GNUC__) && __GNUC_PREREQ(4,7))*/
+    *||(__GNUC_PREREQ(4,7) && defined(__SSE__))*/
   #include <xmmintrin.h>
   #define plasma_spin_pause()  _mm_pause()
   #else
@@ -320,6 +320,7 @@ typedef struct plasma_spin_lock_t {
 
 
 #ifndef plasma_spin_lock_acquire_spinloop
+/*(plasma_spin_lock_acquire_spinloop() always returns true)*/
 bool
 plasma_spin_lock_acquire_spinloop (plasma_spin_lock_t * const spin)
   __attribute_nonnull__;
