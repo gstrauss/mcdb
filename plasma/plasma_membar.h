@@ -253,7 +253,7 @@
  * https://blogs.oracle.com/d/entry/compiler_memory_barriers */
 /* Linux on SPARC uses TSO (total store order)
  * (not PSO (partial store order) or RMO (relaxed memory order)) */
-#if defined(__sun) || defined(__linux__)
+#if (defined(__sun) && defined(__SVR4)) || defined(__linux__)
 #undef  plasma_membar_LoadLoad
 #undef  plasma_membar_StoreStore
 #undef  plasma_membar_ld_ctrldep

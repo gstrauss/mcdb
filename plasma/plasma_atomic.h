@@ -133,7 +133,7 @@
           (OSAtomicCompareAndSwap32((int32_t)(cmpval),(int32_t)(newval), \
                                     (int32_t *)(ptr)))
 
-#elif defined(__sun)
+#elif defined(__sun) && defined(__SVR4)
 
   #include <atomic.h>
   #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
@@ -539,7 +539,7 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
             _InterlockedExchange((ptr),(newval))
   #endif
 
-#elif defined(__sun)
+#elif defined(__sun) && defined(__SVR4)
   /* TSO (total store order) on SPARC, so acquire barrier is implicit */
   #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
           plasma_atomic_xchg_ptr_impl((ptr),(newval))
@@ -796,7 +796,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
           _InterlockedExchangeAdd((long *)(ptr),(long)(addval))
 
-#elif defined(__sun)
+#elif defined(__sun) && defined(__SVR4)
 
   #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
           atomic_add_ptr((ptr),(ssize_t)(addval))
@@ -1034,7 +1034,7 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
   #define plasma_atomic_fetch_or_u32_impl(ptr, orval) \
           _InterlockedOr((long *)(ptr),(long)(orval))
 
-#elif defined(__sun)
+#elif defined(__sun) && defined(__SVR4)
 
   #define plasma_atomic_fetch_or_u64_impl(ptr,orval) \
           atomic_or_64((uint64_t *)(ptr),(uint64_t)(orval))
@@ -1233,7 +1233,7 @@ plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval)
   #define plasma_atomic_fetch_xor_u32_impl(ptr, xorval) \
           _InterlockedXor((long *)(ptr),(long)(xorval))
 
-#elif defined(__sun)
+#elif defined(__sun) && defined(__SVR4)
 
   /* (fall back to implementation below which uses CAS) */
 
@@ -1429,7 +1429,7 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
   #define plasma_atomic_fetch_and_u32_impl(ptr, andval) \
           _InterlockedAnd((long *)(ptr),(long)(andval))
 
-#elif defined(__sun)
+#elif defined(__sun) && defined(__SVR4)
 
   #define plasma_atomic_fetch_and_u64_impl(ptr,andval) \
           atomic_and_64((uint64_t *)(ptr),(uint64_t)(andval))
