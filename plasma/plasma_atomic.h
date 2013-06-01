@@ -900,7 +900,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
         register uint32_t plasma_atomic_tmp;                              \
         do { plasma_atomic_tmp = (uint32_t)__lwarx((int *)(ptr));         \
         } while (__builtin_expect(                                        \
-                   !(__stdwx((int *)(ptr),                                \
+                   !(__stwcx((int *)(ptr),                                \
                              (int)(plasma_atomic_tmp + (addval)))), 0));  \
         return (cast)plasma_atomic_tmp;                                   \
     } while (0)
