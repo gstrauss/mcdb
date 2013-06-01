@@ -74,7 +74,9 @@ const void * const nointr_c_force_func_emit[] = {
   (void *)nointr_open,
   (void *)nointr_close,
   (void *)nointr_ftruncate,
-  (void *)nointr_write,
-  (void *)nointr_openat
+  (void *)nointr_write
+ #ifdef AT_FDCWD
+  ,(void *)nointr_openat
+ #endif
 };
 #endif
