@@ -12,6 +12,8 @@ mcdb is based on D. J. Bernstein's constant database package
 Install
 -------
 
+  # (requires Python.h; e.g. install python-devel RPM or python-dev dpkg)
+
   $ tar xzf python-mcdb-$VERSION.tgz
   $ cd python-mcdb-$VERSION
   $ python setup.py build
