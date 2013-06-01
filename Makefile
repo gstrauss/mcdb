@@ -358,7 +358,7 @@ ifeq (,$(usr_bin_id))
 usr_bin_id:=/usr/bin/id
 endif
 
-.PHONY: clean
+.PHONY: clean clean-contrib realclean
 clean:
 	[ "$$($(usr_bin_id) -u)" != "0" ]
 	$(RM) *.o t/*.o plasma/*.o
@@ -367,3 +367,12 @@ clean:
 	$(RM) libmcdb.so libnss_mcdb.so.2
 	$(RM) mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
 
+clean-contrib:
+	-$(MAKE) MCDB_File-bootstrap-clean
+	$(MAKE) MCDB_File-bootstrap-clean
+	$(MAKE) -C contrib/lua-mcdb clean
+	[ ! -d contrib/python-mcdb/build ] || $(RM) -r contrib/python-mcdb/build
+	[ ! -f contrib/ruby-mcdb/Makefile ] || \
+          $(MAKE) -C contrib/ruby-mcdb distclean
+
+realclean: clean-contrib clean
