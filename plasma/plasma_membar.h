@@ -431,10 +431,21 @@
 /* XL C for AIX, V11.1 Compiler Reference
  * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp
  * Synchronization functions
- * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlc111.aix.doc%2Fcompiler_ref%2Fbifs_sync.html */
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlc111.aix.doc%2Fcompiler_ref%2Fbifs_sync.html
+ * xlc compiler flags recommended for use with plasma_membar.h, plasma_atomic.h:
+ *   -D_XOPEN_SOURCE=600 -qkeyword=inline -qlanglvl=extc99 (or =extended) */
 #if defined(__xlc__) || defined(__xlC__)  /*(__IBMC__, __IBMCPP__ for ver cmp)*/
 #if defined(__ppc__)   || defined(_ARCH_PPC)  || \
     defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
+#ifndef _ALL_SOURCE
+#ifndef _H_TYPES
+#include <sys/types.h>
+#endif
+typedef uchar_t  uchar;
+typedef ushort_t ushort;
+typedef uint_t   uint;
+typedef ulong_t  ulong;
+#endif /*(IBM should fix sys/atomic_op.h to avoid using non-standard types)*/
 #include <sys/atomic_op.h>
 #undef  plasma_membar_ccfence
 #undef  plasma_membar_LoadLoad

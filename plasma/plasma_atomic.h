@@ -167,15 +167,15 @@
   #include <sys/atomic_op.h>
   #if defined(__IBMC__) || defined(__IBMCPP__)
     #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
-            __compare_and_swaplp((long *)(ptr),(long *)(&cmpval),(newval))
-            /* !__check_lockd_mp((long *)(ptr),(cmpval),(newval)) */
+            __compare_and_swaplp((long *)(ptr),(long *)(&cmpval),(long)(newval))
+            /* !__check_lockd_mp((long *)(ptr),(long)(cmpval),(long)(newval)) */
     #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
-            __compare_and_swap((int *)(ptr),(int *)(&cmpval),(newval))
-            /* !__check_lock_mp((int *)(ptr),(cmpval),(newval)) */
+            __compare_and_swap((int *)(ptr),(int *)(&cmpval),(int)(newval))
+            /* !__check_lock_mp((int *)(ptr),(int)(cmpval),(int)(newval)) */
     #define plasma_atomic_xchg_64_impl(ptr, newval) \
-            __fetch_and_swaplp((long *)(ptr),(newval))
+            __fetch_and_swaplp((long *)(ptr),(long)(newval))
     #define plasma_atomic_xchg_32_impl(ptr, newval) \
-            __fetch_and_swap((int *)(ptr),(newval))
+            __fetch_and_swap((int *)(ptr),(int)(newval))
     #if !defined(_LP64) && !defined(__LP64__)
       /* AIX 64-bit intrinsics not available for 32-bit compilation
        * (not implemented, but could fall back to mutex implementation,
@@ -216,8 +216,12 @@
   /* (note: __sync_* builtins provide compiler optimization fence) */
   #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
+  #if !defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8)
+  #define plasma_atomic_not_implemented_64
+  #else
   #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
+  #endif
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
 
@@ -230,7 +234,7 @@
 
 /* default plasma_atomic_CAS_ptr_impl() (if not previously defined) */
 #ifndef plasma_atomic_CAS_ptr_impl
-  #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
     #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
             plasma_atomic_CAS_64_impl((uint64_t *)(ptr), \
                                       (uint64_t)(cmpval),(uint64_t)(newval))
@@ -298,7 +302,9 @@
              atomic_thread_fence(order);                    \
         } while (0)
 
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__)        \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590) \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x590)
 
 #define plasma_atomic_load_explicit(ptr, order)                              \
         (__extension__({                                                     \
@@ -306,16 +312,6 @@
           plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(order)); \
           plasma_atomic_tmp;                                                 \
         }))
-
-#elif (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590) \
-   || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x590)
-
-#define plasma_atomic_load_explicit(ptr, order)                              \
-        ({                                                                   \
-          __typeof__(*(ptr)) plasma_atomic_tmp;                              \
-          plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(order)); \
-          plasma_atomic_tmp;                                                 \
-        })
 
 #else
 
@@ -487,7 +483,7 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
                  *((volatile int32_t * restrict)(ptr)) = (int32_t)(newval); \
             } while (0)
   #endif
-  #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
     #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
             plasma_atomic_st_64_release_impl((ptr),(newval))
   #else
@@ -597,7 +593,7 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
           plasma_atomic_xchg_32_acquire_impl((ptr),(newval))
 #endif
 #ifndef plasma_atomic_xchg_ptr_impl
-  #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
     #ifdef plasma_atomic_xchg_64_impl
       #define plasma_atomic_xchg_ptr_impl(ptr, newval) \
               plasma_atomic_xchg_64_impl((uint64_t *)(ptr),(uint64_t)(newval))
@@ -630,7 +626,7 @@ extern "C" {
   bool
   plasma_atomic_CAS_32_impl (uint32_t * const ptr,
                              uint32_t cmpval, const uint32_t newval);
-  #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
     #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
             plasma_atomic_CAS_64_impl((ptr),(cmpval),(newval))
   #else
@@ -945,7 +941,7 @@ C99INLINE
 void *
 plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval)
 {
-  #if defined(_LP64) || defined(__LP64__)
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)
     plasma_atomic_fetch_add_u64_implreturn(ptr, addval, void *);
   #else
     plasma_atomic_fetch_add_u32_implreturn(ptr, addval, void *);
@@ -1171,7 +1167,7 @@ C99INLINE
 void *
 plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval)
 {
-  #if defined(_LP64) || defined(__LP64__)
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)
     plasma_atomic_fetch_or_u64_implreturn(ptr, orval, void *);
   #else
     plasma_atomic_fetch_or_u32_implreturn(ptr, orval, void *);
@@ -1367,7 +1363,7 @@ C99INLINE
 void *
 plasma_atomic_fetch_xor_ptr (void * const ptr, uintptr_t xorval)
 {
-  #if defined(_LP64) || defined(__LP64__)
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)
     plasma_atomic_fetch_xor_u64_implreturn(ptr, xorval, void *);
   #else
     plasma_atomic_fetch_xor_u32_implreturn(ptr, xorval, void *);
@@ -1566,7 +1562,7 @@ C99INLINE
 void *
 plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval)
 {
-  #if defined(_LP64) || defined(__LP64__)
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)
     plasma_atomic_fetch_and_u64_implreturn(ptr, andval, void *);
   #else
     plasma_atomic_fetch_and_u32_implreturn(ptr, andval, void *);

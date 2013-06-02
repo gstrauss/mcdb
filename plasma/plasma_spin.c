@@ -22,9 +22,11 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef _AIX
-#ifndef _ALL_SOURCE
-#define _ALL_SOURCE
+#ifndef _XOPEN_SOURCE
+#ifdef __cplusplus
+#define _XOPEN_SOURCE 500
+#else
+#define _XOPEN_SOURCE 600
 #endif
 #endif
 

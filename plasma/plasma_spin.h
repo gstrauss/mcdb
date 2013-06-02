@@ -158,8 +158,10 @@
    * 3.2 "or" Instruction
    *   "or" Shared Resource Hints
    * For compatibility use 'or 27,27,27' instead of 'yield' extended mnemonic
-   * (available with POWER 7) */
-  #define plasma_spin_pause()  __asm__ __volatile__ ("or 27,27,27")
+   * (available with POWER 7) and use volatile instead of __volatile__ since
+   * -qlanglvl=stdc99 rejects __volatile__, though -qlanglvl=extc99 supports it)
+   */
+  #define plasma_spin_pause()  __asm__ volatile ("or 27,27,27")
 
 #else
 

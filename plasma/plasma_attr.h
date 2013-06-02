@@ -26,7 +26,8 @@
 extern "C" {
 #endif
 
-#if !defined(__STDC_C99) && !defined(__C99_RESTRICT)
+#if __STDC_VERSION__-0 < 199901L \
+ && !defined(__STDC_C99) && !defined(__C99_RESTRICT)
 /*(__C99_RESTRICT defined in xlc/xlC -qkeyword=restrict or some -qlanglevel= )*/
 /* msvc: http://msdn.microsoft.com/en-us/library/5ft82fed.aspx */
 #ifndef restrict
@@ -116,6 +117,10 @@ extern "C" {
 
 #if defined(__GNUC__) && !__GNUC_PREREQ(2,7)
 #define __attribute__(x)
+#endif
+
+#if !__GNUC_PREREQ(2,8) && !defined(__clang__)
+#define __extension__
 #endif
 
 #if __GNUC_PREREQ(3,1) \
@@ -302,6 +307,11 @@ extern "C" {
 # define EXPORT
 # define HIDDEN
 # define INTERNAL
+#endif
+
+
+#if defined(__sun) && defined(__SVR4)
+#include <sys/isa_defs.h>  /* needed on Solaris for _LP64 or _ILP32 define */
 #endif
 
 
