@@ -27,7 +27,8 @@ void _nss_mcdb_setspent(void) { nss_mcdb_setent(NSS_DBTYPE_SHADOW,0); }
 void _nss_mcdb_endspent(void) { nss_mcdb_endent(NSS_DBTYPE_SHADOW);   }
 
 
-#if !defined(_AIX) && !defined(__CYGWIN__)
+#if !defined(_AIX) && !defined(__CYGWIN__) \
+ && !(defined(__APPLE__) && defined(__MACH__))
 
 
 #include <errno.h>

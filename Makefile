@@ -1,6 +1,10 @@
 # mcdb
 
+ifneq (,$(wildcard /bin/uname))
 OSNAME:=$(shell /bin/uname -s)
+else
+OSNAME:=$(shell /usr/bin/uname -s)
+endif
 
 .PHONY: all
 all: mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero \
@@ -28,6 +32,9 @@ endif
 # 'gmake ABI_BITS=64' for 64-bit build (recommended on all 64-bit platforms)
 ifeq (64,$(ABI_BITS))
 ifeq ($(OSNAME),Linux)
+ABI_FLAGS?=-m64
+endif
+ifeq ($(OSNAME),Darwin)
 ABI_FLAGS?=-m64
 endif
 ifeq ($(OSNAME),AIX)
@@ -80,6 +87,14 @@ ifeq ($(OSNAME),Linux)
   LDFLAGS+=-Wl,-O,1 -Wl,--hash-style,gnu -Wl,-z,relro,-z,now
   mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero: \
     LDFLAGS+=-Wl,-z,noexecstack
+endif
+ifeq ($(OSNAME),Darwin)
+  ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
+    RPATH= -Wl,-rpath,$(PREFIX)/lib$(LIB_BITS)
+  endif
+  ifeq (,$(RPM_OPT_FLAGS))
+    CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector
+  endif
 endif
 ifeq ($(OSNAME),AIX)
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))

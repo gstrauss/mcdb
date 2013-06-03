@@ -183,6 +183,9 @@ nss_mcdb_getgrouplist(const char * const restrict user, gid_t group,
     return (status == NSS_STATUS_SUCCESS) ? *ngroups : ((errno = errnum), -1);
 }
 
+#ifdef __linux__
+#include <features.h>
+#endif
 #ifdef __GLIBC__
 #include <assert.h>
 #endif

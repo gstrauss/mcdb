@@ -31,7 +31,9 @@
 #include <arpa/inet.h>  /* htonl(), htons() */
 
 
-#if !defined(_AIX) && !defined(__CYGWIN__)  /* no /etc/shadow on AIX, Cygwin */
+/* no /etc/shadow on AIX, Cygwin, MacOSX */
+#if !defined(_AIX) && !defined(__CYGWIN__) \
+ && !(defined(__APPLE__) && defined(__MACH__))
 
 
 #include <shadow.h>

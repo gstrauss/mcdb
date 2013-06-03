@@ -25,8 +25,6 @@
 #include "mcdb_make.h"
 #include "plasma/plasma_attr.h"
 
-#include <stdbool.h>
-
 struct nss_mcdb_make_wbuf {
   struct mcdb_make * restrict m;
   char * const restrict buf;

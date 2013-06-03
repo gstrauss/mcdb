@@ -42,7 +42,8 @@ enum {
 };
 
 
-#if !defined(_AIX) && !defined(__CYGWIN__)
+#if !defined(_AIX) && !defined(__CYGWIN__) \
+ && !(defined(__APPLE__) && defined(__MACH__))
 
 #include <shadow.h>     /* (struct spwd) */
 

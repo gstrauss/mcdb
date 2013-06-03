@@ -105,7 +105,8 @@ mcdb_make_addrevert(struct mcdb_make * restrict)
  * (Reference: "How to Write Shared Libraries", by Ulrich Drepper)
  * (optimization)
  * The aliases below are not a complete set of mcdb_make symbols */
-#if __GNUC_PREREQ(4,0) || __has_attribute(alias)
+#if (__GNUC_PREREQ(4,0) || __has_attribute(alias)) \
+ && !(defined(__APPLE__) && defined(__MACH__)) /* not supported on Darwin */
 HIDDEN extern __typeof (mcdb_make_add)
                         mcdb_make_add_h;
 HIDDEN extern __typeof (mcdb_make_addbegin)

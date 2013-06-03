@@ -75,6 +75,12 @@ enum {
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+/* _DARWIN_C_SOURCE for struct rpcent on Darwin */
+#if defined(__APPLE__) && defined(__MACH__)
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE
+#endif
+#endif
 
 #include "nss_mcdb.h"
 #include "plasma/plasma_attr.h"

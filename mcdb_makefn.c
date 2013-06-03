@@ -60,6 +60,12 @@
 #include <stdio.h>     /* rename() */
 #include <unistd.h>    /* unlink() */
 
+#if defined(__APPLE__) && defined(__MACH__)
+#include <sys/syscall.h>
+int syscall(int, ...); /* or omit -ansi compile flag, define _DARWIN_C_SOURCE */
+#define fdatasync(fd) syscall(SYS_fdatasync, (fd))
+#endif
+
 int
 mcdb_makefn_start (struct mcdb_make * const restrict m,
                    const char * const restrict fname,

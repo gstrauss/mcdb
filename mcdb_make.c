@@ -33,6 +33,12 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+/* _DARWIN_C_SOURCE needed for mmap MAP_ANON on MacOSX */
+#if defined(__APPLE__) && defined(__MACH__)
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE
+#endif
+#endif
 /* large file support needed for mmap() offset,ftruncate() on mcdb > 2 GB */
 #if defined(_AIX)
 #ifndef _LARGE_FILES
@@ -73,6 +79,12 @@
 #include <stdbool.h> /* bool true false */
 #include <stdint.h>  /* uint32_t uintptr_t */
 #include <limits.h>  /* UINT_MAX, INT_MAX */
+
+#if defined(__APPLE__) && defined(__MACH__)
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+#endif
 
 /*(posix_madvise, defines not provided in Solaris 10, even w/ __EXTENSIONS__)*/
 #if (defined(__sun) || defined(__hpux)) && !defined(POSIX_MADV_NORMAL)
@@ -615,7 +627,8 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
  * (Reference: "How to Write Shared Libraries", by Ulrich Drepper)
  * (optimization)
  * The aliases below are not a complete set of mcdb_make symbols */
-#if __GNUC_PREREQ(4,0) || __has_attribute(alias)
+#if (__GNUC_PREREQ(4,0) || __has_attribute(alias)) \
+ && !(defined(__APPLE__) && defined(__MACH__)) /* not supported on Darwin */
 HIDDEN extern __typeof (mcdb_make_add)
                         mcdb_make_add_h
   __attribute__((alias ("mcdb_make_add")));
