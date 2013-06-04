@@ -4,6 +4,7 @@ README           - summary (this file)
 
 plasma_atomic.h  - atomic operations
 plasma_attr.h    - code attributes
+plasma_feature.h - OS and architecture features
 plasma_membar.h  - memory barriers
 plasma_spin.h    - spin loop components
 

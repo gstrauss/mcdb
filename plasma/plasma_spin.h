@@ -25,6 +25,8 @@
 #ifndef INCLUDED_PLASMA_SPIN_H
 #define INCLUDED_PLASMA_SPIN_H
 
+#include "plasma_feature.h"
+#include "plasma_attr.h"
 #include "plasma_membar.h"
 #include "plasma_atomic.h"
 
@@ -179,7 +181,8 @@
   VOID WINAPI Sleep(_In_ DWORD dwMilliseconds);
   BOOL WINAPI SwitchToThread(void);
   #define plasma_spin_yield() do {if (!SwitchToThread()) Sleep(1);} while (0)
-#else /* assume unix if not MS Windows */
+#elif defined(__unix) || defined(__unix__) \
+   || (defined(__APPLE__) && defined(__MACH__)) || defined(_AIX)
   #include <unistd.h>  /* _POSIX_PRIORITY_SCHEDULING */
   #include <poll.h>    /* might also need _XOPEN_SOURCE=500 or better on _AIX */
   #ifdef _POSIX_PRIORITY_SCHEDULING

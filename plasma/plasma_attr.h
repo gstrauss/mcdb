@@ -22,6 +22,8 @@
 #ifndef INCLUDED_PLASMA_ATTR_H
 #define INCLUDED_PLASMA_ATTR_H
 
+#include "plasma_feature.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -307,11 +309,6 @@ extern "C" {
 # define EXPORT
 # define HIDDEN
 # define INTERNAL
-#endif
-
-
-#if defined(__sun) && defined(__SVR4)
-#include <sys/isa_defs.h>  /* needed on Solaris for _LP64 or _ILP32 define */
 #endif
 
 

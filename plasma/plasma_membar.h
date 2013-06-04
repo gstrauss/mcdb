@@ -132,6 +132,8 @@
 #ifndef INCLUDED_PLASMA_MEMBAR_H
 #define INCLUDED_PLASMA_MEMBAR_H
 
+#include "plasma_feature.h"
+
 
 #if defined(__x86_64__) || defined(__i386__)
 /* Intel(R) 64 and IA-32 Architectures Developer's Manual: Vol. 3A

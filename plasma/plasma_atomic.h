@@ -25,9 +25,10 @@
 #ifndef INCLUDED_PLASMA_ATOMIC_H
 #define INCLUDED_PLASMA_ATOMIC_H
 
-#include <inttypes.h>
+#include "plasma_feature.h"
 #include "plasma_attr.h"
 #include "plasma_membar.h"
+#include <inttypes.h>
 
 /*
  * plasma_atomic_lock_acquire - basic lock providing acquire semantics
