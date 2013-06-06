@@ -1,12 +1,13 @@
 plasma - portability macros for compiler and hardware micro operations
 
-README           - summary (this file)
+README            - summary (this file)
 
-plasma_atomic.h  - atomic operations
-plasma_attr.h    - code attributes
-plasma_feature.h - OS and architecture features
-plasma_membar.h  - memory barriers
-plasma_spin.h    - spin loop components
+plasma_atomic.h   - atomic operations
+plasma_attr.h     - code attributes
+plasma_feature.h  - OS and architecture features
+plasma_membar.h   - memory barriers
+plasma_spin.h     - spin loop components
+plasma_stdtypes.h - standard types
 
 plasma provides portability macros for compiler and hardware micro operations.
 These are short sequences of instructions which implement features provided by

@@ -28,7 +28,7 @@
 #include "plasma_feature.h"
 #include "plasma_attr.h"
 #include "plasma_membar.h"
-#include <inttypes.h>
+#include "plasma_stdtypes.h"
 
 /*
  * plasma_atomic_lock_acquire - basic lock providing acquire semantics
@@ -609,15 +609,10 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 
 
 
-#include <stdint.h>   /* <inttypes.h> is more portable on pre-C99 systems */
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef __cplusplus
-#include <stdbool.h>
-#endif
 
 #if defined(PLASMA_ATOMIC_MUTEX_FALLBACK)
   /* mutex-based fallback implementation, enabled by preprocessor define */
