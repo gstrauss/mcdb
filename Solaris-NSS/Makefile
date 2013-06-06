@@ -15,7 +15,7 @@ CFLAGS+=-fpic -D_THREAD_SAFE -O3
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 nss_mcdb.so.1: nss_mcdb_solaris.o
-	$(LD) -o $@ -shared -fpic $(LDFLAGS) $^ \
+	$(CC) -o $@ -shared -fpic $(LDFLAGS) $^ \
 	  ../libnss_mcdb.a ../libmcdb.a -lsocket -lnsl
 
 .PHONY: clean

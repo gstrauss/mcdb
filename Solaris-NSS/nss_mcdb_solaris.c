@@ -98,13 +98,13 @@ _nss_mcdb_generic_destr(nss_backend_t * const be, nss_XbyY_args_t * const args)
 static nss_status_t
 _nss_mcdb_setpwent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_setpwent(args->stayopen);
+    return nss_mcdb_setent(NSS_DBTYPE_PASSWD, args->stayopen);
 }
 
 static nss_status_t
 _nss_mcdb_endpwent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_endpwent();
+    return nss_mcdb_endent(NSS_DBTYPE_PASSWD);
 }
 
 static nss_status_t
@@ -148,11 +148,11 @@ static nss_backend_op_t nss_mcdb_acct_passwd_be_ops[] =
 
 static nss_backend_t nss_mcdb_acct_passwd_be =
 {
-  .ops = nss_mcdb_acct_passwd_be_ops;
-  .n_ops = sizeof(nss_mcdb_acct_passwd_be_ops) / sizeof(nss_backend_op_t);
+  .ops = nss_mcdb_acct_passwd_be_ops,
+  .n_ops = sizeof(nss_mcdb_acct_passwd_be_ops) / sizeof(nss_backend_op_t)
 };
 
-nss_status_t
+nss_backend_t *
 _nss_mcdb_passwd_constr(const char * const db_name,
                         const char * const src_name,
                         const char * const cfg_args)
@@ -165,13 +165,13 @@ _nss_mcdb_passwd_constr(const char * const db_name,
 static nss_status_t
 _nss_mcdb_setgrent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_setgrent(args->stayopen);
+    return nss_mcdb_setent(NSS_DBTYPE_GROUP, args->stayopen);
 }
 
 static nss_status_t
 _nss_mcdb_endgrent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_endgrent();
+    return nss_mcdb_endent(NSS_DBTYPE_GROUP);
 }
 
 static nss_status_t
@@ -207,13 +207,17 @@ static nss_status_t
 _nss_mcdb_getgroupsbymem_be(nss_backend_t * const be,
                             struct nss_groupsbymem * const args)
 {
+    long numgids = (long)args->numgids;
+    long maxgids = (long)args->maxgids;
     int errnum;
     const nss_status_t rv =
       _nss_mcdb_initgroups_dyn(args->username, args->gid_array[0],
-                               &args->numgids, &args->maxgids, &args->gid_array,
-                               args->maxgids, &errnum);
+                               &numgids, &maxgids, &args->gid_array,
+                               maxgids, &errnum);
+    args->numgids = (int)numgids;
+    args->maxgids = (int)maxgids;
     return (rv == NSS_STATUS_SUCCESS)
-      ? (args->numgids != args->maxgids)
+      ? (numgids != maxgids)
           ? NSS_STATUS_NOTFOUND  /*search for addtl groups (see nss_dbdefs.h)*/
           : NSS_STATUS_SUCCESS
       : ((errno = errnum), rv);
@@ -232,11 +236,11 @@ static nss_backend_op_t nss_mcdb_acct_group_be_ops[] =
 
 static nss_backend_t nss_mcdb_acct_group_be =
 {
-  .ops = nss_mcdb_acct_group_be_ops;
-  .n_ops = sizeof(nss_mcdb_acct_group_be_ops) / sizeof(nss_backend_op_t);
+  .ops = nss_mcdb_acct_group_be_ops,
+  .n_ops = sizeof(nss_mcdb_acct_group_be_ops) / sizeof(nss_backend_op_t)
 };
 
-nss_status_t
+nss_backend_t *
 _nss_mcdb_group_constr(const char * const db_name,
                        const char * const src_name,
                        const char * const cfg_args)
@@ -249,13 +253,13 @@ _nss_mcdb_group_constr(const char * const db_name,
 static nss_status_t
 _nss_mcdb_sethostent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_sethostent(args->stayopen);
+    return nss_mcdb_setent(NSS_DBTYPE_HOSTS, args->stayopen);
 }
 
 static nss_status_t
 _nss_mcdb_endhostent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_endhostent();
+    return nss_mcdb_endent(NSS_DBTYPE_HOSTS);
 }
 
 static nss_status_t
@@ -305,11 +309,11 @@ static nss_backend_op_t nss_mcdb_netdb_hosts_be_ops[] =
 
 static nss_backend_t nss_mcdb_netdb_hosts_be =
 {
-  .ops = nss_mcdb_netdb_hosts_be_ops;
-  .n_ops = sizeof(nss_mcdb_netdb_hosts_be_ops) / sizeof(nss_backend_op_t);
+  .ops = nss_mcdb_netdb_hosts_be_ops,
+  .n_ops = sizeof(nss_mcdb_netdb_hosts_be_ops) / sizeof(nss_backend_op_t)
 };
 
-nss_status_t
+nss_backend_t *
 _nss_mcdb_hosts_constr(const char * const db_name,
                        const char * const src_name,
                        const char * const cfg_args)
@@ -322,13 +326,13 @@ _nss_mcdb_hosts_constr(const char * const db_name,
 static nss_status_t
 _nss_mcdb_setnetent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_setnetent(args->stayopen);
+    return nss_mcdb_setent(NSS_DBTYPE_NETWORKS, args->stayopen);
 }
 
 static nss_status_t
 _nss_mcdb_endnetent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_endnetent();
+    return nss_mcdb_endent(NSS_DBTYPE_NETWORKS);
 }
 
 static nss_status_t
@@ -377,11 +381,11 @@ static nss_backend_op_t nss_mcdb_netdb_networks_be_ops[] =
 
 static nss_backend_t nss_mcdb_netdb_networks_be =
 {
-  .ops = nss_mcdb_netdb_networks_be_ops;
-  .n_ops = sizeof(nss_mcdb_netdb_networks_be_ops) / sizeof(nss_backend_op_t);
+  .ops = nss_mcdb_netdb_networks_be_ops,
+  .n_ops = sizeof(nss_mcdb_netdb_networks_be_ops) / sizeof(nss_backend_op_t)
 };
 
-nss_status_t
+nss_backend_t *
 _nss_mcdb_networks_constr(const char * const db_name,
                           const char * const src_name,
                           const char * const cfg_args)
@@ -394,13 +398,13 @@ _nss_mcdb_networks_constr(const char * const db_name,
 static nss_status_t
 _nss_mcdb_setprotoent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_setprotoent(args->stayopen);
+    return nss_mcdb_setent(NSS_DBTYPE_PROTOCOLS, args->stayopen);
 }
 
 static nss_status_t
 _nss_mcdb_endprotoent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_endprotoent();
+    return nss_mcdb_endent(NSS_DBTYPE_PROTOCOLS);
 }
 
 static nss_status_t
@@ -446,11 +450,11 @@ static nss_backend_op_t nss_mcdb_netdb_protocols_be_ops[] =
 
 static nss_backend_t nss_mcdb_netdb_protocols_be =
 {
-  .ops = nss_mcdb_netdb_protocols_be_ops;
-  .n_ops = sizeof(nss_mcdb_netdb_protocols_be_ops) / sizeof(nss_backend_op_t);
+  .ops = nss_mcdb_netdb_protocols_be_ops,
+  .n_ops = sizeof(nss_mcdb_netdb_protocols_be_ops) / sizeof(nss_backend_op_t)
 };
 
-nss_status_t
+nss_backend_t *
 _nss_mcdb_protocols_constr(const char * const db_name,
                            const char * const src_name,
                            const char * const cfg_args)
@@ -463,13 +467,13 @@ _nss_mcdb_protocols_constr(const char * const db_name,
 static nss_status_t
 _nss_mcdb_setrpcent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_setrpcent(args->stayopen);
+    return nss_mcdb_setent(NSS_DBTYPE_RPC, args->stayopen);
 }
 
 static nss_status_t
 _nss_mcdb_endrpcent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_endrpcent();
+    return nss_mcdb_endent(NSS_DBTYPE_RPC);
 }
 
 static nss_status_t
@@ -515,11 +519,11 @@ static nss_backend_op_t nss_mcdb_netdb_rpc_be_ops[] =
 
 static nss_backend_t nss_mcdb_netdb_rpc_be =
 {
-  .ops = nss_mcdb_netdb_rpc_be_ops;
-  .n_ops = sizeof(nss_mcdb_netdb_rpc_be_ops) / sizeof(nss_backend_op_t);
+  .ops = nss_mcdb_netdb_rpc_be_ops,
+  .n_ops = sizeof(nss_mcdb_netdb_rpc_be_ops) / sizeof(nss_backend_op_t)
 };
 
-nss_status_t
+nss_backend_t *
 _nss_mcdb_rpc_constr(const char * const db_name,
                            const char * const src_name,
                            const char * const cfg_args)
@@ -532,13 +536,13 @@ _nss_mcdb_rpc_constr(const char * const db_name,
 static nss_status_t
 _nss_mcdb_setservent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_setservent(args->stayopen);
+    return nss_mcdb_setent(NSS_DBTYPE_SERVICES, args->stayopen);
 }
 
 static nss_status_t
 _nss_mcdb_endservent_be(nss_backend_t * const be, nss_XbyY_args_t * const args)
 {
-    return _nss_mcdb_endservent();
+    return nss_mcdb_endent(NSS_DBTYPE_SERVICES);
 }
 
 static nss_status_t
@@ -584,11 +588,11 @@ static nss_backend_op_t nss_mcdb_netdb_services_be_ops[] =
 
 static nss_backend_t nss_mcdb_netdb_services_be =
 {
-  .ops = nss_mcdb_netdb_services_be_ops;
-  .n_ops = sizeof(nss_mcdb_netdb_services_be_ops) / sizeof(nss_backend_op_t);
+  .ops = nss_mcdb_netdb_services_be_ops,
+  .n_ops = sizeof(nss_mcdb_netdb_services_be_ops) / sizeof(nss_backend_op_t)
 };
 
-nss_status_t
+nss_backend_t *
 _nss_mcdb_services_constr(const char * const db_name,
                           const char * const src_name,
                           const char * const cfg_args)
