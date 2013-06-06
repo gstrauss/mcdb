@@ -126,9 +126,10 @@ endif
 # heavy handed dependencies
 _DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) $(wildcard plasma/*.h) Makefile
 
-# C99
+# C99 and POSIX.1-2001 (SUSv3 _XOPEN_SOURCE=600)
 STDC99?=-std=c99
-CFLAGS+=$(STDC99)
+POSIX_STD?=-D_XOPEN_SOURCE=600
+CFLAGS+=$(STDC99) $(POSIX_STD)
 # position independent code (for shared libraries)
 FPIC?=-fpic
 # link shared library
@@ -267,7 +268,8 @@ $(PREFIX)/sbin/nss_mcdbctl: nss_mcdbctl $(PREFIX)/sbin
 
 .PHONY: install-headers install install-doc install-plasma-headers
 install-plasma-headers: plasma/plasma_atomic.h plasma/plasma_attr.h \
-                        plasma/plasma_membar.h plasma/plasma_spin.h
+                        plasma/plasma_membar.h plasma/plasma_spin.h \
+                        plasma/plasma_feature.h plasma/plasma_stdtypes.h
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb/plasma
 	umask 333; \
 	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/plasma/

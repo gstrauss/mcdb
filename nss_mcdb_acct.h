@@ -22,10 +22,11 @@
 #ifndef INCLUDED_NSS_MCDB_ACCT_H
 #define INCLUDED_NSS_MCDB_ACCT_H
 
-#include "nss_mcdb.h"
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "nss_mcdb.h"
 
-#include <sys/types.h>  /* (gid_t) */
 #include <pwd.h>        /* (struct passwd) */
 #include <grp.h>        /* (struct group) */
 

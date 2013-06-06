@@ -22,10 +22,13 @@
 #ifndef INCLUDED_NSS_MCDB_NETDB_MAKE_H
 #define INCLUDED_NSS_MCDB_NETDB_MAKE_H
 
-#include "nss_mcdb_make.h"
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "nss_mcdb_make.h"
 
 #include <netdb.h>
+struct rpcent;      /* (forward declaration) */
 
 /* buf size 1K + NSS_HE_HDRSZ is probably reasonable */
 size_t
@@ -56,7 +59,7 @@ nss_mcdb_netdb_make_protoent_datastr(char * restrict, const size_t,
 /* buf size 1K + NSS_RE_HDRSZ is probably reasonable */
 size_t
 nss_mcdb_netdb_make_rpcent_datastr(char * restrict, const size_t,
-			           const void * const restrict)
+			           const struct rpcent * const restrict)
   __attribute_nonnull__;
 size_t
 
@@ -69,31 +72,31 @@ nss_mcdb_netdb_make_servent_datastr(char * restrict, const size_t,
 bool
 nss_mcdb_netdb_make_hostent_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
+  const void * const)
   __attribute_nonnull__;
 
 bool
 nss_mcdb_netdb_make_netent_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
+  const void * const)
   __attribute_nonnull__;
 
 bool
 nss_mcdb_netdb_make_protoent_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
+  const void * const)
   __attribute_nonnull__;
 
 bool
 nss_mcdb_netdb_make_rpcent_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
+  const void * const)
   __attribute_nonnull__;
 
 bool
 nss_mcdb_netdb_make_servent_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
+  const void * const)
   __attribute_nonnull__;
 
 

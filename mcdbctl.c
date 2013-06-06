@@ -29,21 +29,7 @@
 #define _XOPEN_SOURCE 600
 #endif
 /* large file support needed for open() input file > 2 GB */
-#if defined(_AIX)
-#ifndef _LARGE_FILES
-#define _LARGE_FILES
-#endif
-#else /*#elif defined(__linux__) || defined(__sun) || defined(__hpux)*/
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#ifndef _LARGEFILE_SOURCE
-#define _LARGEFILE_SOURCE 1
-#endif
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE 1
-#endif
-#endif
+#define PLASMA_FEATURE_ENABLE_LARGEFILE
 
 #include "mcdb.h"
 #include "mcdb_makefmt.h"
@@ -51,12 +37,11 @@
 #include "mcdb_error.h"
 #include "nointr.h"
 #include "uint32.h"
+#include "plasma/plasma_stdtypes.h"
 
 #include <sys/mman.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>   /* open(), O_RDONLY */
-#include <stdbool.h> /* bool */
 #include <stdio.h>   /* printf(), snprintf(), IOV_MAX */
 #include <stdlib.h>  /* malloc(), free(), EXIT_SUCCESS */
 #include <string.h>  /* strlen() */

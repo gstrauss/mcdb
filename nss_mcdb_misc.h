@@ -22,6 +22,24 @@
 #ifndef INCLUDED_NSS_MCDB_MISC_H
 #define INCLUDED_NSS_MCDB_MISC_H
 
+/* _BSD_SOURCE or _SVID_SOURCE for struct ether_addr on Linux */
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#endif
+
+#include "plasma/plasma_feature.h"
+#include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "nss_mcdb.h"
+
+/* TODO: implemented only on Linux; other platforms incomplete/missing */
+#if defined(__linux__)
+#include <aliases.h>        /* (struct aliasent) */
+#include <netinet/ether.h>  /* (struct ether_addr) */
+#elif defined(__sun)
+#include <sys/ethernet.h>   /* (struct ether_addr) */
+#endif
+
 enum {
   NSS_AE_LOCAL   =  0,
   NSS_AE_MEM_STR =  4,
@@ -33,22 +51,6 @@ enum {
 enum {
   NSS_EA_HDRSZ   =  6
 };
-
-/* _BSD_SOURCE or _SVID_SOURCE for struct ether_addr on Linux */
-#ifndef _BSD_SOURCE
-#define _BSD_SOURCE
-#endif
-
-#include "nss_mcdb.h"
-#include "plasma/plasma_attr.h"
-
-/* TODO: implemented only on Linux; other platforms incomplete/missing */
-#if defined(__linux__)
-#include <aliases.h>        /* (struct aliasent) */
-#include <netinet/ether.h>  /* (struct ether_addr) */
-#elif defined(__sun)
-#include <sys/ethernet.h>   /* (struct ether_addr) */
-#endif
 
 void _nss_mcdb_setaliasent(void);
 void _nss_mcdb_endaliasent(void);

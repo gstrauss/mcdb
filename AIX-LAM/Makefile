@@ -41,7 +41,7 @@ CFLAGS+=-fpic -D_THREAD_SAFE -O3
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 mcdb.so: lam_mcdb_netdb.o
-	$(LD) -o $@ -bE:lam_mcdb.exp -bnoentry $(LDFLAGS) $^ \
+	$(CC) -o $@ -bE:lam_mcdb.exp -bnoentry $(LDFLAGS) $^ \
 	  ../libnss_mcdb.a ../libmcdb.a -lpthreads
 
 /usr/lib/netsvc/dynload/mcdb.so: mcdb.so

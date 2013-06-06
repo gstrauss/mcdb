@@ -110,7 +110,7 @@ ho_next (struct ho_pvt * const restrict ho)
         == _nss_mcdb_gethostent_r(&ho->he, ho->buf, sizeof(ho->buf),
                                   &ho->errnum, &ho->h_errnum)
       ? &ho->he
-      : (h_errno = ho->h_errnum, NULL);
+      : (h_errno = ho->h_errnum, (struct hostent *)NULL);
 }
 
 struct hostent *
@@ -123,7 +123,7 @@ ho_byname2 (struct ho_pvt * const restrict ho,
                                       ho->buf, sizeof(ho->buf),
                                       &ho->errnum, &ho->h_errnum)
       ? &ho->he
-      : (h_errno = ho->h_errnum, NULL);
+      : (h_errno = ho->h_errnum, (struct hostent *)NULL);
 }
 
 struct hostent *
@@ -142,7 +142,7 @@ ho_byaddr (struct ho_pvt * const restrict ho, const void * const restrict addr,
                                      ho->buf, sizeof(ho->buf),
                                      &ho->errnum, &ho->h_errnum)
       ? &ho->he
-      : (h_errno = ho->h_errnum, NULL);
+      : (h_errno = ho->h_errnum, (struct hostent *)NULL);
 }
 
 
@@ -201,7 +201,7 @@ nw_next (struct nw_pvt * const restrict nw)
         == _nss_mcdb_getnetent_r((struct netent *)&nw->ne, nw->buf,
                                  sizeof(nw->buf), &nw->errnum, &nw->h_errnum)
       ? &nw->ne
-      : (h_errno = nw->h_errnum, NULL);
+      : (h_errno = nw->h_errnum, (struct nwent *)NULL);
 }
 
 struct nwent *
@@ -213,7 +213,7 @@ nw_byname (struct nw_pvt * const restrict nw,
         == _nss_mcdb_getnetbyname_r(name, (struct netent *)&nw->ne, nw->buf,
                                     sizeof(nw->buf), &nw->errnum, &nw->h_errnum)
       ? &nw->ne
-      : (h_errno = nw->h_errnum, NULL);
+      : (h_errno = nw->h_errnum, (struct nwent *)NULL);
 }
 
 struct nwent *
@@ -226,7 +226,7 @@ nw_byaddr (struct nw_pvt * const restrict nw, const void * const restrict net,
                                     (struct netent *)&nw->ne, nw->buf,
                                     sizeof(nw->buf), &nw->errnum, &nw->h_errnum)
       ? &nw->ne
-      : (h_errno = nw->h_errnum, NULL);
+      : (h_errno = nw->h_errnum, (struct nwent *)NULL);
 }
 
 

@@ -22,8 +22,10 @@
 #ifndef INCLUDED_NSS_MCDB_MISC_MAKE_H
 #define INCLUDED_NSS_MCDB_MISC_MAKE_H
 
-#include "nss_mcdb_make.h"
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "nss_mcdb_make.h"
 
 /*#include <aliases.h>*/    /* not portable; see nss_mcdb_misc.h */
 #include "nss_mcdb_misc.h"  /* (centralize misc headers between platforms) */

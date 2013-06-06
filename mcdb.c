@@ -32,23 +32,9 @@
 #define _GNU_SOURCE 1
 #endif
 /* large file support needed for stat(),fstat() input file > 2 GB */
-#if defined(_AIX)
-#ifndef _LARGE_FILES
-#define _LARGE_FILES
-#endif
-#else /*#elif defined(__linux__) || defined(__sun) || defined(__hpux)*/
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#ifndef _LARGEFILE_SOURCE
-#define _LARGEFILE_SOURCE 1
-#endif
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE 1
-#endif
-#endif
+#define PLASMA_FEATURE_ENABLE_LARGEFILE
 
-/* Note: mcdb client does not use largefile defines when compiled 32-bit
+/* Note: mcdb client does not support files > 4 GB when compiled 32-bit
  * since the implementation mmap()s the entire file into the address space,
  * meaning only up to 4 GB (minus memory used by program and other libraries)
  * is supported in 32-bit.  djb's original implementation using lseek() and
@@ -59,10 +45,10 @@
 #include "mcdb.h"
 #include "nointr.h"
 #include "uint32.h"
-#include "plasma/plasma_membar.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_membar.h"
+#include "plasma/plasma_stdtypes.h"  /* SIZE_MAX */
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -70,7 +56,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
-#include <stdint.h>    /* SIZE_MAX */
 
 #ifdef _THREAD_SAFE
 #include "plasma/plasma_spin.h" /* plasma_spin_lock_t, plasma_spin_lock_*() */

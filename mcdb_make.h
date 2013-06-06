@@ -25,11 +25,10 @@
 #ifndef INCLUDED_MCDB_MAKE_H
 #define INCLUDED_MCDB_MAKE_H
 
-#include "mcdb.h"  /* MCDB_SLOTS */
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
-
-#include <sys/types.h> /* size_t */
-#include <stdint.h>
+#include "plasma/plasma_stdtypes.h"  /* size_t, uint32_t, uintptr_t */
+#include "mcdb.h"  /* MCDB_SLOTS */
 
 #ifdef __cplusplus
 extern "C" {

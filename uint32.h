@@ -22,10 +22,9 @@
 #ifndef INCLUDED_UINT32_H
 #define INCLUDED_UINT32_H
 
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
-
-#include <sys/types.h>
-#include <stdint.h>
+#include "plasma/plasma_stdtypes.h"
 
 #ifdef __cplusplus
 extern "C" {

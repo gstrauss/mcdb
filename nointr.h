@@ -22,9 +22,10 @@
 #ifndef INCLUDED_NOINTR_H
 #define INCLUDED_NOINTR_H
 
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>

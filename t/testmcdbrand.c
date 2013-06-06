@@ -27,21 +27,8 @@
 #endif
 
 /* large file support needed for open() input file > 2 GB */
-#if defined(_AIX)
-#ifndef _LARGE_FILES
-#define _LARGE_FILES
-#endif
-#else /*#elif defined(__linux__) || defined(__sun) || defined(__hpux)*/
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#ifndef _LARGEFILE_SOURCE
-#define _LARGEFILE_SOURCE 1
-#endif
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE 1
-#endif
-#endif
+#define PLASMA_FEATURE_ENABLE_LARGEFILE
+#include "plasma/plasma_feature.h"
 
 #include "mcdb.h"
 
@@ -50,7 +37,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>

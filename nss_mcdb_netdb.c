@@ -19,10 +19,18 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* _ALL_SOURCE for struct rpcent on AIX */
+#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
+#ifndef _ALL_SOURCE
+#define _ALL_SOURCE
+#endif
+#endif
 /* _BSD_SOURCE or _SVID_SOURCE for struct rpcent on Linux */
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+/* _DARWIN_C_SOURCE for struct rpcent on Darwin */
+#define PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
 
 #include "nss_mcdb_netdb.h"
 #include "nss_mcdb.h"

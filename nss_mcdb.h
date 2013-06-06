@@ -22,8 +22,10 @@
 #ifndef INCLUDED_NSS_MCDB_H
 #define INCLUDED_NSS_MCDB_H
 
-#include "mcdb.h"
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "mcdb.h"
 
 #if defined(__linux__)
   #include <nss.h>   /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */

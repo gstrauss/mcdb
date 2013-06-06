@@ -22,8 +22,10 @@
 #ifndef INCLUDED_NSS_MCDB_MAKE_H
 #define INCLUDED_NSS_MCDB_MAKE_H
 
-#include "mcdb_make.h"
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "mcdb_make.h"
 
 struct nss_mcdb_make_wbuf {
   struct mcdb_make * restrict m;

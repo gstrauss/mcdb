@@ -22,6 +22,40 @@
 #ifndef INCLUDED_NSS_MCDB_NETDB_H
 #define INCLUDED_NSS_MCDB_NETDB_H
 
+/* _BSD_SOURCE or _SVID_SOURCE for struct rpcent on Linux */
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#endif
+/* _DARWIN_C_SOURCE for struct rpcent on Darwin */
+#define PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
+
+#include "plasma/plasma_feature.h"
+#include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "nss_mcdb.h"
+
+#include <netdb.h>
+#ifdef __sun
+#include <rpc/rpcent.h>
+#endif
+#ifdef __hpux
+struct rpcent {
+  char *r_name;
+  char **r_aliases;
+  int r_number;
+};
+#endif
+#ifdef _AIX
+struct rpcent;      /* (forward declaration to avoid _ALL_SOURCE in header) */
+struct nwent {
+  char *n_name;     /* official name of net *//*(AIX example has field 'name')*/
+  char **n_aliases; /* alias list */
+  int n_addrtype;   /* net address type */
+  void *n_addr;     /* network address */
+  int n_length;     /* address length, in bits */
+};
+#endif
+
 enum {
   NSS_H_ADDRTYPE =  0,
   NSS_H_LENGTH   =  4,
@@ -69,42 +103,6 @@ enum {
   NSS_SE_MEM_NUM = 10,
   NSS_SE_HDRSZ   = 12   /*(must be multiple of 4)*/
 };
-
-
-/* _BSD_SOURCE or _SVID_SOURCE for struct rpcent on Linux */
-#ifndef _BSD_SOURCE
-#define _BSD_SOURCE
-#endif
-/* _DARWIN_C_SOURCE for struct rpcent on Darwin */
-#if defined(__APPLE__) && defined(__MACH__)
-#ifndef _DARWIN_C_SOURCE
-#define _DARWIN_C_SOURCE
-#endif
-#endif
-
-#include "nss_mcdb.h"
-#include "plasma/plasma_attr.h"
-
-#include <netdb.h>
-#ifdef __sun
-#include <rpc/rpcent.h>
-#endif
-#ifdef __hpux
-struct rpcent {
-  char *r_name;
-  char **r_aliases;
-  int r_number;
-};
-#endif
-#ifdef _AIX
-struct nwent {
-  char *n_name;     /* official name of net *//*(AIX example has field 'name')*/
-  char **n_aliases; /* alias list */
-  int n_addrtype;   /* net address type */
-  void *n_addr;     /* network address */
-  int n_length;     /* address length, in bits */
-};
-#endif
 
 void _nss_mcdb_sethostent(int);
 void _nss_mcdb_endhostent(void);

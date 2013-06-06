@@ -19,16 +19,18 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
+#endif
+
 #include "nss_mcdb.h"
 #include "plasma/plasma_membar.h"
+#include "plasma/plasma_stdtypes.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 

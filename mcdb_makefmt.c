@@ -28,39 +28,27 @@
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
 #endif
+#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
+#ifndef _ALL_SOURCE
+#define _ALL_SOURCE
+#endif
+#endif
 /* large file support needed for stat(),fstat() input file > 2 GB */
-#if defined(_AIX)
-#ifndef _LARGE_FILES
-#define _LARGE_FILES
-#endif
-#else /*#elif defined(__linux__) || defined(__sun) || defined(__hpux)*/
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#ifndef _LARGEFILE_SOURCE
-#define _LARGEFILE_SOURCE 1
-#endif
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE 1
-#endif
-#endif
+#define PLASMA_FEATURE_ENABLE_LARGEFILE
 
 #include "mcdb_makefmt.h"
 #include "mcdb_makefn.h"
 #include "mcdb_make.h"
 #include "mcdb_error.h"
 #include "nointr.h"
-#include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"  /* SIZE_MAX */
 
 #include <errno.h>
 #include <sys/mman.h>  /* mmap(), munmap() */
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <sys/stat.h>  /* fstat() */
 #include <fcntl.h>     /* open() */
-#include <stdbool.h>   /* bool */
 #include <stdlib.h>    /* EXIT_SUCCESS */
 #include <string.h>    /* memcpy(), memmove(), memchr() */
-#include <stdint.h>    /* SIZE_MAX */
 #include <unistd.h>    /* read() */
 
 /*(posix_madvise, defines not provided in Solaris 10, even w/ __EXTENSIONS__)*/

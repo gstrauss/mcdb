@@ -19,35 +19,27 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
+#endif
+#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
+#ifndef _ALL_SOURCE
+#define _ALL_SOURCE
+#endif
+#endif
 #ifndef _GNU_SOURCE /* enable O_CLOEXEC on GNU systems */
 #define _GNU_SOURCE 1
 #endif
 /* large file support needed for stat(),fstat(),open() input file > 2 GB */
-#if defined(_AIX)
-#ifndef _LARGE_FILES
-#define _LARGE_FILES
-#endif
-#else /*#elif defined(__linux__) || defined(__sun) || defined(__hpux)*/
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#ifndef _LARGEFILE_SOURCE
-#define _LARGEFILE_SOURCE 1
-#endif
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE 1
-#endif
-#endif
+#define PLASMA_FEATURE_ENABLE_LARGEFILE
 
 #include "nss_mcdb_make.h"
 #include "nointr.h"
+#include "plasma/plasma_stdtypes.h" /* SIZE_MAX */
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h> /* mmap() munmap() */
 #include <fcntl.h>    /* open() */
-#include <stdbool.h>  /* true false */
-#include <stdint.h>   /* uint32_t SIZE_MAX */
 #include <stdio.h>    /* snprintf() */
 #include <string.h>   /* memcpy() strcmp() strncmp() strrchr() */
 #include <unistd.h>   /* fstat() close() */

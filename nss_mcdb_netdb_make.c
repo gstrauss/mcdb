@@ -19,10 +19,18 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* _ALL_SOURCE for struct rpcent on AIX */
+#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
+#ifndef _ALL_SOURCE
+#define _ALL_SOURCE
+#endif
+#endif
 /* _BSD_SOURCE or _SVID_SOURCE for struct rpcent on Linux */
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+/* _DARWIN_C_SOURCE for struct rpcent on Darwin */
+#define PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
 
 #include "nss_mcdb_netdb_make.h"
 #include "nss_mcdb_netdb.h"
@@ -212,9 +220,8 @@ nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 
 size_t
 nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
-				   const void * const restrict entp)
-{   /* (take void *entp arg to avoid need to set _BSD_SOURCE in header) */
-    const struct rpcent * const restrict re = entp;
+				   const struct rpcent * const restrict re)
+{
     const size_t    re_name_len       = 1 + strlen(re->r_name);
     const uintptr_t re_mem_str_offset = re_name_len;
     size_t re_mem_num;
@@ -295,7 +302,7 @@ nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 bool
 nss_mcdb_netdb_make_hostent_encode(
   struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  const void * const entp)
 {
     const struct hostent * const restrict he = entp;
     uintptr_t i;
@@ -336,7 +343,7 @@ nss_mcdb_netdb_make_hostent_encode(
 bool
 nss_mcdb_netdb_make_netent_encode(
   struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  const void * const entp)
 {
   #ifndef _AIX
     const struct netent * const restrict ne = entp;
@@ -387,7 +394,7 @@ nss_mcdb_netdb_make_netent_encode(
 bool
 nss_mcdb_netdb_make_protoent_encode(
   struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  const void * const entp)
 {
     const struct protoent * const restrict pe = entp;
     uintptr_t i;
@@ -428,7 +435,7 @@ nss_mcdb_netdb_make_protoent_encode(
 bool
 nss_mcdb_netdb_make_rpcent_encode(
   struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  const void * const entp)
 {
     const struct rpcent * const restrict re = entp;
     uintptr_t i;
@@ -469,7 +476,7 @@ nss_mcdb_netdb_make_rpcent_encode(
 bool
 nss_mcdb_netdb_make_servent_encode(
   struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  const void * const entp)
 {
     const struct servent * const restrict se = entp;
     uintptr_t i;

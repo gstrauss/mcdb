@@ -19,6 +19,10 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
+#endif
+
 #include "nss_mcdb_authn_make.h"
 #include "nss_mcdb_authn.h"
 #include "nss_mcdb.h"
@@ -87,7 +91,7 @@ nss_mcdb_authn_make_spwd_datastr(char * restrict buf, const size_t bufsz,
 bool
 nss_mcdb_authn_make_spwd_encode(
   struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  const void * const entp)
 {
     const struct spwd * const restrict sp = entp;
     w->dlen = nss_mcdb_authn_make_spwd_datastr(w->data, w->datasz, sp);

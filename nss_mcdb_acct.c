@@ -19,6 +19,10 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
+#endif
+
 #include "nss_mcdb_acct.h"
 #include "nss_mcdb.h"
 

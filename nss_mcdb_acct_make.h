@@ -22,8 +22,10 @@
 #ifndef INCLUDED_NSS_MCDB_ACCT_MAKE_H
 #define INCLUDED_NSS_MCDB_ACCT_MAKE_H
 
-#include "nss_mcdb_make.h"
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "nss_mcdb_make.h"
 
 #include <pwd.h>
 #include <grp.h>
@@ -136,13 +138,13 @@ nss_mcdb_acct_make_group_datastr(char * restrict, const size_t,
 bool
 nss_mcdb_acct_make_passwd_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
+  const void * const)
   __attribute_nonnull__;
 
 bool
 nss_mcdb_acct_make_group_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
+  const void * const)
   __attribute_nonnull__;
 
 

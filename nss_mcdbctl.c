@@ -26,22 +26,10 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+/* _DARWIN_C_SOURCE for struct rpcent on Darwin */
+#define PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
 /* large file support needed for stat(),fstat() input file > 2 GB */
-#if defined(_AIX)
-#ifndef _LARGE_FILES
-#define _LARGE_FILES
-#endif
-#else /*#elif defined(__linux__) || defined(__sun) || defined(__hpux)*/
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#ifndef _LARGEFILE_SOURCE
-#define _LARGEFILE_SOURCE 1
-#endif
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE 1
-#endif
-#endif
+#define PLASMA_FEATURE_ENABLE_LARGEFILE
 
 #include "nss_mcdb_make.h"
 #include "nss_mcdb_acct.h"
@@ -56,12 +44,11 @@
 #include "nss_mcdb_netdb_make.h"
 #include "mcdb_makefn.h"
 #include "nointr.h"
+#include "plasma/plasma_stdtypes.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>  /* stat(), fchmod(), umask() */
 #include <limits.h>
 #include <assert.h>
-#include <stdbool.h>
 #include <stdlib.h>    /* malloc() free() */
 #include <stdio.h>     /* rename() */
 #include <string.h>    /* memcpy() strlen() */
@@ -92,7 +79,7 @@ int main(void)
       bool (*parse)(struct nss_mcdb_make_winfo * restrict,
                     char * restrict);
       bool (*encode)(struct nss_mcdb_make_winfo * restrict,
-                     const void * restrict);
+                     const void *);
       bool (*flush)(struct nss_mcdb_make_winfo * restrict);
     };
 
@@ -297,6 +284,12 @@ nss_mcdb_##dbgr##_make_##dbname##_ents(                                    \
 /* _BSD_SOURCE or _SVID_SOURCE for struct ether_addr, struct rpcent on Linux */
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
+#endif
+/* _ALL_SOURCE for struct rpcent on AIX */
+#ifdef _AIX
+#ifndef _ALL_SOURCE
+#define _ALL_SOURCE
+#endif
 #endif
 
 #include <errno.h>

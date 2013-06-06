@@ -160,7 +160,7 @@ static bool
 nss_mcdb_acct_make_grouplist_free(const bool rc)
 {
     uintptr_t * restrict mem;
-    uintptr_t * restrict next;
+    uintptr_t *next;
 
     free(nss_mcdb_acct_make_groupmem_hashmap);
     nss_mcdb_acct_make_groupmem_hashmap = NULL;
@@ -444,7 +444,7 @@ nss_mcdb_acct_make_group_datastr(char * restrict buf, const size_t bufsz,
 bool
 nss_mcdb_acct_make_passwd_encode(
   struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  const void * const entp)
 {
     const struct passwd * const restrict pw = entp;
     const uint32_t n = htonl((uint32_t)pw->pw_uid);
@@ -472,7 +472,7 @@ nss_mcdb_acct_make_passwd_encode(
 bool
 nss_mcdb_acct_make_group_encode(
   struct nss_mcdb_make_winfo * const restrict w,
-  const void * const restrict entp)
+  const void * const entp)
 {
     const struct group * const restrict gr = entp;
     const uint32_t n = htonl((uint32_t)gr->gr_gid);

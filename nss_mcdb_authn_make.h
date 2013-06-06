@@ -22,8 +22,10 @@
 #ifndef INCLUDED_NSS_MCDB_AUTHN_MAKE_H
 #define INCLUDED_NSS_MCDB_AUTHN_MAKE_H
 
-#include "nss_mcdb_make.h"
+#include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_stdtypes.h"
+#include "nss_mcdb_make.h"
 
 
 #if !defined(_AIX) && !defined(__CYGWIN__) \
@@ -43,7 +45,7 @@ nss_mcdb_authn_make_spwd_datastr(char * restrict, const size_t,
 bool
 nss_mcdb_authn_make_spwd_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
+  const void * const)
   __attribute_nonnull__;
 
 
