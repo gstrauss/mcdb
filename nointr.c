@@ -26,15 +26,13 @@
 #define _ATFILE_SOURCE
 #endif
 
+#define NOINTR_C99INLINE_FUNCS
+
 /* inlined functions defined in header
- * (generate external linkage definition in GCC versions earlier than GCC 4.3)
- * (nointr.h does not include other headers defining other inline functions
- *  in header, so simply disable C99INLINE to generate external linkage
- *  definition for all inlined functions seen (i.e. those in nointr.h))
- */
-#if defined(NO_C99INLINE)||(defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
-#define C99INLINE
-#undef  NO_C99INLINE
+ * (generate external linkage definition in GCC versions earlier than GCC 4.3)*/
+#if defined(NO_C99INLINE) \
+ || defined(__clang__) || (defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
+#define NOINTR_C99INLINE
 #endif
 
 #include "nointr.h"
@@ -66,17 +64,4 @@ int nointr_openat(int, const char * restrict, int, mode_t);
 int nointr_openat(int, const char * restrict, int, mode_t);
 #endif
 
-#endif
-
-#ifdef __clang__
-const void * const nointr_c_force_func_emit[] = {
-  (void *)nointr_dup,
-  (void *)nointr_open,
-  (void *)nointr_close,
-  (void *)nointr_ftruncate,
-  (void *)nointr_write
- #ifdef AT_FDCWD
-  ,(void *)nointr_openat
- #endif
-};
 #endif

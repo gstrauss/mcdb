@@ -26,6 +26,15 @@
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h"
 
+#ifndef UINT32_C99INLINE
+#define UINT32_C99INLINE C99INLINE
+#endif
+#ifndef NO_C99INLINE
+#ifndef UINT32_C99INLINE_FUNCS
+#define UINT32_C99INLINE_FUNCS
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -75,12 +84,13 @@ extern "C" {
 
 /* C99 inline functions defined in header */
 
-C99INLINE  __attribute_pure__
+__attribute_pure__
+UINT32_C99INLINE
 uint32_t
 uint32_strunpack(const char s[4])
   __attribute_warn_unused_result__  __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 uint32_t
 uint32_strunpack(const char s[4])
 {
@@ -89,12 +99,13 @@ uint32_strunpack(const char s[4])
 }
 #endif
 
-C99INLINE  __attribute_pure__
+__attribute_pure__
+UINT32_C99INLINE
 uint32_t
 uint32_strunpack_bigendian(const char s[4])
   __attribute_warn_unused_result__  __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 uint32_t
 uint32_strunpack_bigendian(const char s[4])
 {
@@ -103,12 +114,12 @@ uint32_strunpack_bigendian(const char s[4])
 }
 #endif
 
-C99INLINE
+UINT32_C99INLINE
 void
 uint32_strpack(char s[4], const uint32_t u)
   __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 void
 uint32_strpack(char s[4], const uint32_t u)
 {
@@ -116,12 +127,12 @@ uint32_strpack(char s[4], const uint32_t u)
 }
 #endif
 
-C99INLINE
+UINT32_C99INLINE
 void
 uint32_strpack_bigendian(char s[4], const uint32_t u)
   __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 void
 uint32_strpack_bigendian(char s[4], const uint32_t u)
 {
@@ -137,13 +148,14 @@ uint32_strpack_bigendian(char s[4], const uint32_t u)
 
 #define uint32_hash_djb_uchar(h,c) (((h) + ((h) << 5)) ^ (c))
 
-C99INLINE  __attribute_pure__
+__attribute_pure__
+UINT32_C99INLINE
 uint32_t
 uint32_hash_djb(uint32_t, const void * restrict, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 uint32_t
 uint32_hash_djb(uint32_t h, const void * const restrict vbuf, const size_t sz)
 {
@@ -155,13 +167,14 @@ uint32_hash_djb(uint32_t h, const void * const restrict vbuf, const size_t sz)
 }
 #endif
 
-C99INLINE  __attribute_pure__
+__attribute_pure__
+UINT32_C99INLINE
 uint32_t
 uint32_hash_identity(uint32_t, const void * restrict, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 uint32_t
 uint32_hash_identity(uint32_t h       __attribute_unused__,
                      const void * const restrict vbuf,
@@ -240,12 +253,12 @@ uint32_hash_identity(uint32_t h       __attribute_unused__,
  * (call x = (uint32_to_ascii8uphex(n,buf), buf); to have buf returned)
  * (buf must be at least 8 chars in length; not checked)
  * (buf returned contains exactly 8 chars and is not NUL-terminated) */
-C99INLINE
+UINT32_C99INLINE
 void
 uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
   __attribute_nonnull__  __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 void
 uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
 {
@@ -276,12 +289,12 @@ uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
  * (call x = (uint32_to_ascii4uphex(n,buf), buf); to have buf returned)
  * (buf must be at least 8 chars in length; not checked)
  * (buf returned contains exactly 4 chars and is not NUL-terminated) */
-C99INLINE
+UINT32_C99INLINE
 void
 uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
   __attribute_nonnull__  __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 void
 uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
 {
@@ -300,13 +313,14 @@ uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
 /* convert string of 8 ASCII uppercase hex chars to unsigned 32-bit value
  * (used to convert architecture-independent string data to numerical data)
  * (use when hex chars are known 0..9 A..F) */
-C99INLINE  __attribute_pure__
+__attribute_pure__
+UINT32_C99INLINE
 uint32_t
 uint32_from_ascii8uphex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 uint32_t
 uint32_from_ascii8uphex(const char * const restrict buf)
 {
@@ -337,13 +351,14 @@ uint32_from_ascii8uphex(const char * const restrict buf)
  * (used to convert architecture-independent string data to numerical data)
  * (operate in 32-bit intermediates to use more native sizes on modern CPUs)
  * (use when hex chars are known 0..9 A..F) */
-C99INLINE  __attribute_pure__
+__attribute_pure__
+UINT32_C99INLINE
 uint16_t
 uint16_from_ascii4uphex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-#if !defined(NO_C99INLINE)
-C99INLINE
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
 uint16_t
 uint16_from_ascii4uphex(const char * const restrict buf)
 {

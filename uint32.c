@@ -19,15 +19,13 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define UINT32_C99INLINE_FUNCS
+
 /* inlined functions defined in header
- * (generate external linkage definition in GCC versions earlier than GCC 4.3)
- * (uint32.h does not include other headers defining other inline functions
- *  in header, so simply disable C99INLINE to generate external linkage
- *  definition for all inlined functions seen (i.e. those in uint32.h))
- */
-#if defined(NO_C99INLINE)||(defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
-#define C99INLINE
-#undef  NO_C99INLINE
+ * (generate external linkage definition in GCC versions earlier than GCC 4.3)*/
+#if defined(NO_C99INLINE) \
+ || defined(__clang__) || (defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
+#define UINT32_C99INLINE
 #endif
 
 #include "uint32.h"
@@ -69,21 +67,6 @@ uint32_t uint32_from_ascii8uphex(const char * restrict);
 extern inline
 uint16_t uint16_from_ascii4uphex(const char * restrict);
 uint16_t uint16_from_ascii4uphex(const char * restrict);
-#endif
-
-#ifdef __clang__
-const void * const uint32_c_force_func_emit[] = {
-  (void *)uint32_strunpack,
-  (void *)uint32_strunpack_bigendian,
-  (void *)uint32_strpack,
-  (void *)uint32_strpack_bigendian,
-  (void *)uint32_hash_djb,
-  (void *)uint32_hash_identity,
-  (void *)uint32_to_ascii8uphex,
-  (void *)uint16_to_ascii4uphex,
-  (void *)uint32_from_ascii8uphex,
-  (void *)uint16_from_ascii4uphex
-};
 #endif
 
 
