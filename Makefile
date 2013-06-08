@@ -89,6 +89,8 @@ ifeq ($(OSNAME),Linux)
     LDFLAGS+=-Wl,-z,noexecstack
 endif
 ifeq ($(OSNAME),Darwin)
+  # clang 3.1 compiler supports __thread and TLS; gcc 4.2.1 does not
+  CC=clang -pipe
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
     RPATH= -Wl,-rpath,$(PREFIX)/lib$(LIB_BITS)
   endif
