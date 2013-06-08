@@ -1,5 +1,16 @@
 mcdb change log
 
+mcdb v0.08 (2013.06.08)
+- plasma/* - portability macros for compiler and hardware micro operations
+- plasma/plasma_atomic.h   - atomic operations
+- plasma/plasma_attr.h     - code attributes
+- plasma/plasma_feature.h  - OS and architecture features
+- plasma/plasma_membar.h   - memory barriers
+- plasma/plasma_spin.h     - spin loop components
+- plasma/plasma_stdtypes.h - standard types
+- mcdb.c - minimize critical sections; mark intermediate maps
+- modifications for initial port to MacOSX (Darwin)
+
 mcdb v0.07 (2013.03.31)
 - plasma/* - portability macros for compiler and hardware micro operations
 - mcdb.c, nss_mcdb.c - use plasma_membar.h memory barriers for thread safety
