@@ -24,10 +24,6 @@
 
 #include "plasma_feature.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #if __STDC_VERSION__-0 < 199901L \
  && !defined(__STDC_C99) && !defined(__C99_RESTRICT)
 /*(__C99_RESTRICT defined in xlc/xlC -qkeyword=restrict or some -qlanglevel= )*/
@@ -62,7 +58,9 @@ extern "C" {
 #define C99INLINE
 #else
 #ifndef C99INLINE
-#if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) || defined(__clang__)
+#ifdef __cplusplus
+#  define C99INLINE inline
+#elif !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) || defined(__clang__)
 #  ifdef _MSC_VER
 #  define C99INLINE __inline
 #  else
@@ -439,9 +437,5 @@ enum _mm_hint
 #define __typeof__(x)  decltype(x)
 #endif
 
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

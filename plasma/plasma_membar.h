@@ -726,10 +726,6 @@ typedef ulong_t  ulong;
 #define __ATOMIC_SEQ_CST  5
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef enum memory_order {
   memory_order_relaxed = __ATOMIC_RELAXED,
   memory_order_consume = __ATOMIC_CONSUME,
@@ -738,10 +734,6 @@ typedef enum memory_order {
   memory_order_acq_rel = __ATOMIC_ACQ_REL,
   memory_order_seq_cst = __ATOMIC_SEQ_CST
 } memory_order;
-
-#ifdef __cplusplus
-}
-#endif
 
 #if __has_extension(c_atomic) || __has_extension(cxx_atomic)
 
@@ -791,8 +783,6 @@ typedef enum memory_order {
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/*#include "plasma_attr.h"*/
 
 /* (static inline functions for C99, if present, need to be in an
  *  extern "C" block and/or hidden from C++ or reformated for C++) */

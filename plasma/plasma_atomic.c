@@ -22,18 +22,16 @@
  *  along with mcdb.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "plasma_atomic.h"
+#define PLASMA_ATOMIC_C99INLINE_FUNCS
 
 /* inlined functions defined in header
- * (generate external linkage definition in GCC versions earlier than GCC 4.3)
- * (disable C99INLINE and re-include header to generate external linkage) */
-#if defined(NO_C99INLINE)||(defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
-#undef  NO_C99INLINE
-#undef  C99INLINE
-#define C99INLINE
-#undef INCLUDED_PLASMA_ATOMIC_H
-#include "plasma_atomic.h"
+ * (generate external linkage definition in GCC versions earlier than GCC 4.3)*/
+#if defined(NO_C99INLINE) \
+ || defined(__clang__) || (defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
+#define PLASMA_ATOMIC_C99INLINE
 #endif
+
+#include "plasma_atomic.h"
 
 /* inlined functions defined in header
  * (generate external linkage definition in C99-compliant compilers)

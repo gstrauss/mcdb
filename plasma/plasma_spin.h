@@ -30,6 +30,10 @@
 #include "plasma_membar.h"
 #include "plasma_atomic.h"
 
+#if defined(__APPLE__) && defined(__MACH__)
+#include <libkern/OSAtomic.h>
+#endif
+
 /* spinlocks / busy-wait loops that pause briefly (versus spinning on nop
  * instructions) benefit modern processors by reducing memory hazards upon loop
  * exit as well as potentially saving CPU power and reducing resource contention
@@ -216,8 +220,6 @@
 extern "C" {
 #endif
 
-#include "plasma_attr.h"
-
 
 /* plasma_spin_lock_init()
  * plasma_spin_lock_acquire()
@@ -274,7 +276,6 @@ extern "C" {
 #if defined(__APPLE__) \
  && defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
  && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1070   /* OSSpinLock in OSX 10.7 */
-#include <libkern/OSAtomic.h>
 #define plasma_spin_lock_init(spin) \
         ((spin)->lck=OS_SPINLOCK_INIT, (spin)->udata32=0, (spin)->udata64=0)
 #define PLASMA_SPIN_LOCK_INITIALIZER           { OS_SPINLOCK_INIT, 0, 0 }

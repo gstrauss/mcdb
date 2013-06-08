@@ -25,6 +25,15 @@
 #ifndef INCLUDED_PLASMA_ATOMIC_H
 #define INCLUDED_PLASMA_ATOMIC_H
 
+#ifndef PLASMA_ATOMIC_C99INLINE
+#define PLASMA_ATOMIC_C99INLINE C99INLINE
+#endif
+#ifndef NO_C99INLINE
+#ifndef PLASMA_ATOMIC_C99INLINE_FUNCS
+#define PLASMA_ATOMIC_C99INLINE_FUNCS
+#endif
+#endif
+
 #include "plasma_feature.h"
 #include "plasma_attr.h"
 #include "plasma_membar.h"
@@ -247,6 +256,11 @@
 #endif
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /* op sequences/combinations which provide barriers
  * (each macro is not necessarily defined for each platforms) */
 
@@ -335,15 +349,15 @@
 
 #ifndef plasma_atomic_not_implemented_64
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_load_64_impl(const void * const restrict ptr,
                            const enum memory_order order,
                            const size_t bytes)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_load_64_impl(const void * const restrict ptr,
                            const enum memory_order order,
@@ -361,15 +375,15 @@ plasma_atomic_load_64_impl(const void * const restrict ptr,
 #endif
 
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_load_32_impl(const void * const restrict ptr,
                            const enum memory_order order,
                            const size_t bytes)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_load_32_impl(const void * const restrict ptr,
                            const enum memory_order order,
@@ -609,11 +623,6 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
 #if defined(PLASMA_ATOMIC_MUTEX_FALLBACK)
   /* mutex-based fallback implementation, enabled by preprocessor define */
   bool
@@ -637,13 +646,13 @@ extern "C" {
  *   (address of var and/or integer promotion required for some intrinsics) */
 
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_CAS_ptr (void ** const ptr, void *cmpval, void * const newval)
   __attribute_nonnull_x__((1));
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_CAS_ptr (void ** const ptr, void *cmpval, void * const newval)
 {
@@ -663,14 +672,14 @@ plasma_atomic_CAS_ptr (void ** const ptr, void *cmpval, void * const newval)
 
 #ifndef plasma_atomic_not_implemented_64
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_CAS_64 (uint64_t * const ptr,
                       uint64_t cmpval, const uint64_t newval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_CAS_64 (uint64_t * const ptr,
                       uint64_t cmpval, const uint64_t newval)
@@ -681,14 +690,14 @@ plasma_atomic_CAS_64 (uint64_t * const ptr,
 #endif
 
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_CAS_32 (uint32_t * const ptr,
                       uint32_t cmpval, const uint32_t newval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((3))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_CAS_32 (uint32_t * const ptr,
                       uint32_t cmpval, const uint32_t newval)
@@ -718,13 +727,13 @@ plasma_atomic_CAS_32 (uint32_t * const ptr,
 #define plasma_atomic_lock_init(ptr) (*(ptr) = 0)
 
 __attribute_regparm__((1))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void
 plasma_atomic_lock_release (uint32_t * const ptr)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((1))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void
 plasma_atomic_lock_release (uint32_t * const ptr)
 {
@@ -733,13 +742,13 @@ plasma_atomic_lock_release (uint32_t * const ptr)
 #endif
 
 __attribute_regparm__((1))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_lock_acquire (uint32_t * const ptr)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((1))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_lock_acquire (uint32_t * const ptr)
 {
@@ -918,7 +927,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
    * (could use assembly for missing interfaces, but for now
    *  fall back to inline funcs using generic CAS or LL/SC macros) */
-  #include <libkern/OSAtomic.h>
   #if (   (defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
            && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050) \
        || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) \
@@ -976,7 +984,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
    * (could use assembly for missing interfaces, but for now
    *  fall back to inline funcs using generic CAS or LL/SC macros) */
-  #include <libkern/OSAtomic.h>
   #if (   (defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
            && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050) \
        || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) \
@@ -1031,7 +1038,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
    * (could use assembly for missing interfaces, but for now
    *  fall back to inline funcs using generic CAS or LL/SC macros) */
-  #include <libkern/OSAtomic.h>
   #if (   (defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
            && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050) \
        || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) \
@@ -1173,13 +1179,13 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
 
 #ifdef plasma_atomic_fetch_add_u32_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void *
 plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void *
 plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval)
 {
@@ -1195,13 +1201,13 @@ plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval)
 #ifndef plasma_atomic_not_implemented_64
 #ifdef plasma_atomic_fetch_add_u64_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval)
 {
@@ -1213,13 +1219,13 @@ plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval)
 
 #ifdef plasma_atomic_fetch_add_u32_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
 {
@@ -1297,13 +1303,13 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
 
 #ifndef plasma_atomic_fetch_or_ptr_impl
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void *
 plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void *
 plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval)
 {
@@ -1319,13 +1325,13 @@ plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval)
 #ifndef plasma_atomic_not_implemented_64
 #ifdef plasma_atomic_fetch_or_u64_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval)
 {
@@ -1337,13 +1343,13 @@ plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval)
 
 #ifdef plasma_atomic_fetch_or_u32_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval)
 {
@@ -1403,13 +1409,13 @@ plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval)
 
 #ifndef plasma_atomic_fetch_and_ptr_impl
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void *
 plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void *
 plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval)
 {
@@ -1425,13 +1431,13 @@ plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval)
 #ifndef plasma_atomic_not_implemented_64
 #ifdef plasma_atomic_fetch_and_u64_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval)
 {
@@ -1443,13 +1449,13 @@ plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval)
 
 #ifdef plasma_atomic_fetch_and_u32_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval)
 {
@@ -1509,13 +1515,13 @@ plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval)
 
 #ifndef plasma_atomic_fetch_xor_ptr_impl
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void *
 plasma_atomic_fetch_xor_ptr (void * const ptr, uintptr_t xorval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 void *
 plasma_atomic_fetch_xor_ptr (void * const ptr, uintptr_t xorval)
 {
@@ -1531,13 +1537,13 @@ plasma_atomic_fetch_xor_ptr (void * const ptr, uintptr_t xorval)
 #ifndef plasma_atomic_not_implemented_64
 #ifdef plasma_atomic_fetch_xor_u64_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval)
 {
@@ -1549,13 +1555,13 @@ plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval)
 
 #ifdef plasma_atomic_fetch_xor_u32_implreturn
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
   __attribute_nonnull__;
-#if !defined(NO_C99INLINE)
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
 __attribute_regparm__((2))
-C99INLINE
+PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
 {
