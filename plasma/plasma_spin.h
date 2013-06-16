@@ -191,7 +191,7 @@
   #include <poll.h>    /* might also need _XOPEN_SOURCE=500 or better on _AIX */
   #ifdef _POSIX_PRIORITY_SCHEDULING
   #include <sched.h>
-  #define plasma_spin_yield() do {if (!sched_yield()) poll(NULL,0,1);} while (0)
+  #define plasma_spin_yield() do {if (sched_yield()!=0) poll(NULL,0,1);}while(0)
   #else
   #define plasma_spin_yield() poll(NULL, 0, 1)
   #endif
@@ -209,7 +209,7 @@
     #undef  plasma_spin_yield
     #define plasma_spin_yield() \
     do {if (thread_switch(THREAD_NULL,SWITCH_OPTION_DEPRESS,1) != KERN_SUCCESS \
-            && !sched_yield()) \
+            && sched_yield() != 0) \
             poll(NULL, 0, 1); \
     } while (0) /* (untested!) */
   #endif
