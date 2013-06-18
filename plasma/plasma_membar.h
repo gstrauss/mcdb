@@ -594,6 +594,11 @@ typedef ulong_t  ulong;
  * perform all the required steps (see additional documentation below where
  * plasma_membar_ifence() is defined for POWER).  NOTE: SPARC requires a
  * 'flush' instruction when updating instructions.
+ *
+ * gcc provides __builtin__clear_cache() to flush a range of the processor
+ * instruction cache and can be used in addition to data memory barriers
+ * when instructions are modified (when modified 'data' becomes 'instructions').
+ * http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
  */
 
 
@@ -742,7 +747,14 @@ typedef enum memory_order {
 #define atomic_signal_fence(order)  __c11_atomic_signal_fence(order)
 #define atomic_thread_fence(order)  __c11_atomic_thread_fence(order)
 
-#elif __GNUC_PREREQ(4,7)
+/* XXX: disable use of __atomic_thread_fence(), __atomic_signal_fence() on gcc.
+ * gcc 4.7.2 appears to be missing compiler optiimization fence when used as
+ * atomic_thread_fence(memory_order_release) on x86_64 (both 32 and 64-bit)
+ * when -O2 or -O3 is in effect. (tested on 1st gen Intel i5 M460 running
+ * Fedora 18) (clang 3.3 does not exhibit same problem)  In plasma_atomic.h,
+ * prefer: plasma_atomic_store_explicit(ptr, val, memory_order_release)
+ * over: do {atomic_thread_fence(memory_order_release); *(ptr)=(val);} while 0*/
+#elif __GNUC_PREREQ(4,7) && 0 /* XXX: disabled */
 
 #define atomic_thread_fence(order)  __atomic_thread_fence(order)
 #define atomic_signal_fence(order)  __atomic_signal_fence(order)

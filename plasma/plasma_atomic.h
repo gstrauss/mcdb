@@ -509,14 +509,11 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 #else
 
   #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
-          do { atomic_thread_fence(memory_order_release); *(ptr) = (newval); \
-          } while (0)
+          plasma_atomic_store_explicit((ptr), (newval), memory_order_release);
   #define plasma_atomic_st_64_release_impl(ptr,newval) \
-          do { atomic_thread_fence(memory_order_release); *(ptr) = (newval); \
-          } while (0)
+          plasma_atomic_store_explicit((ptr), (newval), memory_order_release);
   #define plasma_atomic_st_32_release_impl(ptr,newval) \
-          do { atomic_thread_fence(memory_order_release); *(ptr) = (newval); \
-          } while (0)
+          plasma_atomic_store_explicit((ptr), (newval), memory_order_release);
 
 #endif
 
