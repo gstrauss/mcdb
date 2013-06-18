@@ -49,6 +49,25 @@ ABI_FLAGS?=-m64
 endif
 endif
 
+ifeq (32,$(ABI_BITS))
+ifeq ($(OSNAME),Linux)
+ABI_FLAGS?=-m32
+endif
+ifeq ($(OSNAME),Darwin)
+ABI_FLAGS?=-m32
+endif
+ifeq ($(OSNAME),AIX)
+AR+=-X64
+ABI_FLAGS?=-maix32
+endif
+ifeq ($(OSNAME),HP-UX)
+ABI_FLAGS?=-milp32
+endif
+ifeq ($(OSNAME),SunOS)
+ABI_FLAGS?=-m32
+endif
+endif
+
 # cygwin needs -std=gnu99 or -D_GNU_SOURCE for mkstemp() and strerror_r()
 # cygwin gcc does not support -fpic or -pthread
 ifneq (,$(filter CYGWIN%,$(OSNAME)))
