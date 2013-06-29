@@ -256,6 +256,15 @@
 /* Linux on SPARC uses TSO (total store order)
  * (not PSO (partial store order) or RMO (relaxed memory order)) */
 #if (defined(__sun) && defined(__SVR4)) || defined(__linux__)
+#if (defined(__SUNPRO_C)  && __SUNPRO_C  < 0x5100) \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC < 0x5100)
+/* (asm volatile ("":::"memory") recognized as compiler optimization fence from
+ *  Sun Studio 12.1 (0x5100))
+ * (paranoia: insert memory barrier to avoid compiler optimization until
+ *  otherwise confirmed what is actually needed prior to Sun Studio 12.1) */
+#undef  plasma_membar_ccfence
+#define plasma_membar_ccfence()     __asm __volatile__ ("membar #LoadStore|#StoreStore|#LoadLoad":::"memory")
+#else/*(TSO needs only compiler fence for all memory barriers besides seq_cst)*/
 #undef  plasma_membar_LoadLoad
 #undef  plasma_membar_StoreStore
 #undef  plasma_membar_ld_ctrldep
@@ -268,6 +277,7 @@
 #define plasma_membar_ld_acq()      __asm __volatile__ ("":::"memory")
 #define plasma_membar_st_rel()      __asm __volatile__ ("":::"memory")
 #define plasma_membar_rmw_acq_rel() __asm __volatile__ ("":::"memory")
+#endif
 #endif
 #endif
 
