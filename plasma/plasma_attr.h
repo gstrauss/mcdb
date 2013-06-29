@@ -450,4 +450,38 @@ enum _mm_hint
 #endif
 
 
+/* __alignof__() is non-standard, though available on many modern compilers
+ *
+ * (alignof is now part of C11 <stdalign.h> and C++11 <cstdalign>)
+ * (http://en.cppreference.com/w/cpp/language/alignof)
+ *
+ * http://www.wambold.com/Martin/writings/alignof.html
+ * (note some subtle nuances of alignment of double inside structs on x86)
+ *
+ * gcc and clang support __alignof__()
+ *
+ * Sun Studio 12 C compiler supports __alignof__ extension
+ * http://www.oracle.com/technetwork/systems/cccompare-137792.html
+ * http://docs.oracle.com/cd/E19205-01/820-4155/c++.html
+ * https://blogs.oracle.com/sga/entry/typeof_and_alignof
+ *
+ * xlC supports __alignof__()
+ * https://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8a.doc%2Flanguage%2Fref%2Falignof.htm
+ *
+ * HP-UX cc does not currently support __alignof__, but it can be emulated
+ * (not done here, but see http://www.wambold.com/Martin/writings/alignof.html )
+ *
+ * MS Visual Studio supports __alignof()
+ * http://msdn.microsoft.com/en-us/library/45t0s5f4%28v=vs.90%29.aspx
+ */
+#if defined(_MSC_VER)
+#define __alignof__(x)  __alignof(x)
+#endif
+
+
+/* table of (popular) compiler support for various C++11 features
+ * http://wiki.apache.org/stdcxx/C%2B%2B0xCompilerSupport
+ */
+
+
 #endif
