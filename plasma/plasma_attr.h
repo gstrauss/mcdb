@@ -129,6 +129,10 @@
 #ifndef __attribute_noinline__
 #define __attribute_noinline__  __attribute__((noinline))
 #endif
+#elif defined(_MSC_VER)
+#ifndef __attribute_noinline__
+#define __attribute_noinline__  __declspec(noinline)
+#endif
 #endif
 #ifndef __attribute_noinline__
 #define __attribute_noinline__
@@ -156,6 +160,10 @@
  || __has_attribute(noreturn)
 #ifndef __attribute_noreturn__
 #define __attribute_noreturn__  __attribute__((noreturn))
+#endif
+#elif defined(_MSC_VER)
+#ifndef __attribute_noreturn__
+#define __attribute_noreturn__  __declspec(noreturn)
 #endif
 #endif
 #ifndef __attribute_noreturn__
@@ -187,6 +195,10 @@
  || __has_attribute(malloc)
 #ifndef __attribute_malloc__
 #define __attribute_malloc__  __attribute__((malloc))
+#endif
+#elif defined(_MSC_VER)
+#ifndef __attribute_malloc__
+#define __attribute_malloc__  __declspec(restrict)
 #endif
 #endif
 #ifndef __attribute_malloc__
