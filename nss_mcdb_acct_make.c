@@ -34,6 +34,7 @@
 #include <string.h>
 #include <stdlib.h>     /* malloc() calloc() free() strtol() strtoul() */
 #include <arpa/inet.h>  /* htonl(), htons() */
+#include <unistd.h>     /* sysconf(), _SC_NGROUPS_MAX _SC_GETGR_R_SIZE_MAX */
 
 #include <pwd.h>
 #include <grp.h>

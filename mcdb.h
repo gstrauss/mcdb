@@ -29,13 +29,15 @@
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h" /* bool, size_t, uint32_t, uintptr_t */
 
-#include <unistd.h>                 /* _POSIX_* features */
 #include <sys/time.h>               /* time_t */
 
+#ifdef PLASMA_FEATURE_POSIX
+#include <unistd.h>                 /* _POSIX_* features */
 /* http://pubs.opengroup.org/onlinepubs/7908799/xsh/feature.html */
 #if !defined(_POSIX_MAPPED_FILES) || !(_POSIX_MAPPED_FILES-0) \
  || !defined(_POSIX_SYNCHRONIZED_IO) || !(_POSIX_SYNCHRONIZED_IO-0)
 #error "mcdb requires mmap() and msync() support"
+#endif
 #endif
 
 #ifdef __cplusplus

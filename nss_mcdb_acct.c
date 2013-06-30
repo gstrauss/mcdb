@@ -33,6 +33,7 @@
 #include <grp.h>
 #include <stdlib.h>     /* realloc */
 #include <arpa/inet.h>  /* ntohl(), ntohs() */
+#include <unistd.h>     /* sysconf(), _SC_NGROUPS_MAX */
 
 /*
  * man passwd(5) getpwnam getpwuid setpwent getpwent endpwent
