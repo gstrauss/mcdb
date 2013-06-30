@@ -21,7 +21,7 @@
 
 /*
  * Recommended use:
- *   #include <plasma_feature.h> first in each header (for best results),
+ *   #include <plasma/plasma_feature.h> first in each header (for best results),
  *   and for each component, #include <sample.h> as first header in sample.c.
  * Prefer to define feature macros at top of .c or .cpp, and not in headers
  *   (except for documentation and standalone header compilation testing)
@@ -30,6 +30,16 @@
 
 #ifndef INCLUDED_PLASMA_FEATURE_H
 #define INCLUDED_PLASMA_FEATURE_H
+
+
+/* define PLASMA_FEATURE_POSIX on POSIX (unix-like) platforms
+ * __unix or __unix__ not defined by all compilers on all unix-like platforms */
+#if defined(__unix) || defined(__unix__) \
+ || (defined(__APPLE__) && defined(__MACH__)) || defined(_AIX)
+#ifndef PLASMA_FEATURE_POSIX
+#define PLASMA_FEATURE_POSIX
+#endif
+#endif
 
 
 #ifndef PLASMA_FEATURE_DISABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
@@ -102,6 +112,11 @@
 #endif
 #endif
 
+/*
+ * 64-Bit Programming Models: Why LP64?
+ * http://www.unix.org/version2/whatsnew/lp64_wp.html
+ * (unix uses LP64 ABI for 64-bit, while Microsoft _WIN64 is LLP64 for 64-bit)
+ */
 
 #if defined(__sun) && defined(__SVR4)
 #include <sys/isa_defs.h>  /* needed on Solaris for _LP64 or _ILP32 define */
@@ -203,14 +218,14 @@
 
 #if defined(__LITTLE_ENDIAN__)
 
-#if __LITTLE_ENDIAN-0 < 1
+#if __LITTLE_ENDIAN__-0 < 1
 #undef  __LITTLE_ENDIAN__
 #define __LITTLE_ENDIAN__ 1
 #endif
 
 #elif defined(__BIG_ENDIAN__)
 
-#if __BIG_ENDIAN-0 < 1
+#if __BIG_ENDIAN__-0 < 1
 #undef  __BIG_ENDIAN__
 #define __BIG_ENDIAN__ 1
 #endif
