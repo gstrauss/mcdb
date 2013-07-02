@@ -370,11 +370,13 @@ __attribute_noinline__
 void
 mcdb_mmap_destroy(struct mcdb_mmap * const restrict map)
 {
+  #ifdef AT_FDCWD
     if (map == NULL) return;
     if (map->dfd != -1) {
         (void) nointr_close(map->dfd);
         map->dfd = -1;
     }
+  #endif
     mcdb_mmap_free(map);
 }
 
@@ -478,7 +480,7 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
     map->dfd       = -1;
     flen           = strlen(fname);
 
-  #if defined(__linux__) || defined(__sun)
+  #if defined(AT_FDCWD)
     if (dname != NULL) {
         /* caller must have open STDIN, STDOUT, STDERR */
         map->dfd = nointr_open(dname, O_RDONLY|O_CLOEXEC, 0);

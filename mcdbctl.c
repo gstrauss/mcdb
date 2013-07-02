@@ -47,7 +47,6 @@
 #include <string.h>  /* strlen() */
 #include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO _SC_PAGESIZE */
 #include <sys/uio.h> /* writev() */
-#include <libgen.h>  /* basename() */
 #include <limits.h>  /* SSIZE_MAX */
 
 /*(posix_madvise, defines not provided in Solaris 10, even w/ __EXTENSIONS__)*/
@@ -253,7 +252,6 @@ mcdbctl_stats(struct mcdb * const restrict m)
     for (rv = 0; rv < 10; ++rv)
         printf("d%d      %lu\n", rv, numd[rv]);
     printf(">9      %lu\n", numd[10]);
-    fflush(stdout);
     return EXIT_SUCCESS;
 }
 
@@ -563,5 +561,5 @@ main(int argc, char ** const restrict argv)
 
     return rv == EXIT_SUCCESS
       ? EXIT_SUCCESS
-      : mcdb_error(rv, basename(argv[0]), mcdb_usage);
+      : mcdb_error(rv, "mcdbctl", mcdb_usage);
 }

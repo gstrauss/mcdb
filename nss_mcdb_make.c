@@ -40,7 +40,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h> /* mmap() munmap() */
 #include <fcntl.h>    /* open() */
-#include <stdio.h>    /* snprintf() */
 #include <string.h>   /* memcpy() strcmp() strncmp() strrchr() */
 #include <unistd.h>   /* fstat() close() */
 #include <errno.h>
