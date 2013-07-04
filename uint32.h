@@ -400,6 +400,76 @@ uint32_from_ascii4hex(const char * const restrict buf)
   __attribute_nothrow__;
 
 
+/*
+ * convert 32-bit unsigned/signed integer to ASCII string of base-10 digits
+ * (and unsigned/signed char/short types which promote to int in registers)
+ */
+
+
+/* convert unsigned 32-bit value into string of up to (10) ASCII base-10 digits
+ * (helper function for inline function uint32_to_ascii_base10()) (see below) */
+uint32_t
+uint32_to_ascii_base10_loop (uint32_t x, char * const restrict buf)
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
+
+/* convert unsigned 32-bit value into string of up to (10) ASCII base-10 digits
+ * (used to append string to a buffer or to assign into an iovec)
+ * (avoids call to more flexible, but more expensive snprintf())
+ * returns number of characters added to buffer (num from 1 to 10, inclusive)
+ * (string is not NUL-terminated)
+ * (buf must be at least 10 chars in length; not checked) */
+UINT32_C99INLINE
+uint32_t
+uint32_to_ascii_base10 (const uint32_t x, char * const restrict buf)
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
+uint32_t
+uint32_to_ascii_base10 (const uint32_t x, char * const restrict buf)
+{
+    if (x < 10) {
+        buf[0] = (char)(x + '0');
+        return 1;
+    }
+    else if (x < 100) {
+        buf[0] = (char)((x / 10) + '0');
+        buf[1] = (char)((x % 10) + '0');
+        return 2;
+    }
+    else {
+        return uint32_to_ascii_base10_loop(x, buf);
+    }
+}
+#endif
+
+/* convert signed 32-bit value into string of up to (11) ASCII base-10 digits
+ * (used to append string to a buffer or to assign into an iovec)
+ * (avoids call to more flexible, but more expensive snprintf())
+ * returns number of characters added to buffer (num from 1 to 11, inclusive)
+ * (string is not NUL-terminated)
+ * (buf must be at least 11 chars in length; not checked) */
+UINT32_C99INLINE
+uint32_t
+int32_to_ascii_base10 (int32_t x, char * restrict buf)
+  __attribute_nonnull__  __attribute_warn_unused_result__
+  __attribute_nothrow__;
+#ifdef UINT32_C99INLINE_FUNCS
+UINT32_C99INLINE
+uint32_t
+int32_to_ascii_base10 (int32_t x, char * restrict buf)
+{
+    const uint32_t pre = (x < 0);
+    if (pre) {
+        x = -x;
+        *buf++ = '-';
+    }
+    return pre + uint32_to_ascii_base10((uint32_t)x, buf);
+}
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif

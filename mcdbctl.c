@@ -42,7 +42,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>   /* open(), O_RDONLY */
-#include <stdio.h>   /* printf(), snprintf(), IOV_MAX */
+#include <stdio.h>   /* printf(), IOV_MAX */
 #include <stdlib.h>  /* malloc(), free(), EXIT_SUCCESS */
 #include <string.h>  /* strlen() */
 #include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO _SC_PAGESIZE */
@@ -158,7 +158,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         ++iovcnt;
 
         iov[iovcnt].iov_base = buf+buflen;
-        buflen+=iov[iovcnt].iov_len=(uint32_t)snprintf(buf+buflen,11,"%u",klen);
+        buflen += iov[iovcnt].iov_len = uint32_to_ascii_base10(klen,buf+buflen);
         ++iovcnt;
 
         iov[iovcnt].iov_base = ",";
@@ -166,7 +166,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
         ++iovcnt;
 
         iov[iovcnt].iov_base = buf+buflen;
-        buflen+=iov[iovcnt].iov_len=(uint32_t)snprintf(buf+buflen,11,"%u",dlen);
+        buflen += iov[iovcnt].iov_len = uint32_to_ascii_base10(dlen,buf+buflen);
         ++iovcnt;
 
         iov[iovcnt].iov_base = ":";

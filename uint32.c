@@ -67,6 +67,13 @@ uint32_t uint32_from_ascii8uphex(const char * restrict);
 extern inline
 uint16_t uint16_from_ascii4uphex(const char * restrict);
 uint16_t uint16_from_ascii4uphex(const char * restrict);
+
+extern inline
+uint32_t uint32_to_ascii_base10 (uint32_t, char * restrict);
+uint32_t uint32_to_ascii_base10 (uint32_t, char * restrict);
+extern inline
+uint32_t int32_to_ascii_base10 (int32_t, char * restrict);
+uint32_t int32_to_ascii_base10 (int32_t, char * restrict);
 #endif
 
 
@@ -131,4 +138,23 @@ uint16_from_ascii4hex(const char * const restrict buf)
     const uint32_t n3 = xton_select_lt_A(x3, x3_lt_A);
 
     return (uint16_t)(n0 | n1 | n2 | n3);
+}
+
+#include <string.h>  /* memcpy() */
+
+/* convert unsigned 32-bit value into string of up to (10) ASCII base-10 digits
+ * (helper function for inline function uint32_to_ascii_base10())
+ * (used to append string to a buffer or to assign into an iovec)
+ * (avoids call to more flexible, but more expensive snprintf())
+ * returns number of characters added to buffer (num from 1 to 10, inclusive)
+ * (string is not NUL-terminated)
+ * (buf must be at least 10 chars in length; not checked) */
+uint32_t
+uint32_to_ascii_base10_loop (uint32_t x, char * const restrict buf)
+{
+    int i = 12;  /* char b[12] for alignment, even though only 10 needed */
+    char b[12];
+    do { b[--i] = (char)((x % 10) + '0'); } while ((x /= 10));
+    memcpy(buf, b+i, 12-i);
+    return (uint32_t)(12-i);
 }
