@@ -308,6 +308,26 @@
 #define __attribute_warn_unused_result__
 #endif
 
+#if __GNUC_PREREQ(3,1) \
+ || __has_attribute(deprecated)
+#ifndef __attribute_deprecated__
+#define __attribute_deprecated__  __attribute__((deprecated))
+#endif
+#ifndef __attribute_deprecated_x__
+#define __attribute_deprecated_x__(msg)  __attribute__((deprecated(msg)))
+#endif
+#elif defined(_MSC_VER)
+#ifndef __attribute_deprecated__
+#define __attribute_deprecated__  __declspec(deprecated)
+#endif
+#ifndef __attribute_deprecated_x__
+#define __attribute_deprecated_x__(msg)  __declspec(deprecated(msg))
+#endif
+#endif
+#ifndef __attribute_deprecated__
+#define __attribute_deprecated__
+#endif
+
 #if (defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))) \
  || __has_attribute(regparm)
 #ifndef __attribute_regparm__
