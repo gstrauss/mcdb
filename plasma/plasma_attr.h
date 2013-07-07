@@ -366,11 +366,14 @@ enum plasma_attr_mm_hint
 #define __builtin_prefetch(addr,rw,locality) \
         _mm_prefetch((addr),(locality))
 #endif
-/* xlC __dcbt() http://publib.boulder.ibm.com/infocenter/comphelp/v111v131/
- * (on Power7, might check locality and use __dcbtt() or __dcbstt())*/
+/* xlc v8.0 __dcbt (possibly earlier), xlc v9.0 (released 2007/08/15) __dcbtst
+ * https://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8a.doc%2Fcompiler%2Fref%2Fbif_cache.htm
+ * http://publib.boulder.ibm.com/infocenter/comphelp/v9v111/index.jsp?topic=/com.ibm.xlcpp9.aix.doc/compiler_ref/bifs_data_cache.htm
+ * (on Power7, might check locality and use __dcbtt() or __dcbtstt())
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlc121.aix.doc%2Fcompiler_ref%2Fbifs_prefetch.html */
 #if defined(__xlc__) || defined(__xlC__)
 #define __builtin_prefetch(addr,rw,locality) \
-        ((rw) ? __dcbst((void *)(addr)) : __dcbt((void *)(addr)))
+        ((rw) ? __dcbtst((void *)(addr)) : __dcbt((void *)(addr)))
 #endif
 /* Sun Studio
  * http://blogs.oracle.com/solarisdev/entry/new_article_prefetching
