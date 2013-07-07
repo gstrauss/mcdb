@@ -119,9 +119,9 @@ mcdb_findtagstart(struct mcdb * const restrict m,
     /* (size of data in lvl2 hash table element is 16-bytes (shift 4 bits)) */
     m->kpos  = m->hpos
              +(((uintptr_t)((khash>>MCDB_SLOT_BITS) % m->hslots)) << m->map->b);
-    ptr = m->map->ptr + m->kpos;
-    __builtin_prefetch(ptr,0,_MM_HINT_T1);   /*prefetch for mcdb_findtagnext()*/
-    __builtin_prefetch(ptr+64,0,_MM_HINT_T1);/*prefetch for mcdb_findtagnext()*/
+    ptr = m->map->ptr + m->kpos;             /*prefetch for mcdb_findtagnext()*/
+    __builtin_prefetch(ptr,0,PLASMA_ATTR_MM_HINT_T1);
+    __builtin_prefetch(ptr+64,0,PLASMA_ATTR_MM_HINT_T1);
     uint32_strpack_bigendian_aligned_macro(&m->khash, khash);/*store bigendian*/
     return true;
 }
@@ -146,7 +146,7 @@ mcdb_findtagnext(struct mcdb * const restrict m,
             khash= *(uint32_t *)ptr; /* m->khash stored bigendian */
             vpos = uint32_strunpack_bigendian_aligned_macro(ptr+4);
             ptr  = mptr + vpos;
-            __builtin_prefetch((char *)ptr, 0, _MM_HINT_T2);
+            __builtin_prefetch((char *)ptr, 0, PLASMA_ATTR_MM_HINT_T2);
             if (__builtin_expect((!vpos), 0))
                 break;
             ++m->loop;
@@ -170,7 +170,7 @@ mcdb_findtagnext(struct mcdb * const restrict m,
             khash   = *(uint32_t *)ptr; /* m->khash stored bigendian */
             m->klen = uint32_strunpack_bigendian_aligned_macro(ptr+4);
             vpos    = uint64_strunpack_bigendian_aligned_macro(ptr+8);
-            __builtin_prefetch((char *)mptr+vpos+4, 0, _MM_HINT_T2);
+            __builtin_prefetch((char *)mptr+vpos+4, 0, PLASMA_ATTR_MM_HINT_T2);
             if (__builtin_expect((!vpos), 0))
                 break;
             ++m->loop;
@@ -251,7 +251,7 @@ mcdb_iter(struct mcdb_iter * const restrict iter)
             /* klen <= INT_MAX-8 (see mcdb_make.c), so no need to also check
              *   (iter->ptr >= iter->eod-(MCDB_PAD_MASK-7))
              * (using original iter->ptr value before update above) */
-            __builtin_prefetch(iter->ptr, 0, _MM_HINT_T0);
+            __builtin_prefetch(iter->ptr, 0, PLASMA_ATTR_MM_HINT_T0);
             return true;
         }
         iter->ptr = iter->eod;   /* (reached end of data; return false below) */
@@ -273,8 +273,8 @@ mcdb_iter_init(struct mcdb_iter * const restrict iter,
     unsigned char * const ptr = m->map->ptr;
     iter->ptr  = ptr + MCDB_HEADER_SZ;
     iter->eod  = ptr + uint64_strunpack_bigendian_aligned_macro(ptr) - 7;
-    __builtin_prefetch(iter->ptr,0,_MM_HINT_T0); /*(non-faulting ld if 0 recs)*/
-    iter->klen = 0;
+    __builtin_prefetch(iter->ptr,0,PLASMA_ATTR_MM_HINT_T0);
+    iter->klen = 0;                     /*(non-faulting prefetch ld if 0 recs)*/
     iter->dlen = 0;
     iter->map  = m->map;
     /* Note: callers that intend to iterate through entire mcdb might call
@@ -319,8 +319,8 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     if (st.st_size > (off_t)SIZE_MAX) return (errno = EFBIG, false);
   #endif
     x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-    if (x == MAP_FAILED) return false;
-    __builtin_prefetch((char *)x, 0, _MM_HINT_T0); /*(touch page w/ mcdb hdr)*/
+    if (x == MAP_FAILED) return false;             /*(touch page w/ mcdb hdr)*/
+    __builtin_prefetch((char *)x, 0, PLASMA_ATTR_MM_HINT_T0);
   #if 0 /* disable; does not appear to improve performance */
     /*(peformance hit when hitting an uncached mcdb on my 32-bit Pentium-M)*/
     if (st.st_size > 4194304) /*(skip syscall overhead if < 4 MB (arbitrary))*/
