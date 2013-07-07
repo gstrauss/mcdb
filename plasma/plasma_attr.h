@@ -75,6 +75,7 @@
 
 /*
  * http://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
+ * http://gcc.gnu.org/onlinedocs/gcc/Variable-Attributes.html
  * http://gcc.gnu.org/onlinedocs/gcc/Attribute-Syntax.html
  * /usr/include/sys/cdefs.h (GNU/Linux systems)
  * http://ohse.de/uwe/articles/gcc-attributes.html
@@ -83,11 +84,27 @@
  * Attributes exist at above URLs that are not listed below
  *
  * http://clang.llvm.org/docs/LanguageExtensions.html
+ *
+ * Oracle Solaris Studio support for __attributes__
+ * Sun Studio 12: C Compiler 5.9 Readme 
+ * http://docs.oracle.com/cd/E19205-01/820-4155/c.html
+ * Oracle Solaris Studio 12.2: C User's Guide 
+ * 2.9 Supported Attributes
+ * http://docs.oracle.com/cd/E18659_01/html/821-1384/gjzke.html
+ * Oracle Solaris Studio 12.2: C++ User's Guide
+ * 4.11 Supported Attributes
+ * http://docs.oracle.com/cd/E18659_01/html/821-1383/gjzmh.html
+ *
+ * IBM Visual Age support for __attributes__
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlcpp111.aix.doc%2Fcompiler_ref%2Fopt_info.html
+ * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlc111.aix.doc%2Flanguage_ref%2Fvariable_attrib.html
+ *
+ * MS Visual Studio __declspec()
+ * http://msdn.microsoft.com/en-us/library/dabb5z75%28v=vs.90%29.aspx
+ *
+ * discussion of __attribute__() and __declspec() syntax
+ * http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2761.pdf
  */
-
-#ifdef __linux__
-#include <features.h>
-#endif
 
 #ifndef __has_attribute       /* clang */
 #define __has_attribute(x) 0
@@ -123,8 +140,13 @@
 #define __extension__
 #endif
 
+/* __inline__ available when: defined(__GNUC__) && __GNUC_PREREQ(2,7) */
+/* __restrict available when: defined(__GNUC__) && __GNUC_PREREQ(2,92) */
+
 #if __GNUC_PREREQ(3,1) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || __has_attribute(noinline)
 #ifndef __attribute_noinline__
 #define __attribute_noinline__  __attribute__((noinline))
@@ -140,6 +162,8 @@
 
 #if __GNUC_PREREQ(3,1) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || __has_attribute(always_inline)
 #ifndef __attribute_always_inline__
 #define __attribute_always_inline__  __attribute__((always_inline))
@@ -154,8 +178,15 @@
 #define __attribute_always_inline__  C99INLINE
 #endif
 
+/* C11 _Noreturn <stdnoreturn.h> (not included; __attribute_noreturn__ provided)
+ * http://www.gnu.org/software/gnulib/manual/html_node/stdnoreturn_002eh.html
+ * ISO C11 section 7.23
+ * (latest free draft http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf)
+ */
 #if __GNUC_PREREQ(2,5) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || defined(__HP_cc) || defined(__HP_aCC) \
  || __has_attribute(noreturn)
 #ifndef __attribute_noreturn__
@@ -191,6 +222,8 @@
 #endif
 
 #if __GNUC_PREREQ(2,96) \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || defined(__HP_cc)|| defined(__HP_aCC) \
  || __has_attribute(malloc)
 #ifndef __attribute_malloc__
@@ -198,7 +231,9 @@
 #endif
 #elif defined(_MSC_VER)
 #ifndef __attribute_malloc__
+#undef  restrict
 #define __attribute_malloc__  __declspec(restrict)
+#define restrict __restrict
 #endif
 #endif
 #ifndef __attribute_malloc__
@@ -207,6 +242,8 @@
 
 #if __GNUC_PREREQ(2,96) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || __has_attribute(pure)
 #ifndef __attribute_pure__
 #define __attribute_pure__  __attribute__((pure))
@@ -299,23 +336,26 @@
 
 /*
  * Symbol visibility attributes:
+ * http://docs.oracle.com/cd/E19205-01/820-4155/c.html
  * http://docs.sun.com/source/820-4155/c.html
- *   (Oracle/Sun Studio 12 C compiler supports __attribute__
- *    This is not applied in code below; todo)
+ *   (Oracle/Sun Studio 12 C compiler supports __attribute__)
  * http://wikis.sun.com/display/SunStudio/Using+Sun+Studio+for+open+source+apps
- * Note that GCC allows these at the end of function declarations,
+ * Note that GCC allows these at beginning or end of function declarations,
  * but Sun Studio requires them at the beginning, such as:
  * EXPORT void foo(int bar);
  */
 
-#if __GNUC_PREREQ(4,0) || __has_attribute(visibility)
+#if __GNUC_PREREQ(4,0) \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
+ || __has_attribute(visibility)
 # define EXPORT            __attribute__((visibility("default")))
 # define HIDDEN            __attribute__((visibility("hidden")))
 # define INTERNAL          __attribute__((visibility("internal")))
 #elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550)
 # define EXPORT            __global
 # define HIDDEN            __hidden
-# define INTERNAL          __hidden
+# define INTERNAL          __symbolic
 #elif defined(__HP_cc) || defined(__HP_aCC)
 # define EXPORT            __attribute__((visibility("default")))
 # define HIDDEN            __attribute__((visibility("hidden")))
@@ -414,7 +454,11 @@ enum plasma_attr_mm_hint
  * Search internet "Inline assembly for Itanium-based HP-UX"
  * (HP compiler expects to see string _LFHINT_* and not integral constants)*/
 #if defined(__ia64) && (defined(__HP_cc) || defined(__HP_aCC))
+#if defined(__cplusplus) && __cplusplus >= 201103L /* C++11 */
+#include <cfenv>
+#else
 #include <fenv.h>
+#endif
 #include <machine/sys/inline.h>
 #define __builtin_prefetch(addr,rw,locality)                        \
         ((rw) ? _Asm_lfetch_excl(_LFTYPE_NONE,                      \
@@ -453,10 +497,13 @@ enum plasma_attr_mm_hint
  * http://en.wikipedia.org/wiki/Typeof
  *
  * gcc and clang support __typeof__()
+ * However, since typeof is not part of C11/C++11, a compatible definition of 
+ * typeof is not provided for other platforms.  Please consider using __typeof__
  *
  * Sun Studio 12 C compiler supports __typeof__ extension
  * http://www.oracle.com/technetwork/systems/cccompare-137792.html
  * http://www.oracle.com/technetwork/server-storage/solaris10/c-type-137127.html
+ * http://docs.oracle.com/cd/E19205-01/820-4155/c.html
  * http://docs.oracle.com/cd/E19205-01/820-4155/c++.html
  * https://blogs.oracle.com/sga/entry/typeof_and_alignof
  * Sun Studio C++:
@@ -465,8 +512,9 @@ enum plasma_attr_mm_hint
  * xlC supports __typeof__()
  * The typeof and __typeof__ keywords are supported as follows:
  *     C only The __typeof__ keyword is recognized under compilation with the xlc invocation command or the -qlanglvl=extc89, -qlanglvl=extc99, or -qlanglvl=extended options. The typeof keyword is only recognized under compilation with -qkeyword=typeof.
+ * https://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8a.doc%2Fcompiler%2Fref%2Fruoptkey.htm
  *     C++ The typeof and __typeof__ keywords are recognized by default.
- * http://publib.boulder.ibm.com/infocenter/compbgpl/v9v111/index.jsp?topic=/com.ibm.xlcpp9.bg.doc/language_ref/typeof_operator.htm
+ * https://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8a.doc%2Flanguage%2Fref%2Ftypeof_operator.htm
  *
  * HP-UX cc supports __typeof__ when compiled with -Agcc
  * http://h30499.www3.hp.com/t5/Languages-and-Scripting/HP-UX-IA64-and-HP-C-Is-quot-typeof-quot-keyword-supported/td-p/4529218
@@ -474,15 +522,20 @@ enum plasma_attr_mm_hint
  * MS Visual Studio 2010 decltype() can be used to implement __typeof__()
  * http://msdn.microsoft.com/en-us/library/dd537655.aspx
  * http://stackoverflow.com/questions/70013/how-to-detect-if-im-compiling-code-with-visual-studio-2008
+ * http://en.wikipedia.org/wiki/Decltype
+ * C++11 decltype() implemented in g++ (4.3), in clang++, and others
  */
 #if defined(_MSC_VER) && _MSC_VER >= 1600
+#ifndef __typeof__
 #define __typeof__(x)  decltype(x)
+#endif
 #endif
 
 
 /* __alignof__() is non-standard, though available on many modern compilers
+ * (see plasma_stdtypes.h for _Alignof and alignof)
  *
- * (alignof is now part of C11 <stdalign.h> and C++11 <cstdalign>)
+ * (C11 <stdalign.h> _Alignof and C++11 <cstdalign> alignof)
  * (http://en.cppreference.com/w/cpp/language/alignof)
  *
  * http://www.wambold.com/Martin/writings/alignof.html
@@ -492,6 +545,7 @@ enum plasma_attr_mm_hint
  *
  * Sun Studio 12 C compiler supports __alignof__ extension
  * http://www.oracle.com/technetwork/systems/cccompare-137792.html
+ * http://docs.oracle.com/cd/E19205-01/820-4155/c.html
  * http://docs.oracle.com/cd/E19205-01/820-4155/c++.html
  * https://blogs.oracle.com/sga/entry/typeof_and_alignof
  *
@@ -560,7 +614,8 @@ enum plasma_attr_mm_hint
 #endif
 
 
-/* table of (popular) compiler support for various C++11 features
+/*
+ * Table of (popular) compiler support for various C++11 features
  * http://wiki.apache.org/stdcxx/C%2B%2B0xCompilerSupport
  */
 
