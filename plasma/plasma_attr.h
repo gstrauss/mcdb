@@ -336,12 +336,23 @@
 # define INTERNAL
 #endif
 
+/* http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html */
+
+#if !__GNUC_PREREQ(3,1)/*(check major,minor ver; actually supported in 3.0.1)*/\
+ && !(defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x5110) /* Sun Studio 12.2 C   */ \
+ && !__has_builtin(__builtin_constant_p)
+#ifndef __builtin_constant_p
+#define __builtin_constant_p(x) 0
+#endif
+#endif
 
 /* GCC __builtin_expect() is used below to hint to compiler expected results
  * of commands executed.  Successful execution is expected and should be
  * optimally scheduled and predicted as branch taken.  Error conditions are
  * not expected and should be scheduled as the less likely branch taken.
- * (__builtin_expect() is recognized by IBM xlC compiler) */
+ * (__builtin_expect() is recognized by IBM xlC compiler)
+ * Note: avoid compound conditions (a && b) inside __builtin_expect() due to
+ * bug in gcc 4.2,4.3,4.4  http://gcc.gnu.org/bugzilla/show_bug.cgi?id=42233 */
 
 #if !__GNUC_PREREQ(2,96) \
  && !(defined(__xlc__) || defined(__xlC__)) \
@@ -495,6 +506,57 @@ enum plasma_attr_mm_hint
  */
 #if defined(_MSC_VER)
 #define __alignof__(x)  __alignof(x)
+#endif
+
+
+/* alignment
+ * (see plasma_stdtypes.h for _Alignas and alignas)
+ *
+ * (C11 <stdalign.h> _Alignas and C++11 <cstdalign> alignas)
+ * (http://en.cppreference.com/w/cpp/language/alignas)
+ *
+ * portability: __attribute__((aligned)) can be at beginning or end of statement
+ * but MS __declspec() is expected early in statement, not at end.  Therefore,
+ * place __attribute_aligned__(x) early in statement for portability to Windows.
+ *
+ * Oracle Solaris Studio C++ 12.2 finally adds support for aligned attribute.
+ * Earlier versions support #pragma align, but mangled names must be used when
+ * #pragma align is used inside a namespace.
+ *   http://docs.oracle.com/cd/E18659_01/html/821-1383/bkbjx.html#bkbjy
+ * Solaris standard libc does provide memalign() for allocating aligned memory,
+ * but only #pragma align for stack or global alignment, until Sun Studio 12 C
+ * and Sun Studio 12.2 C++.
+ * POSIX documents posix_memalign() which some platforms support.
+ * C11 provides aligned_alloc()
+ */
+#if defined(__GNUC__) /* __GNUC_PREREQ(?,?) */ \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
+ || defined(__HP_cc)|| defined(__HP_aCC) \
+ || __has_attribute(aligned)
+/* some platforms might need to use 'aligned' instead of '__aligned__'; TBD */
+#ifndef __attribute_aligned__
+#define __attribute_aligned__(x)  __attribute__((__aligned__ (x)))
+#endif
+#elif defined(_MSC_VER)
+/* Windows Data Alignment on IPF, x86, and x64
+ * http://msdn.microsoft.com/en-us/library/aa290049%28v=vs.71%29.aspx
+ * __declspec(align(x))
+ * http://msdn.microsoft.com/en-us/library/83ythb65%28v=vs.90%29.aspx */
+#ifndef __attribute_aligned__
+#define __attribute_aligned__(x)  __declspec(align(x))
+#endif
+#endif
+/* Misaligned memory access -- loads and stores -- can have different penalties
+ * depending on whether the access is within a cache line, crosses a cache line,
+ * or crosses a memory page boundary.  Misaligned memory access on SPARC has
+ * historically been much, much worse than on x86, POWER, or ARM.  Even Itanium
+ * is substantially better except when misaligned access crosses memory page
+ * boundaries.  Therefore, performance problems can occur if memory needs to be
+ * aligned and __attribute_aligned__ made a no-op when not supported (below). */
+#ifndef __attribute_aligned__
+#define __attribute_aligned__(x)
 #endif
 
 
