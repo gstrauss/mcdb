@@ -607,21 +607,20 @@ mcdb_make_destroy(struct mcdb_make * const restrict m)
  * (Reference: "How to Write Shared Libraries", by Ulrich Drepper)
  * (optimization)
  * The aliases below are not a complete set of mcdb_make symbols */
-#if (__GNUC_PREREQ(4,0) || __has_attribute(alias)) \
- && !(defined(__APPLE__) && defined(__MACH__)) /* not supported on Darwin */
+#ifdef PLASMA_ATTR_ALIAS
 HIDDEN extern __typeof (mcdb_make_add)
                         mcdb_make_add_h
-  __attribute__((alias ("mcdb_make_add")));
+  __attribute_alias__ ("mcdb_make_add");
 HIDDEN extern __typeof (mcdb_make_addbegin)
                         mcdb_make_addbegin_h
-  __attribute__((alias ("mcdb_make_addbegin")));
+  __attribute_alias__ ("mcdb_make_addbegin");
 HIDDEN extern __typeof (mcdb_make_addbuf_data)
                         mcdb_make_addbuf_data_h
-  __attribute__((alias ("mcdb_make_addbuf_data")));
+  __attribute_alias__ ("mcdb_make_addbuf_data");
 HIDDEN extern __typeof (mcdb_make_addbuf_key)
                         mcdb_make_addbuf_key_h
-  __attribute__((alias ("mcdb_make_addbuf_key")));
+  __attribute_alias__ ("mcdb_make_addbuf_key");
 HIDDEN extern __typeof (mcdb_make_addend)
                         mcdb_make_addend_h
-  __attribute__((alias ("mcdb_make_addend")));
+  __attribute_alias__ ("mcdb_make_addend");
 #endif

@@ -655,33 +655,32 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** const restrict mapptr)
  * (optimization)
  * The aliases below are not a complete set of mcdb symbols,
  * but instead are the most common used in libnss_mcdb.so.2 */
-#if (__GNUC_PREREQ(4,0) || __has_attribute(alias)) \
- && !(defined(__APPLE__) && defined(__MACH__)) /* not supported on Darwin */
+#ifdef PLASMA_ATTR_ALIAS
 HIDDEN extern __typeof (mcdb_findtagstart)
                         mcdb_findtagstart_h
-  __attribute__((alias ("mcdb_findtagstart")));
+  __attribute_alias__ ("mcdb_findtagstart");
 HIDDEN extern __typeof (mcdb_findtagnext)
                         mcdb_findtagnext_h
-  __attribute__((alias ("mcdb_findtagnext")));
+  __attribute_alias__ ("mcdb_findtagnext");
 HIDDEN extern __typeof (mcdb_iter)
                         mcdb_iter_h
-  __attribute__((alias ("mcdb_iter")));
+  __attribute_alias__ ("mcdb_iter");
 HIDDEN extern __typeof (mcdb_iter_init)
                         mcdb_iter_init_h
-  __attribute__((alias ("mcdb_iter_init")));
+  __attribute_alias__ ("mcdb_iter_init");
 HIDDEN extern __typeof (mcdb_mmap_create)
                         mcdb_mmap_create_h
-  __attribute__((alias ("mcdb_mmap_create")));
+  __attribute_alias__ ("mcdb_mmap_create");
 HIDDEN extern __typeof (mcdb_mmap_destroy)
                         mcdb_mmap_destroy_h
-  __attribute__((alias ("mcdb_mmap_destroy")));
+  __attribute_alias__ ("mcdb_mmap_destroy");
 HIDDEN extern __typeof (mcdb_mmap_refresh_check)
                         mcdb_mmap_refresh_check_h
-  __attribute__((alias ("mcdb_mmap_refresh_check")));
+  __attribute_alias__ ("mcdb_mmap_refresh_check");
 HIDDEN extern __typeof (mcdb_mmap_thread_registration)
                         mcdb_mmap_thread_registration_h
-  __attribute__((alias ("mcdb_mmap_thread_registration")));
+  __attribute_alias__ ("mcdb_mmap_thread_registration");
 HIDDEN extern __typeof (mcdb_mmap_reopen_threadsafe)
                         mcdb_mmap_reopen_threadsafe_h
-  __attribute__((alias ("mcdb_mmap_reopen_threadsafe")));
+  __attribute_alias__ ("mcdb_mmap_reopen_threadsafe");
 #endif
