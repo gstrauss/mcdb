@@ -84,17 +84,17 @@
    * http://stackoverflow.com/questions/7086220/what-does-rep-nop-mean-in-x86-assembly
    * http://stackoverflow.com/questions/7371869/minimum-time-a-thread-can-pause-in-linux
    */
-  #if defined(__clang__) || defined(__INTEL_COMPILER)
-   /* gcc 4.7 xmmintrin.h defined _mm_pause as rep; nop, which is portable to
-    * chips pre-Pentium 4.  Although opcode generated is the same, we want pause
-    *||(__GNUC_PREREQ(4,7) && defined(__SSE__))*/
-  #include <xmmintrin.h>
-  #define plasma_spin_pause()  _mm_pause()
-  #else
+   /* avoid pulling in the large header xmmintrin.h just for plasma_spin_pause()
+    * clang xmmintrin.h defines _mm_pause() as pause
+    * #if defined(__clang__) || defined(__INTEL_COMPILER)
+    *  ||(__GNUC_PREREQ(4,7) && defined(__SSE__))
+    * #include <xmmintrin.h>
+    * #define plasma_spin_pause()  _mm_pause()
+    * gcc 4.7 xmmintrin.h defines _mm_pause() as rep; nop, which is portable to
+    * chips pre-Pentium 4.  Although opcode generated is same, we want pause
+    * (if pause not supported by older x86 assembler, "rep; nop" is equivalent)
+    * #define plasma_spin_pause()  __asm__ __volatile__ ("rep; nop") */
   #define plasma_spin_pause()  __asm__ __volatile__ ("pause")
-  /* (if pause not supported by older x86 assembler, "rep; nop" is equivalent)*/
-  /*#define plasma_spin_pause()  __asm__ __volatile__ ("rep; nop")*/
-  #endif
 
 #elif defined(__ia64__)
 

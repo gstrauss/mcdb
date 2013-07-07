@@ -336,18 +336,19 @@
 #endif
 #endif
 
-#if defined(__clang__) || defined(INTEL_COMPILER) || defined(_MSC_VER) \
- ||(__GNUC_PREREQ(4,7) && defined(__SSE__))
-#include <xmmintrin.h>
-#else
-enum _mm_hint
+/* memory locality hint (for prefetch)
+ * (avoid pulling in the large header xmmintrin.h just for simple enum _mm_hint)
+ * #if defined(__clang__) || defined(INTEL_COMPILER) || defined(_MSC_VER) \
+ *  ||(__GNUC_PREREQ(4,7) && defined(__SSE__))
+ * #include <xmmintrin.h>
+ */
+enum plasma_attr_mm_hint
 {
-  _MM_HINT_T0 =  3,
-  _MM_HINT_T1 =  2,
-  _MM_HINT_T2 =  1,
-  _MM_HINT_NTA = 0
+  PLASMA_ATTR_MM_HINT_T0 =  3,
+  PLASMA_ATTR_MM_HINT_T1 =  2,
+  PLASMA_ATTR_MM_HINT_T2 =  1,
+  PLASMA_ATTR_MM_HINT_NTA = 0
 };
-#endif
 
 /* GCC __builtin_prefetch() http://gcc.gnu.org/projects/prefetch.html */
 #if !defined(__GNUC__) && !__has_builtin(__builtin_prefetch)
