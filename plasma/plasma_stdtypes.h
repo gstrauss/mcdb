@@ -23,6 +23,7 @@
 #define INCLUDED_PLASMA_STDTYPES_H
 
 #include "plasma_feature.h"
+#include "plasma_attr.h"    
 
 
 /* C++ header equivalents to C headers: http://www.cplusplus.com/reference/ */
@@ -97,7 +98,68 @@
 #ifndef __alignof_is_defined
 #define __alignof_is_defined 1
 #endif
+#else  /* !C11 <stdalign.h> && !C++11 <cstdalign> */
+
+/* http://en.cppreference.com/w/c/types/max_align_t
+ *   max_align_t is defined in stddef.h (when compiling to C11 standard)
+ *   C11: can use _Alignas(_Alignof(max_align_t)) or _Alignas(max_align_t)
+ * On x86_64 <xmmintrin.h> defines type __m128 with 16 byte alignment for SIMD.
+ * gcc (newer versions) defines __BIGGEST_ALIGNMENT__ (clang does not define)
+ *   e.g. __attribute_aligned__(__BIGGEST_ALIGNMENT__)
+ *   Note that __BIGGEST_ALIGNMENT__ is 16 on x86_64, which is optimal for SIMD
+ *   instructions, but can be wasteful of memory since 4 or 8 bytes is optimal
+ *   for most native types, and short and char typically alignment requirements
+ *   smaller than 4 bytes.
+ * http://www.wambold.com/Martin/writings/alignof.html
+ *   suggests that, due to 386 ABI requirements, alignment of double within a
+ *   struct is 4 on x86, and alignment of long double is 4 on x86, even though
+ *   optimal alignment is 8 bytes for both double and long double on x86.
+ *   x86-64 prefers 8 byte alignment; gcc documents -malign-double flag as
+ *   default for x86-64. */
+typedef double max_align_t;
+
+/* plasma_attr.h provides compatibility support for
+ * alignof, _Alignof, alignas, _Alignas definitions */
+#if !defined(__alignof_is_defined) || !__alignof_is_defined
+#define __alignof_is_defined 1
+#ifndef alignof
+#define alignof(x)  __alignof__(x)
 #endif
+#endif
+
+#ifdef __cplusplus
+#ifndef _Alignof
+#define _Alignof(x)  alignof(x)
+#endif
+#endif
+
+/* (compatibly supports only alignas(alignof(type)), not alignas(type) use,
+ *  unless __builtin_constant_p() is also supported (e.g. gcc and clang))
+ * (repeat logic to detect __builtin_constant_p since do not want ternary
+ *  condition in declaration when __builtin_constant_p is not supported) */
+#if !__has_extension(cxx_alignas) \
+ && (!defined(__alignas_is_defined) || !__alignas_is_defined)
+#define __alignas_is_defined 1
+#if __has_extension(c_alignas)
+#define alignas(x)  _Alignas(x)
+#elif __GNUC_PREREQ(3,1) /*(check major,minor ver; supported in 3.0.1)*/ \
+ || __has_builtin(__builtin_constant_p)
+#define alignas(x)  __builtin_constant_p(x) \
+                    ? __attribute_aligned__(x) \
+                    : __attribute_aligned__(__alignof__(x))
+#else
+#define alignas(x)  __attribute_aligned__(x)
+#endif
+#endif
+
+#ifdef __cplusplus
+#ifndef _Alignas
+#define _Alignas(x)  alignas(x)
+#endif
+#endif
+
+#endif /* !C11 <stdalign.h> && !C++11 <cstdalign> */
+
 
 /* stdbool.h
  *
