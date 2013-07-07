@@ -281,6 +281,21 @@
 #define __attribute_regparm__(x)
 #endif
 
+#if !(defined(__APPLE__) && defined(__MACH__)) /* not supported on Darwin */
+#if __GNUC_PREREQ(3,3) \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || __has_attribute(alias)
+#define PLASMA_ATTR_ALIAS
+#ifndef __attribute_alias__
+#define __attribute_alias__(x)  __attribute__((alias (x)))
+#endif
+#endif
+#endif
+#ifndef __attribute_alias__
+#define __attribute_alias__(x)
+#endif
+
 
 /*
  * Symbol visibility attributes:
