@@ -155,7 +155,7 @@
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */
-#define __attribute_noinline__  __attribute__((noinline))
+#define __attribute_noinline__  __attribute__((__noinline__))
 #elif defined(_MSC_VER)
 #define __attribute_noinline__  __declspec(noinline)
 #else
@@ -169,7 +169,7 @@
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */
-#define __attribute_always_inline__  __attribute__((always_inline))
+#define __attribute_always_inline__  __attribute__((__always_inline__))
 #elif defined(_MSC_VER)
 /* http://msdn.microsoft.com/en-us/library/z8y1yy88.aspx */
 #define __attribute_always_inline__  __forceinline
@@ -190,7 +190,7 @@
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || defined(__HP_cc) || defined(__HP_aCC)
-#define __attribute_noreturn__  __attribute__((noreturn))
+#define __attribute_noreturn__  __attribute__((__noreturn__))
 #elif defined(_MSC_VER)
 #define __attribute_noreturn__  __declspec(noreturn)
 #else
@@ -201,7 +201,7 @@
 #ifndef __attribute_nonnull__
 #if __has_attribute(nonnull) \
  || __GNUC_PREREQ(3,3)
-#define __attribute_nonnull__  __attribute__((nonnull))
+#define __attribute_nonnull__  __attribute__((__nonnull__))
 #else
 #define __attribute_nonnull__
 #endif
@@ -210,7 +210,7 @@
 #ifndef __attribute_nonnull_x__
 #if __has_attribute(nonnull) \
  || __GNUC_PREREQ(3,3)
-#define __attribute_nonnull_x__(x)  __attribute__((nonnull x))
+#define __attribute_nonnull_x__(x)  __attribute__((__nonnull__ x))
 #else
 #define __attribute_nonnull_x__(x)
 #endif
@@ -222,7 +222,7 @@
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || defined(__HP_cc) || defined(__HP_aCC)
-#define __attribute_malloc__  __attribute__((malloc))
+#define __attribute_malloc__  __attribute__((__malloc__))
 #elif defined(_MSC_VER)
 #undef  restrict
 #define __attribute_malloc__  __declspec(restrict)
@@ -235,7 +235,7 @@
 #ifndef __attribute_alloc_size__
 #if __has_attribute(alloc_size) \
  || __GNUC_PREREQ(4,3)
-#define __attribute_alloc_size__(pos)  __attribute__((alloc_size(pos)))
+#define __attribute_alloc_size__(pos)  __attribute__((__alloc_size__(pos)))
 #else
 #define __attribute_alloc_size__
 #endif
@@ -247,9 +247,9 @@
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */
-#define __attribute_pure__  __attribute__((pure))
+#define __attribute_pure__  __attribute__((__pure__))
 #elif defined(__HP_cc) || defined(__HP_aCC)
-#define __attribute_pure__  __attribute__((non_exposing))
+#define __attribute_pure__  __attribute__((__non_exposing__))
 #else
 #define __attribute_pure__
 #endif
@@ -261,7 +261,7 @@
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5100) /* Sun Studio 12.1 C++ */
-#define __attribute_const__  __attribute__((const))
+#define __attribute_const__  __attribute__((__const__))
 #else
 #define __attribute_const__
 #endif
@@ -270,7 +270,7 @@
 #ifndef __attribute_hot__
 #if __has_attribute(hot) \
  || __GNUC_PREREQ(4,3)
-#define __attribute_hot__  __attribute__((hot))
+#define __attribute_hot__  __attribute__((__hot__))
 #else
 #define __attribute_hot__
 #endif
@@ -279,7 +279,7 @@
 #ifndef __attribute_cold__
 #if __has_attribute(cold) \
  || __GNUC_PREREQ(4,3)
-#define __attribute_cold__  __attribute__((cold))
+#define __attribute_cold__  __attribute__((__cold__))
 #else
 #define __attribute_cold__
 #endif
@@ -288,7 +288,7 @@
 #ifndef __attribute_unused__
 #if __has_attribute(unused) \
  || __GNUC_PREREQ(2,95)
-#define __attribute_unused__  __attribute__((unused))
+#define __attribute_unused__  __attribute__((__unused__))
 #else
 #define __attribute_unused__
 #endif
@@ -297,7 +297,7 @@
 #ifndef __attribute_used__
 #if __has_attribute(used) \
  || __GNUC_PREREQ(3,1)
-#define __attribute_used__  __attribute__((used))
+#define __attribute_used__  __attribute__((__used__))
 #else
 #define __attribute_used__
 #endif
@@ -307,7 +307,7 @@
 #if __has_attribute(common) \
  || __GNUC_PREREQ(3,3) \
  || defined(__HP_cc) || defined(__HP_aCC)
-#define __attribute_common__  __attribute__((common))
+#define __attribute_common__  __attribute__((__common__))
 #else
 #define __attribute_common__
 #endif
@@ -319,7 +319,7 @@
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5100) /* Sun Studio 12.1 C++ */
-#define __attribute_weak__  __attribute__((weak))
+#define __attribute_weak__  __attribute__((__weak__))
 #else
 #define __attribute_weak__
 #endif
@@ -330,7 +330,7 @@
  || __GNUC_PREREQ(2,95) /*(maybe earlier gcc, too)*/ \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || defined(__HP_cc) || defined(__HP_aCC)
-#define __attribute_format__(x)  __attribute__((format x))
+#define __attribute_format__(x)  __attribute__((__format__ x))
 #else
 #define __attribute_format__(x)
 #endif
@@ -340,7 +340,7 @@
 #if __has_attribute(format_arg) \
  || __GNUC_PREREQ(2,96) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */
-#define __attribute_format_arg__(x)  __attribute__((format_arg(x)))
+#define __attribute_format_arg__(x)  __attribute__((__format_arg__(x)))
 #else
 #define __attribute_format_arg__(x)
 #endif
@@ -349,7 +349,7 @@
 #ifndef __attribute_sentinel__
 #if __has_attribute(sentinel) \
  || __GNUC_PREREQ(4,0)
-#define __attribute_sentinel__  __attribute__((sentinel))
+#define __attribute_sentinel__  __attribute__((__sentinel__))
 #else
 #define __attribute_sentinel__
 #endif
@@ -358,7 +358,7 @@
 #ifndef __attribute_sentinel_x__
 #if __has_attribute(sentinel) \
  || __GNUC_PREREQ(4,0)
-#define __attribute_sentinel_x__(negpos)  __attribute__((sentinel(negpos)))
+#define __attribute_sentinel_x__(negpos)  __attribute__((__sentinel__(negpos)))
 #else
 #define __attribute_sentinel_x__(negpos)
 #endif
@@ -367,7 +367,7 @@
 #ifndef __attribute_nothrow__
 #if __has_attribute(nothrow) \
  || __GNUC_PREREQ(3,3)
-#define __attribute_nothrow__  __attribute__((nothrow))
+#define __attribute_nothrow__  __attribute__((__nothrow__))
 #elif defined(_MSC_VER)
 #define __attribute_nothrow__  __declspec(nothrow)
 #else
@@ -379,7 +379,7 @@
 #if __has_attribute(warn_unused_result) \
  || __GNUC_PREREQ(3,4) \
  || defined(__HP_cc) || defined(__HP_aCC)
-#define __attribute_warn_unused_result__  __attribute__((warn_unused_result))
+#define __attribute_warn_unused_result__ __attribute__((__warn_unused_result__))
 #else
 #define __attribute_warn_unused_result__
 #endif
@@ -388,7 +388,7 @@
 #ifndef __attribute_warning__
 #if __has_attribute(warning) \
  || __GNUC_PREREQ(4,3)
-#define __attribute_warning__(msg)  __attribute__((warning(msg)))
+#define __attribute_warning__(msg)  __attribute__((__warning__(msg)))
 #else
 #define __attribute_warning__(msg)
 #endif
@@ -397,7 +397,7 @@
 #ifndef __attribute_error__
 #if __has_attribute(error) \
  || __GNUC_PREREQ(4,3)
-#define __attribute_error__(msg)  __attribute__((error(msg)))
+#define __attribute_error__(msg)  __attribute__((__error__(msg)))
 #else
 #define __attribute_error__(msg)
 #endif
@@ -406,7 +406,7 @@
 #ifndef __attribute_deprecated__
 #if __has_attribute(deprecated) \
  || __GNUC_PREREQ(3,1)
-#define __attribute_deprecated__  __attribute__((deprecated))
+#define __attribute_deprecated__  __attribute__((__deprecated__))
 #elif defined(_MSC_VER)
 #define __attribute_deprecated__  __declspec(deprecated)
 #else
@@ -417,7 +417,7 @@
 #ifndef __attribute_deprecated_x__
 #if __has_attribute(deprecated) \
  || __GNUC_PREREQ(3,1)
-#define __attribute_deprecated_x__(msg)  __attribute__((deprecated(msg)))
+#define __attribute_deprecated_x__(msg)  __attribute__((__deprecated__(msg)))
 #elif defined(_MSC_VER)
 #define __attribute_deprecated_x__(msg)  __declspec(deprecated(msg))
 #else
@@ -428,7 +428,7 @@
 #ifndef __attribute_regparm__
 #if __has_attribute(regparm) \
  || (defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__)))
-#define __attribute_regparm__(x)  __attribute__((regparm x))
+#define __attribute_regparm__(x)  __attribute__((__regparm__ x))
 #else
 #define __attribute_regparm__(x)
 #endif
@@ -441,7 +441,7 @@
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */
 #define PLASMA_ATTR_ALIAS
 #ifndef __attribute_alias__
-#define __attribute_alias__(x)  __attribute__((alias (x)))
+#define __attribute_alias__(x)  __attribute__((__alias__(x)))
 #endif
 #endif
 #endif
@@ -465,17 +465,17 @@
  || __GNUC_PREREQ(4,0) \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */
-# define EXPORT            __attribute__((visibility("default")))
-# define HIDDEN            __attribute__((visibility("hidden")))
-# define INTERNAL          __attribute__((visibility("internal")))
+# define EXPORT            __attribute__((__visibility__("default")))
+# define HIDDEN            __attribute__((__visibility__("hidden")))
+# define INTERNAL          __attribute__((__visibility__("internal")))
 #elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550)
 # define EXPORT            __global
 # define HIDDEN            __hidden
 # define INTERNAL          __symbolic
 #elif defined(__HP_cc) || defined(__HP_aCC)
-# define EXPORT            __attribute__((visibility("default")))
-# define HIDDEN            __attribute__((visibility("hidden")))
-# define INTERNAL          __attribute__((visibility("protected")))
+# define EXPORT            __attribute__((__visibility__("default")))
+# define HIDDEN            __attribute__((__visibility__("hidden")))
+# define INTERNAL          __attribute__((__visibility__("protected")))
 #else /* not gcc >= 4 and not Sun Studio >= 8 and not HP aCC */
 # define EXPORT
 # define HIDDEN
@@ -706,7 +706,6 @@ enum plasma_attr_mm_hint
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || defined(__HP_cc) || defined(__HP_aCC)
-/* some platforms might need to use 'aligned' instead of '__aligned__'; TBD */
 #define __attribute_aligned__(x)  __attribute__((__aligned__ (x)))
 #elif defined(_MSC_VER)
 /* Windows Data Alignment on IPF, x86, and x64
