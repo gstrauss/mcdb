@@ -77,6 +77,7 @@
  * http://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
  * http://gcc.gnu.org/onlinedocs/gcc/Variable-Attributes.html
  * http://gcc.gnu.org/onlinedocs/gcc/Attribute-Syntax.html
+ * http://gcc.gnu.org/onlinedocs/ (manuals for different gcc versions)
  * /usr/include/sys/cdefs.h (GNU/Linux systems)
  * http://ohse.de/uwe/articles/gcc-attributes.html
  *
@@ -98,6 +99,9 @@
  * IBM Visual Age support for __attributes__
  * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlcpp111.aix.doc%2Fcompiler_ref%2Fopt_info.html
  * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlc111.aix.doc%2Flanguage_ref%2Fvariable_attrib.html
+ *
+ * HP aCC
+ * http://h21007.www2.hp.com/portal/download/files/unprot/aCxx/Online_Help/pragmas.htm#Attributes
  *
  * MS Visual Studio __declspec()
  * http://msdn.microsoft.com/en-us/library/dabb5z75%28v=vs.90%29.aspx
@@ -240,6 +244,16 @@
 #define __attribute_malloc__
 #endif
 
+#if __GNUC_PREREQ(4,3) \
+ || __has_attribute(alloc_size)
+#ifndef __attribute_alloc_size__
+#define __attribute_alloc_size__(pos)  __attribute__((alloc_size(pos)))
+#endif
+#endif
+#ifndef __attribute_alloc_size__
+#define __attribute_alloc_size__
+#endif
+
 #if __GNUC_PREREQ(2,96) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
@@ -255,6 +269,19 @@
 #endif
 #ifndef __attribute_pure__
 #define __attribute_pure__
+#endif
+
+#if __GNUC_PREREQ(2,95) /*(maybe earlier gcc, too)*/ \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5100) /* Sun Studio 12.1 C++ */ \
+ || __has_attribute(const)
+#ifndef __attribute_const__
+#define __attribute_const__  __attribute__((const))
+#endif
+#endif
+#ifndef __attribute_const__
+#define __attribute_const__
 #endif
 
 #if __GNUC_PREREQ(4,3) \
@@ -277,7 +304,7 @@
 #define __attribute_cold__
 #endif
 
-#if __GNUC_PREREQ(2,96) \
+#if __GNUC_PREREQ(2,95) \
  || __has_attribute(unused)
 #ifndef __attribute_unused__
 #define __attribute_unused__  __attribute__((unused))
@@ -287,10 +314,87 @@
 #define __attribute_unused__
 #endif
 
+#if __GNUC_PREREQ(3,1) \
+ || __has_attribute(used)
+#ifndef __attribute_used__
+#define __attribute_used__  __attribute__((used))
+#endif
+#endif
+#ifndef __attribute_used__
+#define __attribute_used__
+#endif
+
+#if __GNUC_PREREQ(3,3) \
+ || defined(__HP_cc)|| defined(__HP_aCC) \
+ || __has_attribute(common)
+#ifndef __attribute_common__
+#define __attribute_common__  __attribute__((common))
+#endif
+#endif
+#ifndef __attribute_common__
+#define __attribute_common__
+#endif
+
+#if __GNUC_PREREQ(2,95) /*(maybe earlier gcc, too)*/ \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5100) /* Sun Studio 12.1 C++ */ \
+ || __has_attribute(weak)
+#ifndef __attribute_weak__
+#define __attribute_weak__  __attribute__((weak))
+#endif
+#endif
+#ifndef __attribute_weak__
+#define __attribute_weak__
+#endif
+
+#if __GNUC_PREREQ(2,95) /*(maybe earlier gcc, too)*/ \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || defined(__HP_cc)|| defined(__HP_aCC) \
+ || __has_attribute(format)
+#ifndef __attribute_format__
+#define __attribute_format__(x)  __attribute__((format x))
+#endif
+#endif
+#ifndef __attribute_format__
+#define __attribute_format__(x)
+#endif
+
+#if __GNUC_PREREQ(2,96) \
+ || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
+ || __has_attribute(format_arg)
+#ifndef __attribute_format_arg__
+#define __attribute_format_arg__(x)  __attribute__((format_arg(x)))
+#endif
+#endif
+#ifndef __attribute_format_arg__
+#define __attribute_format_arg__(x)
+#endif
+
+#if __GNUC_PREREQ(4,0) \
+ || __has_attribute(sentinel)
+#ifndef __attribute_sentinel__
+#define __attribute_sentinel__  __attribute__((sentinel))
+#endif
+#ifndef __attribute_sentinel_x__
+#define __attribute_sentinel_x__(negpos)  __attribute__((sentinel(negpos)))
+#endif
+#endif
+#ifndef __attribute_sentinel__
+#define __attribute_sentinel__
+#endif
+#ifndef __attribute_sentinel_x__
+#define __attribute_sentinel_x__(negpos)
+#endif
+
 #if __GNUC_PREREQ(3,3) \
  || __has_attribute(nothrow)
 #ifndef __attribute_nothrow__
 #define __attribute_nothrow__  __attribute__((nothrow))
+#endif
+#elif defined(_MSC_VER)
+#ifndef __attribute_nothrow__
+#define __attribute_nothrow__  __declspec(nothrow)
 #endif
 #endif
 #ifndef __attribute_nothrow__
@@ -306,6 +410,26 @@
 #endif
 #ifndef __attribute_warn_unused_result__
 #define __attribute_warn_unused_result__
+#endif
+
+#if __GNUC_PREREQ(4,3) \
+ || __has_attribute(warning)
+#ifndef __attribute_warning__
+#define __attribute_warning__(msg)  __attribute__((warning(msg)))
+#endif
+#endif
+#ifndef __attribute_warning__
+#define __attribute_warning__(msg)
+#endif
+
+#if __GNUC_PREREQ(4,3) \
+ || __has_attribute(error)
+#ifndef __attribute_error__
+#define __attribute_error__(msg)  __attribute__((error(msg)))
+#endif
+#endif
+#ifndef __attribute_error__
+#define __attribute_error__(msg)
 #endif
 
 #if __GNUC_PREREQ(3,1) \
@@ -326,6 +450,9 @@
 #endif
 #ifndef __attribute_deprecated__
 #define __attribute_deprecated__
+#endif
+#ifndef __attribute_deprecated_x__
+#define __attribute_deprecated_x__(msg)
 #endif
 
 #if (defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))) \
