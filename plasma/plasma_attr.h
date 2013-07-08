@@ -97,6 +97,7 @@
  * http://docs.oracle.com/cd/E18659_01/html/821-1383/gjzmh.html
  *
  * IBM Visual Age support for __attributes__
+ * http://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8a.doc%2Flanguage%2Fref%2Fgcc_cext.htm
  * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlcpp111.aix.doc%2Fcompiler_ref%2Fopt_info.html
  * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlc111.aix.doc%2Flanguage_ref%2Fvariable_attrib.html
  *
@@ -140,7 +141,8 @@
 #define __attribute__(x)
 #endif
 
-#if !__GNUC_PREREQ(2,8) && !defined(__clang__)
+#if !__GNUC_PREREQ(2,8) && !defined(__clang__) \
+ && !defined(__xlc__) && !defined(__xlC__) /* IBM AIX xlC */
 #define __extension__
 #endif
 
