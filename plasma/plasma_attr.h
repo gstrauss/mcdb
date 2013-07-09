@@ -257,15 +257,26 @@
 
 #ifndef __attribute_const__
 #if defined(__clang__) /*(__has_attribute(const) might not be handled on OSX)*/\
- || __GNUC_PREREQ(2,95) /*(maybe earlier gcc, too)*/ \
+ || __GNUC_PREREQ(2,5) \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5100) /* Sun Studio 12.1 C++ */
 #define __attribute_const__  __attribute__((__const__))
+#elif defined(_MSC_VER)
+/* http://msdn.microsoft.com/en-us/library/dabb5z75%28v=vs.90%29.aspx
+ * (not as strict as GNU attr const, but more strict than GNU attr pure) */
+#define __attribute_const__  __declspec(noalias)
 #else
 #define __attribute_const__
 #endif
 #endif
+/* gcc attribute const must not be used on functions to which pointers
+ * are passed as arguments and the function dereferences the pointers.
+ * (gcc attribute pure can be use when pointers passed as args are dereferenced)
+ * Sun Studio #pragma no_side_effect and Visual Age xlC #pragma isolated_call
+ * are more strict than gcc attribute pure, and more close match gcc attribute
+ * const, though also permit dereference of pointers passed as function args,
+ * so can be used in addition to portable code marked with attribute pure. */
 
 #ifndef __attribute_hot__
 #if __has_attribute(hot) \
