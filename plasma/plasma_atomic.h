@@ -288,7 +288,7 @@ extern "C" {
  *  http://clang-developers.42468.n3.nabble.com/RFC-atomic-support-for-gcc-4-7-compatibility-td3900609.html
  */
 
-#if __has_extension(c_atomic) || __has_extension(cxx_atomic) \
+#if (__has_builtin(__atomic_load_n) && __has_builtin(__atomic_load)) \
  || __GNUC_PREREQ(4,7)
 
 #define plasma_atomic_load_explicit(ptr, order) \
@@ -438,7 +438,7 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
  *  http://clang-developers.42468.n3.nabble.com/RFC-atomic-support-for-gcc-4-7-compatibility-td3900609.html
  */
 
-#if __has_extension(c_atomic) || __has_extension(cxx_atomic) \
+#if __has_builtin(__atomic_store_n) \
  || __GNUC_PREREQ(4,7)
 
 #define plasma_atomic_store_explicit(ptr, val, order) \

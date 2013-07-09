@@ -256,7 +256,7 @@
 #endif
 
 #ifndef __attribute_const__
-#if __has_attribute(const) \
+#if defined(__clang__) /*(__has_attribute(const) might not be handled on OSX)*/\
  || __GNUC_PREREQ(2,95) /*(maybe earlier gcc, too)*/ \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
