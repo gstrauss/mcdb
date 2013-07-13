@@ -505,10 +505,12 @@
 
 /* http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html */
 
+#if __has_builtin(__builtin_constant_p) \
+ || __GNUC_PREREQ(3,1)/*(check major,minor ver; actually supported in 3.0.1)*/\
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x5110) /* Sun Studio 12.2 C   */
+#define plasma_attr_has_builtin_constant_p
+#else
 #ifndef __builtin_constant_p
-#if !__has_builtin(__builtin_constant_p) \
- && !__GNUC_PREREQ(3,1)/*(check major,minor ver; actually supported in 3.0.1)*/\
- && !(defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x5110) /* Sun Studio 12.2 C   */
 #define __builtin_constant_p(x) 0
 #endif
 #endif

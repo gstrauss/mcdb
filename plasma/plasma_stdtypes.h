@@ -135,15 +135,14 @@ typedef double max_align_t;
 
 /* (compatibly supports only alignas(alignof(type)), not alignas(type) use,
  *  unless __builtin_constant_p() is also supported (e.g. gcc and clang))
- * (repeat logic to detect __builtin_constant_p since do not want ternary
+ * (check for __builtin_constant_p support since do not want ternary
  *  condition in declaration when __builtin_constant_p is not supported) */
 #if !__has_extension(cxx_alignas) \
  && (!defined(__alignas_is_defined) || !__alignas_is_defined)
 #define __alignas_is_defined 1
 #if __has_extension(c_alignas)
 #define alignas(x)  _Alignas(x)
-#elif __GNUC_PREREQ(3,1) /*(check major,minor ver; supported in 3.0.1)*/ \
- || __has_builtin(__builtin_constant_p)
+#elif defined(plasma_attr_has_builtin_constant_p)
 #define alignas(x)  __builtin_constant_p(x) \
                     ? __attribute_aligned__(x) \
                     : __attribute_aligned__(__alignof__(x))
