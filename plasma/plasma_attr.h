@@ -530,7 +530,8 @@
  * of commands executed.  Successful execution is expected and should be
  * optimally scheduled and predicted as branch taken.  Error conditions are
  * not expected and should be scheduled as the less likely branch taken.
- * (__builtin_expect() is recognized by IBM xlC compiler)
+ * (__builtin_expect() is recognized by IBM xlC compiler v9.0)
+ * http://publib.boulder.ibm.com/infocenter/comphelp/v9v111/index.jsp?topic=/com.ibm.xlcpp9.aix.doc/compiler_ref/bifs_opt.htm
  * Note: avoid compound conditions (a && b) inside __builtin_expect() due to
  * bug in gcc 4.2,4.3,4.4  http://gcc.gnu.org/bugzilla/show_bug.cgi?id=42233 */
 
@@ -578,6 +579,9 @@ enum plasma_attr_mm_hint
  * (on Power7, might check locality and use __dcbtt() or __dcbtstt())
  * http://pic.dhe.ibm.com/infocenter/comphelp/v121v141/index.jsp?topic=%2Fcom.ibm.xlc121.aix.doc%2Fcompiler_ref%2Fbifs_prefetch.html */
 #if defined(__xlc__) || defined(__xlC__)
+#ifdef __cplusplus
+#include <builtins.h>
+#endif
 #define __builtin_prefetch(addr,rw,locality) \
         ((rw) ? __dcbtst((void *)(addr)) : __dcbt((void *)(addr)))
 #endif

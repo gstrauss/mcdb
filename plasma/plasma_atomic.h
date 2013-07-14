@@ -145,6 +145,16 @@
 
 #elif defined(__sun) && defined(__SVR4)
 
+  /* Solaris 10 provides library functions to perform many atomic operations.
+   * Doing so encapsulates the implementation, allowing for an optimal set of
+   * instructions depending on the underlying hardware, at the minor cost of
+   * the overhead of a shared library function call.
+   * Sun Studio 12.1 adds support for extended inline asm and so inline assembly
+   * could now be provided, replacing .il inline function templates were the
+   * prior assembly inlining mechanism on Solaris.  However, coding inline
+   * assembly must be done very carefully to ensure correctness.
+   *   https://blogs.oracle.com/wesolows/entry/gcc_inline_assembly_part_2
+   */
   #include <atomic.h>
   #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
           (atomic_cas_ptr((ptr),(cmpval),(newval)) == (cmpval))
@@ -174,8 +184,10 @@
    * to the return value of __compare_and_swap()
    * AIX xlC compiler intrinsics __clear_lock_mp() and __clear_lockd_mp() add a
    * full 'sync' barrier */
-  #include <sys/atomic_op.h>
   #if defined(__IBMC__) || defined(__IBMCPP__)
+    #ifdef __cplusplus
+    #include <builtins.h>
+    #endif
     #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
             __compare_and_swaplp((long *)(ptr),(long *)(&cmpval),(long)(newval))
             /* !__check_lockd_mp((long *)(ptr),(long)(cmpval),(long)(newval)) */
@@ -193,6 +205,16 @@
       #define plasma_atomic_not_implemented_64
     #endif
   #else
+    #ifndef _ALL_SOURCE
+    #ifndef _H_TYPES
+    #include <sys/types.h>
+    #endif
+    typedef uchar_t  uchar;
+    typedef ushort_t ushort;
+    typedef uint_t   uint;
+    typedef ulong_t  ulong;
+    #endif/*(IBM should fix sys/atomic_op.h to avoid using non-standard types)*/
+    #include <sys/atomic_op.h>
     #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
             compare_and_swaplp((ptr),&(cmpval),(newval))
     #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \

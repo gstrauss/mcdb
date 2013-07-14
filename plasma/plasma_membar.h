@@ -453,16 +453,9 @@
 #if defined(__xlc__) || defined(__xlC__)  /*(__IBMC__, __IBMCPP__ for ver cmp)*/
 #if defined(__ppc__)   || defined(_ARCH_PPC)  || \
     defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
-#ifndef _ALL_SOURCE
-#ifndef _H_TYPES
-#include <sys/types.h>
+#ifdef __cplusplus
+#include <builtins.h>
 #endif
-typedef uchar_t  uchar;
-typedef ushort_t ushort;
-typedef uint_t   uint;
-typedef ulong_t  ulong;
-#endif /*(IBM should fix sys/atomic_op.h to avoid using non-standard types)*/
-#include <sys/atomic_op.h>
 #undef  plasma_membar_ccfence
 #undef  plasma_membar_LoadLoad
 #undef  plasma_membar_StoreStore
@@ -663,7 +656,6 @@ typedef ulong_t  ulong;
 /* prefer compiler intrinsics to inline assembly for fine-grained intrinsics */
 /* IBM Visual Age xlC */
 #if defined(__xlc__) || defined(__xlC__)  /*(__IBMC__, __IBMCPP__ for ver cmp)*/
-#include <sys/atomic_op.h>
 #undef  plasma_membar_ifence
 #define plasma_membar_ifence()      __sync()
 /* AIX v7r1 provides _sync_cache_range() in libc.a to sync I cache with D cache
