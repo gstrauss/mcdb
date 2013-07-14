@@ -39,9 +39,20 @@
 #endif
 #endif
 
-#if defined(__SUNPRO_C) || defined(__SUNPRO_CC)
+/* Sun Studio C/C++ might not recognize __asm, __asm__, and __volatile__ */
+#if defined(__SUNPRO_C) ||  defined(__SUNPRO_CC)
+#if (defined(__SUNPRO_C)  && __SUNPRO_C  < 0x5100)   /* Sun Studio C < 12.1 */ \
+ ||  defined(__SUNPRO_CC)
 #ifndef __asm__
+#if defined(__SUNPRO_C)
 #define __asm__ __asm
+#else
+#define __asm__ asm
+#endif
+#if defined(__SUNPRO_CC) && !defined(__asm)
+#define __asm   asm
+#endif
+#endif
 #endif
 #ifndef __volatile__
 #define __volatile__ volatile

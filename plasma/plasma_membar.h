@@ -258,10 +258,14 @@
 #if (defined(__sun) && defined(__SVR4)) || defined(__linux__)
 #if (defined(__SUNPRO_C)  && __SUNPRO_C  < 0x5100) \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC < 0x5100)
-/* (asm volatile ("":::"memory") recognized as compiler optimization fence from
- *  Sun Studio 12.1 (0x5100))
- * (paranoia: insert memory barrier to avoid compiler optimization until
- *  otherwise confirmed what is actually needed prior to Sun Studio 12.1) */
+/* asm volatile ("":::"memory") recognized as compiler optimization fence from
+ * Sun Studio 12.1 (0x5100); earlier versions of Sun Studio do not recognize
+ * (and appear to ignore) extended asm syntax.  Additionally, earlier versions
+ * of Sun Studio omit memory barriers when compiling without optimization (!)
+ * NB: not optimizing code that requires StoreLoad or full sync barriers might
+ * be an issue.  (TSO makes other memory barriers a non-issue.)  While compiling
+ * without opt enabled does not reorder loads before stores, the hardware might.
+ * The workaround for Sun Studio earlier than 12.1 is to compile optimized. */
 #undef  plasma_membar_ccfence
 #define plasma_membar_ccfence()     __asm __volatile__ ("membar #LoadStore|#StoreStore|#LoadLoad":::"memory")
 #else/*(TSO needs only compiler fence for all memory barriers besides seq_cst)*/
