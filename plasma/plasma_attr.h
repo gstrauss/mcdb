@@ -287,7 +287,8 @@
  * Sun Studio #pragma no_side_effect and Visual Age xlC #pragma isolated_call
  * are more strict than gcc attribute pure, and more close match gcc attribute
  * const, though also permit dereference of pointers passed as function args,
- * so can be used in addition to portable code marked with attribute pure. */
+ * so might be used in addition to portable code marked with attribute pure,
+ * provided requirements are met for pragma no_side_effect or isolated_call. */
 
 #ifndef __attribute_hot__
 #if __has_attribute(hot) \
@@ -752,6 +753,111 @@ enum plasma_attr_mm_hint
 #define __attribute_aligned__(x)
 #endif
 #endif
+
+
+/*
+ * macros grouping and wrapping compiler-specific pragmas
+ *
+ * xlC
+ * http://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8a.doc%2Fcompiler%2Fref%2Frupragen.htm
+ *
+ * Sun Studio
+ * http://docs.oracle.com/cd/E18659_01/html/821-1384/bjaby.html
+ * http://docs.oracle.com/cd/E18659_01/html/821-1383/bkbju.html
+ * Sun Studio C++ 12 adds support for _Pragma()
+ *
+ * HP aCC
+ * HP-UX supports _Pragma() only in ANSI (-Aa) and ANSI extended (-Ae) mode.
+ * http://h21007.www2.hp.com/portal/download/files/unprot/aCxx/Online_Help/pragmas.htm
+ *
+ * Visual Studio 2008 has __pragma() which is slightly different from _Pragma()
+ * http://msdn.microsoft.com/en-us/library/d9x1s805%28v=vs.90%29.aspx
+ * http://msdn.microsoft.com/en-us/library/f88y8c6c%28v=vs.90%29.aspx
+ *
+ *
+ * xlc #pragma isolated_call and Sun Studio #pragma no_side_effect are
+ * more restrictive than __attribute__((pure)), but less restrictive than
+ * __attribute__((const)).  In particular, both pragmas permit dereferencing
+ * and reading from a pointer passed in as an argument to a function, while
+ * __attribute__((const)) does not.  There may be some benefit with xlc
+ * and Sun Studio to add PLASMA_ATTR_Pragma_no_side_effect() annotation to 
+ * functions marked __attribute__((pure)) in cases where the function can not
+ * be marked __attribute__((const)) only due to taking a pointer argument
+ * which is dereferenced by the function.
+ *
+ * When using strlen() with Sun Studio, might improve performance:
+ *   #include <string.h>
+ *   PLASMA_ATTR_Pragma_no_side_effect(strlen)
+ * https://blogs.oracle.com/d/entry/the_perils_of_strlen
+ */
+
+#ifdef _MSC_VER
+#define PLASMA_ATTR_Pragma(x)  __pragma(x)
+#else
+#define PLASMA_ATTR_Pragma(x)  _Pragma(#x)
+#endif
+
+#if (defined(__STDC_VERSION__) && __STDC_VERSION__-0 >= 199901L) /* C99 */ \
+ || defined(__cplusplus)
+
+#if defined(__xlc__) || defined(__xlC__)
+
+#define PLASMA_ATTR_Pragma_no_side_effect(func) \
+        PLASMA_ATTR_Pragma(isolated_call(func))
+#define PLASMA_ATTR_Pragma_execution_frequency_very_low \
+        PLASMA_ATTR_Pragma(execution_frequency(very_low))
+#define PLASMA_ATTR_Pragma_execution_frequency_very_high \
+        PLASMA_ATTR_Pragma(execution_frequency(very_high))
+
+#elif defined(__SUNPRO_C) || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x590)
+
+#define PLASMA_ATTR_Pragma_no_side_effect(func) \
+        PLASMA_ATTR_Pragma(no_side_effect(func))
+#define PLASMA_ATTR_Pragma_rarely_called(func) \
+        PLASMA_ATTR_Pragma(rarely_called(func))
+#define plasma_attr_pragma_execution_frequency_very_low \
+        plasma_attr_sun_studio_shim_rarely_called()
+
+/* Sun Studio compiler does not currently provide a means to statically tag
+ * code paths as likely or unlikely.  However, a function (not inlined) that
+ * is marked as rarely_called and no_side_effect might be effective substitute.
+ * https://github.com/bloomberg/bsl/blob/master/groups/bsl/bsls/bsls_performancehint.h */
+void plasma_attr_sun_studio_shim_rarely_called (void);
+#pragma rarely_called(plasma_attr_sun_studio_shim_rarely_called)
+#pragma no_side_effect(plasma_attr_sun_studio_shim_rarely_called)
+
+#endif
+
+#endif
+
+#ifndef PLASMA_ATTR_Pragma_no_side_effect
+#define PLASMA_ATTR_Pragma_no_side_effect(func)
+#endif
+#ifndef PLASMA_ATTR_Pragma_rarely_called
+#define PLASMA_ATTR_Pragma_rarely_called(func)
+#endif
+#ifndef PLASMA_ATTR_Pragma_execution_frequency_very_low
+#define PLASMA_ATTR_Pragma_execution_frequency_very_low
+#endif
+#ifndef PLASMA_ATTR_Pragma_execution_frequency_very_high
+#define PLASMA_ATTR_Pragma_execution_frequency_very_high
+#endif
+
+/* https://github.com/bloomberg/bsl/blob/master/groups/bsl/bsls/bsls_ident.h */
+#if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER) \
+ || defined(__IBMC__) || defined(__IBMCPP__) \
+ || (defined(__HP_cc)  && __HP_cc-0  >= 62500) \
+ || (defined(__HP_aCC) && __HP_aCC-0 >= 62500) /* HP aCC A.06.25 */
+  #define PLASMA_ATTR_Pragma_once  PLASMA_ATTR_Pragma(once)
+#else
+  /* Sun Studio does not support #pragma once.  Instead, it natively detects if
+   * the entire non-comment portion of a file is wrapped by #ifndef, and if so,
+   * optimizes away reopens of the file if the #ifndef condition is false.
+   * Therefore, include guards should still be used within each header,
+   * in conjunction with PLASMA_ATTR_Pragma_once. */
+  #define PLASMA_ATTR_Pragma_once
+#endif
+PLASMA_ATTR_Pragma_once
 
 
 /*
