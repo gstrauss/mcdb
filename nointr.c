@@ -26,42 +26,46 @@
 #define _ATFILE_SOURCE
 #endif
 
-#define NOINTR_C99INLINE_FUNCS
-
-/* inlined functions defined in header
- * (generate external linkage definition in GCC versions earlier than GCC 4.3)*/
-#if defined(NO_C99INLINE) \
- || defined(__clang__) || (defined(__GNUC__) && !defined(__GNUC_STDC_INLINE__))
-#define NOINTR_C99INLINE
-#endif
-
 #include "nointr.h"
 
-/* inlined functions defined in header
- * (generate external linkage definition in C99-compliant compilers)
- * (need to -duplicate- definition from header for non-C99-compliant compiler)
- */
-#if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
-extern inline
-int nointr_dup(int);
-int nointr_dup(int);
-extern inline
-int nointr_open(const char * restrict, int, mode_t);
-int nointr_open(const char * restrict, int, mode_t);
-extern inline
-int nointr_close(int);
-int nointr_close(int);
-extern inline
-int nointr_ftruncate(int, off_t);
-int nointr_ftruncate(int, off_t);
-extern inline
-ssize_t nointr_write(int, const char * restrict, size_t);
-ssize_t nointr_write(int, const char * restrict, size_t);
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
 
-#ifdef AT_FDCWD
-extern inline
-int nointr_openat(int, const char * restrict, int, mode_t);
-int nointr_openat(int, const char * restrict, int, mode_t);
+int
+nointr_dup(const int fd)
+{ int r; retry_eintr_do_while((r = dup(fd)), (r != -1)); return r; }
+
+int
+nointr_open(const char * const restrict fn, const int flags, const mode_t mode)
+{ int r; retry_eintr_do_while((r = open(fn,flags,mode)), (r == -1)); return r; }
+
+int
+nointr_close(const int fd)
+{ int r; retry_eintr_do_while((r = close(fd)), (r != 0)); return r; }
+
+ssize_t
+nointr_write(const int fd, const char * restrict buf, size_t sz)
+{
+    ssize_t w;
+    do { w = write(fd,buf,sz); } while (w!=-1 ? (buf+=w,sz-=w) : errno==EINTR);
+    return w;
+}
+
+#if defined(_XOPEN_SOURCE) && _XOPEN_SOURCE-0 >= 500
+#if defined(__hpux) && defined(_LARGEFILE64_SOURCE) \
+ && !defined(_LP64) && !defined(__LP64__)
+#define ftruncate(fd,sz)  __ftruncate64((fd),(sz))
+#endif
+int
+nointr_ftruncate(const int fd, const off_t sz)
+{ int r; retry_eintr_do_while((r = ftruncate(fd, sz)),(r != 0)); return r; }
 #endif
 
+#if defined(_ATFILE_SOURCE) && defined(AT_FDCWD)
+int
+nointr_openat(const int dfd, const char * const restrict fn,
+              const int flags, const mode_t mode)
+{ int r; retry_eintr_do_while((r=openat(dfd,fn,flags,mode)),(r==-1)); return r;}
 #endif

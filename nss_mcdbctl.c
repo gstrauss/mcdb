@@ -49,6 +49,7 @@
 #include <sys/stat.h>  /* stat(), fchmod(), umask() */
 #include <limits.h>
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>    /* malloc() free() */
 #include <stdio.h>     /* rename() */
 #include <string.h>    /* memcpy() strlen() */

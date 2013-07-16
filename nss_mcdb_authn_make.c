@@ -26,7 +26,6 @@
 #include "nss_mcdb_authn_make.h"
 #include "nss_mcdb_authn.h"
 #include "nss_mcdb.h"
-#include "uint32.h"
 
 #include <errno.h>
 #include <limits.h>
