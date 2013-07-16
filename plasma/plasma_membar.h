@@ -133,6 +133,8 @@
 #define INCLUDED_PLASMA_MEMBAR_H
 
 #include "plasma_feature.h"
+#include "plasma_attr.h"
+PLASMA_ATTR_Pragma_once
 
 
 #if defined(__x86_64__) || defined(__i386__)
@@ -689,8 +691,6 @@
 #define plasma_membar_atomic_thread_fence_release() plasma_membar_st_rel()
 #define plasma_membar_atomic_thread_fence_acq_rel() plasma_membar_rmw_acq_rel()
 #define plasma_membar_atomic_thread_fence_seq_cst() plasma_membar_seq_cst()
-
-#include "plasma_attr.h"
 
 #ifdef __cplusplus
 #if __cplusplus >= 201103L \

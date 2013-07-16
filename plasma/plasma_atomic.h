@@ -38,6 +38,7 @@
 #include "plasma_attr.h"
 #include "plasma_membar.h"
 #include "plasma_stdtypes.h"
+PLASMA_ATTR_Pragma_once
 
 /*
  * plasma_atomic_lock_acquire - basic lock providing acquire semantics
@@ -321,7 +322,7 @@ extern "C" {
 /*
  * #elif defined(__ia64__) || defined(_M_IA64)
  *
- * XXX: Itanium has ld1, ld2, ld4, ld8 with .acq suffix modifer
+ * XXX: Itanium has ld1, ld2, ld4, ld8 with .acq suffix modifier
  *      (not implemented in assembly here, but could be)
  */
 
@@ -469,7 +470,7 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 /*
  * #elif defined(__ia64__) || defined(_M_IA64)
  *
- * XXX: Itanium has st1, st2, st4, st8 with .rel suffix modifer
+ * XXX: Itanium has st1, st2, st4, st8 with .rel suffix modifier
  *      (not implemented in assembly here, but could be)
  */
 

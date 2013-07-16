@@ -24,6 +24,7 @@
 
 #include "plasma_feature.h"
 #include "plasma_attr.h"    
+PLASMA_ATTR_Pragma_once
 
 
 /* C++ header equivalents to C headers: http://www.cplusplus.com/reference/ */

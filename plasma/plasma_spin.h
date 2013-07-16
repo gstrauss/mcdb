@@ -29,6 +29,7 @@
 #include "plasma_attr.h"
 #include "plasma_membar.h"
 #include "plasma_atomic.h"
+PLASMA_ATTR_Pragma_once
 
 #if defined(__APPLE__) && defined(__MACH__)
 #include <libkern/OSAtomic.h>

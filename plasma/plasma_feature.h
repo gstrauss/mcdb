@@ -33,7 +33,9 @@
 
 
 /* define PLASMA_FEATURE_POSIX on POSIX (unix-like) platforms
- * __unix or __unix__ not defined by all compilers on all unix-like platforms */
+ * __unix or __unix__ not defined by all compilers on all unix-like platforms
+ * (e.g. gcc 4.7.0 defines __unix on _AIX but not earlier gcc
+ *  http://gcc.gnu.org/bugzilla/show_bug.cgi?id=39950) */
 #if defined(__unix) || defined(__unix__) \
  || (defined(__APPLE__) && defined(__MACH__)) || defined(_AIX)
 #ifndef PLASMA_FEATURE_POSIX
@@ -206,6 +208,16 @@
 #include <sys/cdefs.h>
 #elif defined(__hpux)
 /*#include <XXX>*/
+#endif
+
+
+/* (see plasma_attr.h PLASMA_ATTR_Pragma_once)
+ * (duplicate internal logic here since plasma_feature.h included first) */
+#if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER) \
+ || defined(__IBMC__) || defined(__IBMCPP__) \
+ || (defined(__HP_cc)  && __HP_cc-0  >= 62500) \
+ || (defined(__HP_aCC) && __HP_aCC-0 >= 62500) /* HP aCC A.06.25 */
+#pragma once
 #endif
 
 
