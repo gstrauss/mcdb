@@ -44,6 +44,8 @@
 #include <sys/socket.h> /* AF_INET */
 #include <arpa/inet.h>  /* inet_pton() ntohl() ntohs() htons() */
 
+PLASMA_ATTR_Pragma_no_side_effect(strlen)
+
 /* (similar to code nss_mcdb_acct_make.c:nss_mcdb_acct_make_group_datastr()) */
 static size_t
 nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,

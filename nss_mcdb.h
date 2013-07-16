@@ -26,6 +26,7 @@
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h"
 #include "mcdb.h"
+PLASMA_ATTR_Pragma_once
 
 #if defined(__linux__)
   #include <nss.h>   /* NSS_STATUS_{TRYAGAIN,UNAVAIL,NOTFOUND,SUCCESS,RETURN} */

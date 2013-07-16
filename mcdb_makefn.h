@@ -29,6 +29,7 @@
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h"  /* size_t */
 #include "mcdb_make.h"
+PLASMA_ATTR_Pragma_once
 
 #ifdef __cplusplus
 extern "C" {

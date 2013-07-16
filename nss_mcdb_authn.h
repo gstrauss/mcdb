@@ -26,6 +26,7 @@
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h"
 #include "nss_mcdb.h"
+PLASMA_ATTR_Pragma_once
 
 
 void _nss_mcdb_setspent(void);

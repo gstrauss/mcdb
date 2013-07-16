@@ -172,6 +172,7 @@ CFLAGS+=$(PTHREAD_FLAGS)
 #     FPIC=-xcode=pic13
 #     SHLIB=-G
 #     WARNING_FLAGS=-v
+#     CFLAGS+=-fast -xbuiltin
 #   IBM Visual Age XL C/C++
 #     CC=xlc
 #     # use -qsuppress to silence msg: keyword '__attribute__' is non-portable
@@ -203,29 +204,31 @@ CFLAGS+=$(PTHREAD_FLAGS)
 nss_mcdb.o:       CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
 lib32/nss_mcdb.o: CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
 
+PLASMA_OBJS:= plasma/plasma_atomic.o plasma/plasma_attr.o \
+              plasma/plasma_endian.o plasma/plasma_spin.o
+
 PIC_OBJS:= mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
            nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o \
-           plasma/plasma_atomic.o plasma/plasma_spin.o
+           $(PLASMA_OBJS)
 $(PIC_OBJS): CFLAGS+=$(FPIC)
 
 # (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
 ifeq ($(OSNAME),Linux)
 libnss_mcdb.so.2: LDFLAGS+=-Wl,-soname,$(@F) -Wl,--version-script,nss_mcdb.map
 endif
-libnss_mcdb.so.2: mcdb.o uint32.o \
-                  nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o \
-                  plasma/plasma_atomic.o plasma/plasma_spin.o
+libnss_mcdb.so.2: mcdb.o uint32.o $(PLASMA_OBJS) \
+                  nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
 libmcdb.so: LDFLAGS+=-Wl,-soname,$(@F)
 endif
 libmcdb.so: mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
-            plasma/plasma_atomic.o plasma/plasma_spin.o
+            $(PLASMA_OBJS)
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
-           nointr.o uint32.o plasma/plasma_atomic.o plasma/plasma_spin.o
+           nointr.o uint32.o $(PLASMA_OBJS)
 	$(AR) -r $@ $^
 
 libnss_mcdb.a: nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
@@ -291,9 +294,14 @@ $(PREFIX)/sbin/nss_mcdbctl: nss_mcdbctl $(PREFIX)/sbin
 	&& /bin/mv -f $@.$$$$ $@
 
 .PHONY: install-headers install install-doc install-plasma-headers
-install-plasma-headers: plasma/plasma_atomic.h plasma/plasma_attr.h \
-                        plasma/plasma_membar.h plasma/plasma_spin.h \
-                        plasma/plasma_feature.h plasma/plasma_stdtypes.h
+install-plasma-headers: plasma/plasma_atomic.h \
+                        plasma/plasma_attr.h \
+                        plasma/plasma_endian.h \
+                        plasma/plasma_feature.h \
+                        plasma/plasma_ident.h \
+                        plasma/plasma_membar.h \
+                        plasma/plasma_spin.h \
+                        plasma/plasma_stdtypes.h
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb/plasma
 	umask 333; \
 	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/plasma/
@@ -336,7 +344,7 @@ endif
 lib32/libnss_mcdb.so.2: ABI_FLAGS=-m32
 lib32/libnss_mcdb.so.2: $(addprefix lib32/, \
   mcdb.o uint32.o nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o \
-  plasma/plasma_atomic.o plasma/plasma_spin.o)
+  $(PLASMA_OBJS))
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
@@ -345,7 +353,7 @@ endif
 lib32/libmcdb.so: ABI_FLAGS=-m32
 lib32/libmcdb.so: $(addprefix lib32/, \
   mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
-  plasma/plasma_atomic.o plasma/plasma_spin.o)
+  $(PLASMA_OBJS))
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifneq ($(PREFIX_USR),$(PREFIX))

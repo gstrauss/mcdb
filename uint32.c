@@ -36,19 +36,6 @@
  */
 #if !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__)
 extern inline
-uint32_t uint32_strunpack(const char s[4]);
-uint32_t uint32_strunpack(const char s[4]);
-extern inline
-uint32_t uint32_strunpack_bigendian(const char s[4]);
-uint32_t uint32_strunpack_bigendian(const char s[4]);
-extern inline
-void uint32_strpack(char s[4], uint32_t);
-void uint32_strpack(char s[4], uint32_t);
-extern inline
-void uint32_strpack_bigendian(char s[4], uint32_t);
-void uint32_strpack_bigendian(char s[4], uint32_t);
-
-extern inline
 uint32_t uint32_hash_djb(uint32_t, const void * restrict, size_t);
 uint32_t uint32_hash_djb(uint32_t, const void * restrict, size_t);
 extern inline

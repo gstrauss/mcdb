@@ -42,6 +42,8 @@
 #include <sys/socket.h>    /* AF_INET */
 #include <arpa/inet.h>     /* inet_pton() ntohl() ntohs() */
 
+PLASMA_ATTR_Pragma_no_side_effect(strlen)
+
 /*
  * man hosts         (Internet RFC 952)
  *     hostname(1) hostname(7) resolver(3) resolver(5) host.conf resolv.conf

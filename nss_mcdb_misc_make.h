@@ -26,6 +26,7 @@
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h"
 #include "nss_mcdb_make.h"
+PLASMA_ATTR_Pragma_once
 
 /*#include <aliases.h>*/    /* not portable; see nss_mcdb_misc.h */
 #include "nss_mcdb_misc.h"  /* (centralize misc headers between platforms) */

@@ -34,6 +34,7 @@
 #include <stdlib.h>     /* strtol() strtoul() */
 #include <arpa/inet.h>  /* htonl(), htons() */
 
+PLASMA_ATTR_Pragma_no_side_effect(strlen)
 
 /* no /etc/shadow on AIX, Cygwin, MacOSX */
 #if !defined(_AIX) && !defined(__CYGWIN__) \

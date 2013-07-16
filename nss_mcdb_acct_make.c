@@ -39,6 +39,8 @@
 #include <pwd.h>
 #include <grp.h>
 
+PLASMA_ATTR_Pragma_no_side_effect(strlen)
+
 /*
  * validate data sufficiently for successful serialize/deserialize into mcdb.
  *

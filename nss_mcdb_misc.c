@@ -41,6 +41,8 @@
 int xdecrypt(char *secret, char *passwd);
 #endif
 
+PLASMA_ATTR_Pragma_no_side_effect(strlen)
+
 /*
  * man aliases(5) getaliasbyname setaliasent getaliasent endaliasent
  *     /etc/aliases

@@ -27,6 +27,7 @@
 
 #include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+PLASMA_ATTR_Pragma_once
 
 #ifdef __cplusplus
 extern "C" {

@@ -28,6 +28,7 @@
 #include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h" /* bool, size_t, uint32_t, uintptr_t */
+PLASMA_ATTR_Pragma_once
 
 #include <sys/time.h>               /* time_t */
 

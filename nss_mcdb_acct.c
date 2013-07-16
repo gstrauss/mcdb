@@ -35,6 +35,8 @@
 #include <arpa/inet.h>  /* ntohl(), ntohs() */
 #include <unistd.h>     /* sysconf(), _SC_NGROUPS_MAX */
 
+PLASMA_ATTR_Pragma_no_side_effect(strlen)
+
 /*
  * man passwd(5) getpwnam getpwuid setpwent getpwent endpwent
  *     /etc/passwd

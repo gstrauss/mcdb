@@ -25,6 +25,7 @@
 #include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h"
+PLASMA_ATTR_Pragma_once
 
 #include <sys/stat.h>
 #include <fcntl.h>

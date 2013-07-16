@@ -31,6 +31,7 @@
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h"
 #include "nss_mcdb.h"
+PLASMA_ATTR_Pragma_once
 
 /* TODO: implemented only on Linux; other platforms incomplete/missing */
 #if defined(__linux__)

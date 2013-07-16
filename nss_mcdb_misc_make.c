@@ -30,6 +30,8 @@
 #include <errno.h>
 #include <string.h>
 
+PLASMA_ATTR_Pragma_no_side_effect(strlen)
+
 /*#include <aliases.h>*/       /* not portable; see nss_mcdb_misc.h */
 /*#include <netinet/ether.h>*/ /* not portable; see nss_mcdb_misc.h */
 

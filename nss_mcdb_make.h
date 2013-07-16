@@ -26,6 +26,7 @@
 #include "plasma/plasma_attr.h"
 #include "plasma/plasma_stdtypes.h"
 #include "mcdb_make.h"
+PLASMA_ATTR_Pragma_once
 
 struct nss_mcdb_make_wbuf {
   struct mcdb_make * restrict m;

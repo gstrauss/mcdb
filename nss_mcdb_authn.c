@@ -41,6 +41,8 @@ void _nss_mcdb_endspent(void) { nss_mcdb_endent(NSS_DBTYPE_SHADOW);   }
 #include <shadow.h>
 #include <arpa/inet.h>  /* ntohl(), ntohs() */
 
+PLASMA_ATTR_Pragma_no_side_effect(strlen)
+
 /*
  * man shadow(5) getspnam
  *     /etc/shadow

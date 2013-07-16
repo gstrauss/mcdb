@@ -24,7 +24,9 @@
 
 #include "plasma/plasma_feature.h"
 #include "plasma/plasma_attr.h"
+#include "plasma/plasma_endian.h"
 #include "plasma/plasma_stdtypes.h"
+PLASMA_ATTR_Pragma_once
 
 #ifndef UINT32_C99INLINE
 #define UINT32_C99INLINE C99INLINE
@@ -41,104 +43,31 @@ extern "C" {
 
 /*(use macros only with simple args, or else better to call inline subroutine)*/
 
-/* uint32_strunpack_macro(): string 's' must be unsigned char */
-#define uint32_strunpack_macro(s)                          (uint32_t) \
-  (  ((unsigned char *)(s))[0]      | (((unsigned char *)(s))[1]<<8)  \
-  | (((unsigned char *)(s))[2]<<16) | (((unsigned char *)(s))[3]<<24) )
+#define uint32_strpack_bigendian_macro(s,u) \
+        plasma_endian_be32enc_macro((s),(u))
+#define uint32_strunpack_bigendian_macro(s) \
+        plasma_endian_be32dec_macro(s)
 
-/* uint32_strunpack_bigendian_macro(): string 's' must be unsigned char */
-#define uint32_strunpack_bigendian_macro(s)                (uint32_t) \
-  ( (((unsigned char *)(s))[0]<<24) | (((unsigned char *)(s))[1]<<16) \
-  | (((unsigned char *)(s))[2]<<8)  |  ((unsigned char *)(s))[3] )
-
-#define uint32_strpack_macro(s,u)                        \
-  (s)[0]=(char)(u & 0xFF); (s)[1]=(char)((u>>8) & 0xFF); \
-  (s)[2]=(char)((u>>16) & 0xFF); (s)[3]=(char)(u>>24)
-
-#define uint32_strpack_bigendian_macro(s,u)              \
-  (s)[0]=(char)(u>>24); (s)[1]=(char)((u>>16) & 0xFF);   \
-  (s)[2]=(char)((u>>8) & 0xFF); (s)[3]=(char)(u & 0xFF)
-
-
-#include <arpa/inet.h>  /* htonl(), ntohl() */
 #define uint32_strpack_bigendian_aligned_macro(s,u) \
-   (*((uint32_t *)(s)) = htonl(u))
+        (*((uint32_t *)(s)) = plasma_endian_htobe32(u))
 #define uint32_strunpack_bigendian_aligned_macro(s) \
-   ntohl(*((uint32_t *)(s)))
+        plasma_endian_be32ptoh((uint32_t *)(s))
 
-
-/*(uint64 macros built with uint32 macros)*/
 #define uint64_strpack_bigendian_aligned_macro(s,u) \
-   uint32_strpack_bigendian_aligned_macro((s), (uint32_t)((u)>>32)), \
-   uint32_strpack_bigendian_aligned_macro((s)+4,(uint32_t)(u))
+        (*((uint64_t *)(s)) = plasma_endian_htobe64(u))
 #define uint64_strunpack_bigendian_aligned_macro(s) \
-   ( (((uint64_t)uint32_strunpack_bigendian_aligned_macro((s)))<<32) \
-    |           (uint32_strunpack_bigendian_aligned_macro((s)+4)) )
-/*(non-generic optimization specific to mcdb code usage and only for 32-bit)*/
+        plasma_endian_be64ptoh((uint64_t *)(s))
+
+/*(non-generic optimization specific to mcdb code usage and only for 32-bit)
+ *  *(mcdb limited to 4 GB when compiled 32-bit, so unpack 64-bit nums < 4 GB)*/
 #if !defined(_LP64) && !defined(__LP64__)
 #undef  uint64_strunpack_bigendian_aligned_macro
 #define uint64_strunpack_bigendian_aligned_macro(s) \
-                 uint32_strunpack_bigendian_aligned_macro((s)+4)
+        plasma_endian_be32ptoh((uint32_t *)(((char *)(s))+4))
 #endif
 
 
 /* C99 inline functions defined in header */
-
-__attribute_pure__
-UINT32_C99INLINE
-uint32_t
-uint32_strunpack(const char s[4])
-  __attribute_warn_unused_result__  __attribute_nothrow__;
-#ifdef UINT32_C99INLINE_FUNCS
-UINT32_C99INLINE
-uint32_t
-uint32_strunpack(const char s[4])
-{
-    const unsigned char * const restrict n = (const unsigned char *)s;
-    return uint32_strunpack_macro(n);
-}
-#endif
-
-__attribute_pure__
-UINT32_C99INLINE
-uint32_t
-uint32_strunpack_bigendian(const char s[4])
-  __attribute_warn_unused_result__  __attribute_nothrow__;
-#ifdef UINT32_C99INLINE_FUNCS
-UINT32_C99INLINE
-uint32_t
-uint32_strunpack_bigendian(const char s[4])
-{
-    const unsigned char * const restrict n = (const unsigned char *)s;
-    return uint32_strunpack_bigendian_macro(n);
-}
-#endif
-
-UINT32_C99INLINE
-void
-uint32_strpack(char s[4], const uint32_t u)
-  __attribute_nothrow__;
-#ifdef UINT32_C99INLINE_FUNCS
-UINT32_C99INLINE
-void
-uint32_strpack(char s[4], const uint32_t u)
-{
-    uint32_strpack_macro(s,u);
-}
-#endif
-
-UINT32_C99INLINE
-void
-uint32_strpack_bigendian(char s[4], const uint32_t u)
-  __attribute_nothrow__;
-#ifdef UINT32_C99INLINE_FUNCS
-UINT32_C99INLINE
-void
-uint32_strpack_bigendian(char s[4], const uint32_t u)
-{
-    uint32_strpack_bigendian_macro(s,u);
-}
-#endif
 
 
 /* djb cdb hash function: http://cr.yp.to/cdb/cdb.txt
@@ -154,6 +83,7 @@ uint32_t
 uint32_hash_djb(uint32_t, const void * restrict, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
+PLASMA_ATTR_Pragma_no_side_effect(uint32_hash_djb)
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
 uint32_t
@@ -173,6 +103,7 @@ uint32_t
 uint32_hash_identity(uint32_t, const void * restrict, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
+PLASMA_ATTR_Pragma_no_side_effect(uint32_hash_identity)
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
 uint32_t
@@ -319,6 +250,7 @@ uint32_t
 uint32_from_ascii8uphex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
+PLASMA_ATTR_Pragma_no_side_effect(uint32_from_ascii8uphex)
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
 uint32_t
@@ -357,6 +289,7 @@ uint16_t
 uint16_from_ascii4uphex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
+PLASMA_ATTR_Pragma_no_side_effect(uint16_from_ascii4uphex)
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
 uint16_t
@@ -390,6 +323,7 @@ uint32_t  __attribute_pure__
 uint32_from_ascii8hex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
+PLASMA_ATTR_Pragma_no_side_effect(uint32_from_ascii8hex)
 
 /* convert string of 4 ASCII hex chars to unsigned 16-bit value
  * (used to convert architecture-independent string data to numerical data)
@@ -398,6 +332,7 @@ uint16_t  __attribute_pure__
 uint32_from_ascii4hex(const char * const restrict buf)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
+PLASMA_ATTR_Pragma_no_side_effect(uint32_from_ascii4hex)
 
 
 /*
