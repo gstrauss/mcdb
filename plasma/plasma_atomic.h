@@ -247,9 +247,14 @@ PLASMA_ATTR_Pragma_once
 #elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
 
   /* (note: __sync_* builtins provide compiler optimization fence) */
+  /* Linux kernel user helper functions on ARM
+   * https://github.com/torvalds/linux/blob/master/Documentation/arm/kernel_user_helpers.txt 
+   * and (likely) used by compiler intrinsics
+   * http://gcc.gnu.org/wiki/Atomic
+   *   (see Built-in atomic support by architecture) */
   #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
-  #if !defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8)
+  #if !defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8) && !defined(INTEL_COMPILER)
   #define plasma_atomic_not_implemented_64
   #else
   #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \

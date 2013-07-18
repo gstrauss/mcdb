@@ -213,15 +213,34 @@ PLASMA_ATTR_Pragma_once
  *   isb (Instruction Synchronization Barrier)
  * ARMv8 Instruction Set Overview
  * http://infocenter.arm.com/help/topic/com.arm.doc.genc010197a/index.html
- * ("oshld" in ARMv8+; change to just "osh" for ARMv7)
- * XXX: TBD: might LoadLoad be satisfied with dmb ishld instead of dmb oshld?
- *      (plasma_ld_ctrldep() is still better when it can be used) */
-/*(defined(__TARGET_ARCH_ARM) && __TARGET_ARCH_ARM-0 >= 8)*/
+ */
 #ifdef __CC_ARM
 #define plasma_membar_ccfence()     __schedule_barrier()
 #else
 #define plasma_membar_ccfence()     __asm__ __volatile__("":::"memory")
 #endif
+#ifdef __linux__
+/* Linux kernel user helper functions on ARM
+ * https://github.com/torvalds/linux/blob/master/Documentation/arm/kernel_user_helpers.txt 
+ * (avoids cost of memory barrier on single-core systems)
+ * void __kuser_memory_barrier(void);
+ * __kuser_helper_version >= 3 (from kernel version 2.6.15) (released Jan 2006)
+ */
+typedef void (__kuser_dmb_t)(void);
+#define __kuser_dmb (*(__kuser_dmb_t *)0xffff0fa0)
+#define plasma_membar_LoadLoad()    __kuser_dmb()
+#define plasma_membar_StoreStore()  __kuser_dmb()
+#define plasma_membar_ld_ctrldep()  __asm__ __volatile__("isb":::"memory")
+#define plasma_membar_ld_datadep()  do { } while (0)
+#define plasma_membar_ld_acq()      __kuser_dmb()
+#define plasma_membar_st_rel()      __kuser_dmb()
+#define plasma_membar_rmw_acq_rel() __kuser_dmb()
+#define plasma_membar_seq_cst()     __kuser_dmb()
+#else
+/* ("oshld" in ARMv8+; change to just "osh" for ARMv7)
+ * XXX: TBD: might LoadLoad be satisfied with dmb ishld instead of dmb oshld?
+ *      (plasma_ld_ctrldep() is still better when it can be used) */
+/*(defined(__TARGET_ARCH_ARM) && __TARGET_ARCH_ARM-0 >= 8)*/
 /*#define plasma_membar_LoadLoad()    __asm__ __volatile__("dmb oshld":::"memory")*/
 #define plasma_membar_LoadLoad()    __asm__ __volatile__("dmb osh":::"memory")
 #define plasma_membar_StoreStore()  __asm__ __volatile__("dmb oshst":::"memory")
@@ -234,6 +253,7 @@ PLASMA_ATTR_Pragma_once
 /* For MMIO, data cache clean DCC* or data cache invalidate DCI* family of
  * functions are needed along with DMB.  DSB is needed instead of DMB when
  * used in conjunction with interrupts or events such as WFI or WFE */
+#endif
 #endif
 
 
