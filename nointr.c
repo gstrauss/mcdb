@@ -20,8 +20,9 @@
  */
 
 #ifndef _XOPEN_SOURCE /* _XOPEN_SOURCE >= 500 for XSI-compliant ftruncate() */
-#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 700
 #endif
+/* (_ATFILE_SOURCE or _XOPEN_SOURCE >= 700) */
 #ifndef _ATFILE_SOURCE /* openat() */
 #define _ATFILE_SOURCE
 #endif
@@ -63,7 +64,7 @@ nointr_ftruncate(const int fd, const off_t sz)
 { int r; retry_eintr_do_while((r = ftruncate(fd, sz)),(r != 0)); return r; }
 #endif
 
-#if defined(_ATFILE_SOURCE) && defined(AT_FDCWD)
+#ifdef AT_FDCWD
 int
 nointr_openat(const int dfd, const char * const restrict fn,
               const int flags, const mode_t mode)

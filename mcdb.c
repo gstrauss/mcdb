@@ -23,8 +23,9 @@
  */
 
 #ifndef _XOPEN_SOURCE /* POSIX_MADV_RANDOM */
-#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 700
 #endif
+/* (_ATFILE_SOURCE or _XOPEN_SOURCE >= 700) */
 #ifndef _ATFILE_SOURCE /* fstatat(), openat() */
 #define _ATFILE_SOURCE
 #endif

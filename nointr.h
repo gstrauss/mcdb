@@ -64,7 +64,8 @@ nointr_ftruncate(const int fd, const off_t sz)
 #endif
 
 /* caller must #define _ATFILE_SOURCE on Linux for openat() */
-#if defined(_ATFILE_SOURCE)
+#if (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE-0 >= 700) \
+ || defined(_ATFILE_SOURCE)
 int
 nointr_openat(const int dfd, const char * const restrict fn,
               const int flags, const mode_t mode)
