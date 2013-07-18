@@ -22,11 +22,6 @@
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
 #endif
-#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
-#ifndef _ALL_SOURCE
-#define _ALL_SOURCE
-#endif
-#endif
 #ifndef _GNU_SOURCE /* enable O_CLOEXEC on GNU systems */
 #define _GNU_SOURCE 1
 #endif

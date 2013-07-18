@@ -28,11 +28,6 @@
 #ifndef _XOPEN_SOURCE /* posix_fallocate() requires _XOPEN_SOURCE 600 */
 #define _XOPEN_SOURCE 600
 #endif
-#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
-#ifndef _ALL_SOURCE
-#define _ALL_SOURCE
-#endif
-#endif
 /* gcc -std=c99 hides MAP_ANONYMOUS
  * _BSD_SOURCE or _SVID_SOURCE needed for mmap MAP_ANONYMOUS on Linux */
 #ifndef _BSD_SOURCE
@@ -59,6 +54,12 @@
 #include <fcntl.h>   /* posix_fallocate() */
 #include <string.h>  /* memcpy() */
 #include <limits.h>  /* UINT_MAX, INT_MAX */
+
+#ifdef _AIX
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS 0x10
+#endif
+#endif
 
 #if defined(__APPLE__) && defined(__MACH__)
 #ifndef MAP_ANONYMOUS

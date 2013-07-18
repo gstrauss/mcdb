@@ -28,11 +28,6 @@
 #ifndef _XOPEN_SOURCE /* >= 500 on Linux for mkstemp(), fchmod(), fdatasync() */
 #define _XOPEN_SOURCE 600
 #endif
-#ifdef _AIX  /*mmap constants and basic networking on AIX require non-standard*/
-#ifndef _ALL_SOURCE
-#define _ALL_SOURCE
-#endif
-#endif
 /* large file support needed for stat(),fstat() input file > 2 GB */
 #define PLASMA_FEATURE_ENABLE_LARGEFILE
 #ifdef _AIX
