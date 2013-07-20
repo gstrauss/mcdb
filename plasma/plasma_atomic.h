@@ -127,7 +127,7 @@ PLASMA_ATTR_Pragma_once
   #define plasma_atomic_xchg_32_impl(ptr, newval) \
           _InterlockedExchange((ptr),(newval))
 
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && defined(__MACH__)
 
   #include <libkern/OSAtomic.h>
   #if (   (defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
@@ -838,7 +838,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_add_u32_impl(ptr,addval) \
           __sync_fetch_and_add((ptr),(addval))
 
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && defined(__MACH__)
 
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
    * NB: untested with signed types; might not wrap around at INT_MAX, INT_MIN
@@ -938,7 +938,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_or_u32_impl(ptr,orval) \
           __sync_fetch_and_or((ptr),(orval))
 
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && defined(__MACH__)
 
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
    * (could use assembly for missing interfaces, but for now
@@ -995,7 +995,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_and_u32_impl(ptr,andval) \
           __sync_fetch_and_and((ptr),(andval))
 
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && defined(__MACH__)
 
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
    * (could use assembly for missing interfaces, but for now
@@ -1049,7 +1049,7 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_xor_u32_impl(ptr,xorval) \
           __sync_fetch_and_xor((ptr),(xorval))
 
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && defined(__MACH__)
 
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
    * (could use assembly for missing interfaces, but for now

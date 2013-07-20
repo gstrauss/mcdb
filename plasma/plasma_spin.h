@@ -186,8 +186,7 @@ PLASMA_ATTR_Pragma_once
   VOID WINAPI Sleep(_In_ DWORD dwMilliseconds);
   BOOL WINAPI SwitchToThread(void);
   #define plasma_spin_yield() do {if (!SwitchToThread()) Sleep(1);} while (0)
-#elif defined(__unix) || defined(__unix__) \
-   || (defined(__APPLE__) && defined(__MACH__)) || defined(_AIX)
+#elif defined(PLASMA_FEATURE_POSIX)
   #include <unistd.h>  /* _POSIX_PRIORITY_SCHEDULING */
   #include <poll.h>    /* might also need _XOPEN_SOURCE=500 or better on _AIX */
   #ifdef _POSIX_PRIORITY_SCHEDULING
@@ -198,7 +197,7 @@ PLASMA_ATTR_Pragma_once
   #endif
 #endif
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) && defined(__MACH__)
   /* use Mach kernel thread_switch() to reduce priority inversion spinning
    * http://web.mit.edu/darwin/src/modules/xnu/osfmk/man/thread_switch.html
    * http://www.gnu.org/software/hurd/gnumach-doc/Hand_002dOff-Scheduling.html
@@ -274,7 +273,7 @@ extern "C" {
  */
 
 
-#if defined(__APPLE__) \
+#if (defined(__APPLE__) && defined(__MACH__)) \
  && defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
  && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1070   /* OSSpinLock in OSX 10.7 */
 #define plasma_spin_lock_init(spin) \
