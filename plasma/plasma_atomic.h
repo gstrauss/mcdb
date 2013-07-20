@@ -905,15 +905,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_sub_u32_impl(ptr,subval) \
           __sync_fetch_and_sub((ptr),(subval))
 
-#else
-
-  #define plasma_atomic_fetch_sub_ptr_impl(ptr,subval) \
-          plasma_atomic_fetch_add_ptr((ptr),-(subval))
-  #define plasma_atomic_fetch_sub_u64_impl(ptr,subval) \
-          plasma_atomic_fetch_add_u64((ptr),-(subval))
-  #define plasma_atomic_fetch_sub_u32_impl(ptr,subval) \
-          plasma_atomic_fetch_add_u32((ptr),-(subval))
-
 #endif
 
 
@@ -1270,12 +1261,27 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
 
 /* FUTURE: might make into inline function for consistent return type casting
  * and to avoid potential multiple evaluation of macro arguments */
+#ifdef  plasma_atomic_fetch_sub_ptr_impl
 #define plasma_atomic_fetch_sub_ptr(ptr,subval) \
         plasma_atomic_fetch_sub_ptr_impl((ptr),(subval))
+#else
+#define plasma_atomic_fetch_sub_ptr(ptr,subval) \
+        plasma_atomic_fetch_add_ptr((ptr),(uintptr_t)(-(intptr_t)(subval)))
+#endif
+#ifdef  plasma_atomic_fetch_sub_u64_impl
 #define plasma_atomic_fetch_sub_u64(ptr,subval) \
         plasma_atomic_fetch_sub_u64_impl((ptr),(subval))
+#else
+#define plasma_atomic_fetch_sub_u64(ptr,subval) \
+        plasma_atomic_fetch_add_u64((ptr),(uint64_t)(-(int64_t)(subval)))
+#endif
+#ifdef  plasma_atomic_fetch_sub_u32_impl
 #define plasma_atomic_fetch_sub_u32(ptr,subval) \
         plasma_atomic_fetch_sub_u32_impl((ptr),(subval))
+#else
+#define plasma_atomic_fetch_sub_u32(ptr,subval) \
+        plasma_atomic_fetch_add_u32((ptr),(uint32_t)(-(int32_t)(subval)))
+#endif
 
 
 /*
