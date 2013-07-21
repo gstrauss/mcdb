@@ -335,13 +335,16 @@ extern "C" {
 
 /* Note: 32-bit processors, like 32-bit ARM, require special instructions
  * for 64-bit atomic load (not implemented here). */
-/* (plasma_atomic_load* is technically only valid with memory_order_seq_cst,
+/* (plasma_atomic_load* is technically valid only with memory_order_seq_cst,
  *  memory_order_acquire, memory_order_consume, or memory_order_relaxed,
- *  but do something sane for other cases) */
+ *  but do something sane for other cases)
+ * (cast the load through volatile to hint to compiler not to play tricks
+ *  like multiple or early loads)  (This impl has a penalty on Itanium,
+ *  and there are weaker volatile types in HP-UX, not used here) */
 #define plasma_atomic_load_explicit_into(lval, ptr, order)  \
         do { if ((order) == memory_order_seq_cst)           \
                  atomic_thread_fence(memory_order_seq_cst); \
-             (lval) = *(ptr);                               \
+             (lval) = plasma_atomic_ld_nopt(ptr);           \
              atomic_thread_fence(order);                    \
         } while (0)
 
@@ -483,12 +486,15 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 
 /* Note: 32-bit processors, like 32-bit ARM, require special instructions
  * for 64-bit atomic store (not implemented here). */
-/* (plasma_atomic_store* is technically only with memory_order_seq_cst,
+/* (plasma_atomic_store* is technically valid only with memory_order_seq_cst,
  *  memory_order_release, or memory_order_relaxed, but do something sane
- *  for other cases) */
+ *  for other cases)
+ * (cast the store through volatile to hint to compiler not to play tricks
+ *  like multiple or early loads)  (This impl has a penalty on Itanium,
+ *  and there are weaker volatile types in HP-UX, not used here) */
 #define plasma_atomic_store_explicit(ptr, val, order)       \
         do { atomic_thread_fence(order);                    \
-             *(ptr) = (val);                                \
+             plasma_atomic_st_nopt((ptr),(val))             \
              if ((order) == memory_order_seq_cst)           \
                  atomic_thread_fence(memory_order_seq_cst); \
         } while (0)
