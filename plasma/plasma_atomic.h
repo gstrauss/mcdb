@@ -133,8 +133,7 @@ PLASMA_ATTR_Pragma_once
   #define plasma_atomic_xchg_32_impl(ptr, newval) \
           _InterlockedExchange((ptr),(newval))
 
-#elif (defined(__APPLE__) && defined(__MACH__)) \
-   && !defined(__GNUC__) && !defined(__clang__)
+#elif defined(__APPLE__) && defined(__MACH__)
 
   #include <libkern/OSAtomic.h>
   #if (   (defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
@@ -183,9 +182,8 @@ PLASMA_ATTR_Pragma_once
   #define plasma_atomic_xchg_32_impl(ptr, newval) \
           (atomic_swap_32((ptr),(newval)))
 
-#elif (defined(__ppc__)   || defined(_ARCH_PPC)  || \
-       defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)) \
-   && ((defined(__IBMC__) || defined(__IBMCPP__)) || !defined(__GNUC__))
+#elif defined(__ppc__)   || defined(_ARCH_PPC)  || \
+      defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
 
   /* AIX xlC compiler intrinsics __compare_and_swap() and __compare_and_swaplp()
    * require pointer to cmpval and the original contents in ptr is always
@@ -224,7 +222,7 @@ PLASMA_ATTR_Pragma_once
        *  or implement with 64-bit asm ops assuming a 64-bit processor.)*/
       #define plasma_atomic_not_implemented_64
     #endif
-  #else
+  #elif !defined(__GNUC__)/*avoid extra includes; gcc intrinsics further below*/
     #ifndef _ALL_SOURCE
     #ifndef _H_TYPES
     #include <sys/types.h>
@@ -275,33 +273,49 @@ PLASMA_ATTR_Pragma_once
 
 #elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
 
+  /* see next preprocessor block below;
+   * preference given to intrinsics over OS system library functions */
+
+#elif !defined(PLASMA_ATOMIC_MUTEX_FALLBACK)
+  /* (mutex-based fallback implementation enabled by preprocessor define) */
+
+  #error "plasma atomics not implemented for platform+compiler; suggestions?"
+
+#endif
+
+/* prefer compiler intrinsics, if present, over OS system library functions */
+#if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+
   /* (note: __sync_* builtins provide compiler optimization fence) */
   /* Linux kernel user helper functions on ARM
    * https://github.com/torvalds/linux/blob/master/Documentation/arm/kernel_user_helpers.txt 
    * and (likely) used by compiler intrinsics
    * http://gcc.gnu.org/wiki/Atomic
    *   (see Built-in atomic support by architecture) */
+  #undef  plasma_atomic_CAS_ptr_impl
+  #undef  plasma_atomic_CAS_ptr_val_impl
   #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
   #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
           __sync_val_compare_and_swap((ptr), (cmpval), (newval))
   #if !defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8) && !defined(INTEL_COMPILER)
+  #ifndef plasma_atomic_CAS_64_impl
   #define plasma_atomic_not_implemented_64
+  #endif
   #else
+  #undef  plasma_atomic_CAS_64_impl
+  #undef  plasma_atomic_CAS_64_val_impl
   #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
   #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval) \
           __sync_val_compare_and_swap((ptr), (cmpval), (newval))
   #endif
+  #undef  plasma_atomic_CAS_32_impl
+  #undef  plasma_atomic_CAS_32_val_impl
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
   #define plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval) \
           __sync_val_compare_and_swap((ptr), (cmpval), (newval))
-
-#elif !defined(PLASMA_ATOMIC_MUTEX_FALLBACK)
-  /* (mutex-based fallback implementation enabled by preprocessor define) */
-
-  #error "plasma atomics not implemented for platform+compiler; suggestions?"
 
 #endif
 
@@ -640,24 +654,6 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
   #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
           plasma_atomic_xchg_32_impl((ptr),(newval))
 
-#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
-  /* Note: gcc __sync_lock_test_and_set() limitation documented at
-   *   http://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html
-   * "Many targets have only minimal support for such locks, and do not support
-   *  a full exchange operation. In this case, a target may support reduced
-   *  functionality here by which the only valid value to store is the immediate
-   *  constant 1. The exact value actually stored in *ptr is implementation
-   *  defined."
-   * Note: gcc __sync_lock_release adds mfence on x86, and is not used in 
-   * plasma_atomic.h since mfence barrier is stronger than needed for release
-   * barrier provided by plasma_atomic_lock_release() for cacheable memory */
-  #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
-          __sync_lock_test_and_set((ptr), (newval))
-  #define plasma_atomic_xchg_64_acquire_impl(ptr, newval) \
-          __sync_lock_test_and_set((ptr), (newval))
-  #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
-          __sync_lock_test_and_set((ptr), (newval))
-
 #elif defined(__ia64__) \
    && (defined(__HP_cc__) || defined(__HP_aCC__))
 
@@ -673,6 +669,32 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
     #define plasma_atomic_xchg_ptr_acquire_impl(ptr,newval) \
             plasma_atomic_xchg_32_acquire_impl((ptr),(newval))
   #endif
+
+#endif
+
+#if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+  /* Note: gcc __sync_lock_test_and_set() limitation documented at
+   *   http://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html
+   * "Many targets have only minimal support for such locks, and do not support
+   *  a full exchange operation. In this case, a target may support reduced
+   *  functionality here by which the only valid value to store is the immediate
+   *  constant 1. The exact value actually stored in *ptr is implementation
+   *  defined."
+   * An example is ldstub (load-store-unsigned-byte) assembly instruction on
+   * SPARC which stores 0xFF in unsigned char.  XXX: Not handled here are any
+   * cases where a similar limitation applies to 32- or 64-bit exchange.
+   * Note: gcc __sync_lock_release adds mfence on x86, and is not used in 
+   * plasma_atomic.h since mfence barrier is stronger than needed for release
+   * barrier provided by plasma_atomic_lock_release() for cacheable memory */
+  #undef  plasma_atomic_xchg_ptr_acquire_impl
+  #undef  plasma_atomic_xchg_64_acquire_impl
+  #undef  plasma_atomic_xchg_32_acquire_impl
+  #define plasma_atomic_xchg_ptr_acquire_impl(ptr, newval) \
+          __sync_lock_test_and_set((ptr), (newval))
+  #define plasma_atomic_xchg_64_acquire_impl(ptr, newval) \
+          __sync_lock_test_and_set((ptr), (newval))
+  #define plasma_atomic_xchg_32_acquire_impl(ptr, newval) \
+          __sync_lock_test_and_set((ptr), (newval))
 
 #endif
 
@@ -965,15 +987,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_add_u32_impl(ptr,addval) \
           atomic_add_32((uint32_t *)(ptr),(int32_t)(addval))
 
-#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
-
-  #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
-          __sync_fetch_and_add((ptr),(addval))
-  #define plasma_atomic_fetch_add_u64_impl(ptr,addval) \
-          __sync_fetch_and_add((ptr),(addval))
-  #define plasma_atomic_fetch_add_u32_impl(ptr,addval) \
-          __sync_fetch_and_add((ptr),(addval))
-
 #elif defined(__APPLE__) && defined(__MACH__)
 
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
@@ -1025,6 +1038,20 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
 
 #endif
 
+#if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+
+  #undef  plasma_atomic_fetch_add_ptr_impl
+  #undef  plasma_atomic_fetch_add_u64_impl
+  #undef  plasma_atomic_fetch_add_u32_impl
+  #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
+          __sync_fetch_and_add((ptr),(addval))
+  #define plasma_atomic_fetch_add_u64_impl(ptr,addval) \
+          __sync_fetch_and_add((ptr),(addval))
+  #define plasma_atomic_fetch_add_u32_impl(ptr,addval) \
+          __sync_fetch_and_add((ptr),(addval))
+
+#endif
+
 
 /*
  * plasma_atomic_fetch_sub_* - atomic fetch and sub specialized implementations
@@ -1065,15 +1092,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
   #define plasma_atomic_fetch_or_u32_impl(ptr,orval) \
           atomic_or_32((uint32_t *)(ptr),(uint32_t)(orval))
 
-#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
-
-  #define plasma_atomic_fetch_or_ptr_impl(ptr,orval) \
-          __sync_fetch_and_or((ptr),(orval))
-  #define plasma_atomic_fetch_or_u64_impl(ptr,orval) \
-          __sync_fetch_and_or((ptr),(orval))
-  #define plasma_atomic_fetch_or_u32_impl(ptr,orval) \
-          __sync_fetch_and_or((ptr),(orval))
-
 #elif defined(__APPLE__) && defined(__MACH__)
 
   /* Prefer above macros for __clang__ on MacOSX/iOS instead of these
@@ -1100,6 +1118,20 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
 
 #endif
 
+#if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+
+  #undef  plasma_atomic_fetch_or_ptr_impl
+  #undef  plasma_atomic_fetch_or_u64_impl
+  #undef  plasma_atomic_fetch_or_u32_impl
+  #define plasma_atomic_fetch_or_ptr_impl(ptr,orval) \
+          __sync_fetch_and_or((ptr),(orval))
+  #define plasma_atomic_fetch_or_u64_impl(ptr,orval) \
+          __sync_fetch_and_or((ptr),(orval))
+  #define plasma_atomic_fetch_or_u32_impl(ptr,orval) \
+          __sync_fetch_and_or((ptr),(orval))
+
+#endif
+
 
 /*
  * plasma_atomic_fetch_and_* - atomic fetch and and specialized implementations
@@ -1121,15 +1153,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
           atomic_and_64((uint64_t *)(ptr),(uint64_t)(andval))
   #define plasma_atomic_fetch_and_u32_impl(ptr,andval) \
           atomic_and_32((uint32_t *)(ptr),(uint32_t)(andval))
-
-#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
-
-  #define plasma_atomic_fetch_and_ptr_impl(ptr,andval) \
-          __sync_fetch_and_and((ptr),(andval))
-  #define plasma_atomic_fetch_and_u64_impl(ptr,andval) \
-          __sync_fetch_and_and((ptr),(andval))
-  #define plasma_atomic_fetch_and_u32_impl(ptr,andval) \
-          __sync_fetch_and_and((ptr),(andval))
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
@@ -1157,6 +1180,20 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
 
 #endif
 
+#if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+
+  #undef  plasma_atomic_fetch_and_ptr_impl
+  #undef  plasma_atomic_fetch_and_u64_impl
+  #undef  plasma_atomic_fetch_and_u32_impl
+  #define plasma_atomic_fetch_and_ptr_impl(ptr,andval) \
+          __sync_fetch_and_and((ptr),(andval))
+  #define plasma_atomic_fetch_and_u64_impl(ptr,andval) \
+          __sync_fetch_and_and((ptr),(andval))
+  #define plasma_atomic_fetch_and_u32_impl(ptr,andval) \
+          __sync_fetch_and_and((ptr),(andval))
+
+#endif
+
 
 /*
  * plasma_atomic_fetch_xor_* - atomic fetch and xor specialized implementations
@@ -1175,15 +1212,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
 #elif defined(__sun) && defined(__SVR4)
 
   /* (fall back to inline funcs using generic CAS or LL/SC macros) */
-
-#elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
-
-  #define plasma_atomic_fetch_xor_ptr_impl(ptr,xorval) \
-          __sync_fetch_and_xor((ptr),(xorval))
-  #define plasma_atomic_fetch_xor_u64_impl(ptr,xorval) \
-          __sync_fetch_and_xor((ptr),(xorval))
-  #define plasma_atomic_fetch_xor_u32_impl(ptr,xorval) \
-          __sync_fetch_and_xor((ptr),(xorval))
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
@@ -1208,6 +1236,20 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
    && (defined(__IBMC__) || defined(__IBMCPP__))
 
   /* (fall back to inline funcs using generic CAS or LL/SC macros) */
+
+#endif
+
+#if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+
+  #undef  plasma_atomic_fetch_xor_ptr_impl
+  #undef  plasma_atomic_fetch_xor_u64_impl
+  #undef  plasma_atomic_fetch_xor_u32_impl
+  #define plasma_atomic_fetch_xor_ptr_impl(ptr,xorval) \
+          __sync_fetch_and_xor((ptr),(xorval))
+  #define plasma_atomic_fetch_xor_u64_impl(ptr,xorval) \
+          __sync_fetch_and_xor((ptr),(xorval))
+  #define plasma_atomic_fetch_xor_u32_impl(ptr,xorval) \
+          __sync_fetch_and_xor((ptr),(xorval))
 
 #endif
 
