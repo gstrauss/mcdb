@@ -74,6 +74,38 @@ bool
 plasma_atomic_CAS_32 (uint32_t * const restrict ptr,
                       uint32_t cmpval, const uint32_t newval);
 
+__attribute_regparm__((3))
+extern inline
+void *
+plasma_atomic_CAS_ptr_val (void ** const ptr,
+                           void *cmpval, void * const newval);
+__attribute_regparm__((3))
+void *
+plasma_atomic_CAS_ptr_val (void ** const ptr,
+                           void *cmpval, void * const newval);
+
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
+extern inline
+uint64_t
+plasma_atomic_CAS_64_val (uint64_t * const ptr,
+                          uint64_t cmpval, const uint64_t newval);
+__attribute_regparm__((3))
+uint64_t
+plasma_atomic_CAS_64_val (uint64_t * const ptr,
+                          uint64_t cmpval, const uint64_t newval);
+#endif
+
+__attribute_regparm__((3))
+extern inline
+uint32_t
+plasma_atomic_CAS_32_val (uint32_t * const ptr,
+                          uint32_t cmpval, const uint32_t newval);
+__attribute_regparm__((3))
+uint32_t
+plasma_atomic_CAS_32_val (uint32_t * const ptr,
+                          uint32_t cmpval, const uint32_t newval);
+
 __attribute_regparm__((1))
 extern inline
 void
@@ -251,7 +283,7 @@ static pthread_mutex_t plasma_atomic_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 bool
 plasma_atomic_CAS_64_impl (uint64_t * const ptr,
-                           uint64_t cmpval, const uint64_t newval)
+                           const uint64_t cmpval, const uint64_t newval)
 {
     bool result;
     pthread_mutex_lock(&plasma_atomic_global_mutex);
@@ -263,11 +295,35 @@ plasma_atomic_CAS_64_impl (uint64_t * const ptr,
 
 bool
 plasma_atomic_CAS_32_impl (uint32_t * const ptr,
-                           uint32_t cmpval, const uint32_t newval)
+                           const uint32_t cmpval, const uint32_t newval)
 {
     bool result;
     pthread_mutex_lock(&plasma_atomic_global_mutex);
     if ((result = (*ptr == cmpval)))
+        *ptr = newval;
+    pthread_mutex_unlock(&plasma_atomic_global_mutex);
+    return result;
+}
+
+uint64_t
+plasma_atomic_CAS_64_val_impl (uint64_t * const ptr,
+                               const uint64_t cmpval, const uint64_t newval)
+{
+    uint64_t result;
+    pthread_mutex_lock(&plasma_atomic_global_mutex);
+    if ((result = *ptr) == cmpval)
+        *ptr = newval;
+    pthread_mutex_unlock(&plasma_atomic_global_mutex);
+    return result;
+}
+
+uint32_t
+plasma_atomic_CAS_32_val_impl (uint32_t * const ptr,
+                               const uint32_t cmpval, const uint32_t newval)
+{
+    uint32_t result;
+    pthread_mutex_lock(&plasma_atomic_global_mutex);
+    if ((result = *ptr) == cmpval)
         *ptr = newval;
     pthread_mutex_unlock(&plasma_atomic_global_mutex);
     return result;

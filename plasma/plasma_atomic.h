@@ -120,6 +120,12 @@ PLASMA_ATTR_Pragma_once
           (_InterlockedCompareExchange64((ptr),(newval),(cmpval)) == (cmpval))
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           (_InterlockedCompareExchange((ptr),(newval),(cmpval)) == (cmpval))
+  #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
+          _InterlockedCompareExchangePointer((ptr),(newval),(cmpval))
+  #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval) \
+          _InterlockedCompareExchange64((ptr),(newval),(cmpval))
+  #define plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval) \
+          _InterlockedCompareExchange((ptr),(newval),(cmpval))
   #define plasma_atomic_xchg_ptr_impl(ptr, newval) \
           _InterlockedExchangePointer((ptr),(newval))
   #define plasma_atomic_xchg_64_impl(ptr, newval) \
@@ -127,7 +133,8 @@ PLASMA_ATTR_Pragma_once
   #define plasma_atomic_xchg_32_impl(ptr, newval) \
           _InterlockedExchange((ptr),(newval))
 
-#elif defined(__APPLE__) && defined(__MACH__)
+#elif (defined(__APPLE__) && defined(__MACH__)) \
+   && !defined(__GNUC__) && !defined(__clang__)
 
   #include <libkern/OSAtomic.h>
   #if (   (defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
@@ -163,6 +170,12 @@ PLASMA_ATTR_Pragma_once
           (atomic_cas_64((ptr),(cmpval),(newval)) == (cmpval))
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           (atomic_cas_32((ptr),(cmpval),(newval)) == (cmpval))
+  #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
+          atomic_cas_ptr((ptr),(cmpval),(newval))
+  #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval) \
+          atomic_cas_64((ptr),(cmpval),(newval))
+  #define plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval) \
+          atomic_cas_32((ptr),(cmpval),(newval))
   #define plasma_atomic_xchg_ptr_impl(ptr, newval) \
           (atomic_swap_ptr((ptr),(newval)))
   #define plasma_atomic_xchg_64_impl(ptr, newval) \
@@ -195,6 +208,12 @@ PLASMA_ATTR_Pragma_once
     #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
             __compare_and_swap((int *)(ptr),(int *)(&cmpval),(int)(newval))
             /* !__check_lock_mp((int *)(ptr),(int)(cmpval),(int)(newval)) */
+    #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval) \
+            (__compare_and_swaplp((long *)(ptr), \
+                                  (long *)(&cmpval),(long)(newval)), (cmpval))
+    #define plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval) \
+            (__compare_and_swap((int *)(ptr), \
+                                (int *)(&cmpval),(int)(newval)), (cmpval))
     #define plasma_atomic_xchg_64_impl(ptr, newval) \
             __fetch_and_swaplp((long *)(ptr),(long)(newval))
     #define plasma_atomic_xchg_32_impl(ptr, newval) \
@@ -221,6 +240,10 @@ PLASMA_ATTR_Pragma_once
     #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
             compare_and_swap((ptr),&(cmpval),(newval))
             /* !_check_lock((ptr),(cmpval),(newval)) */
+    #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval) \
+            (compare_and_swaplp((ptr),&(cmpval),(newval)), (cmpval))
+    #define plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval) \
+            (compare_and_swap((ptr),&(cmpval),(newval)), (cmpval))
   #endif
 
 #elif defined(__ia64__) \
@@ -238,6 +261,12 @@ PLASMA_ATTR_Pragma_once
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           (_Asm_mov_to_ar(_AREG_CCV,(cmpval),plasma_atomic_ia64_relaxed_fence),\
            _Asm_cmpxchg(_SZ_W,_SEM_ACQ,(ptr),(newval),_LDHINT_NONE) == (cmpval))
+  #define plasma_atomic_CAS_64__val_impl(ptr, cmpval, newval) \
+          (_Asm_mov_to_ar(_AREG_CCV,(cmpval),plasma_atomic_ia64_relaxed_fence),\
+           _Asm_cmpxchg(_SZ_D,_SEM_ACQ,(ptr),(newval),_LDHINT_NONE))
+  #define plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval) \
+          (_Asm_mov_to_ar(_AREG_CCV,(cmpval),plasma_atomic_ia64_relaxed_fence),\
+           _Asm_cmpxchg(_SZ_W,_SEM_ACQ,(ptr),(newval),_LDHINT_NONE))
 
   /* Microsoft has stopped supporting Windows on Itanium and
    * RedHat has stopped supporting Linux on Itanium, so even though Linux on
@@ -254,14 +283,20 @@ PLASMA_ATTR_Pragma_once
    *   (see Built-in atomic support by architecture) */
   #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
+  #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
+          __sync_val_compare_and_swap((ptr), (cmpval), (newval))
   #if !defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8) && !defined(INTEL_COMPILER)
   #define plasma_atomic_not_implemented_64
   #else
   #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
+  #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval) \
+          __sync_val_compare_and_swap((ptr), (cmpval), (newval))
   #endif
   #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
+  #define plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval) \
+          __sync_val_compare_and_swap((ptr), (cmpval), (newval))
 
 #elif !defined(PLASMA_ATOMIC_MUTEX_FALLBACK)
   /* (mutex-based fallback implementation enabled by preprocessor define) */
@@ -280,6 +315,21 @@ PLASMA_ATTR_Pragma_once
     #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
             plasma_atomic_CAS_32_impl((uint32_t *)(ptr), \
                                       (uint32_t)(cmpval),(uint32_t)(newval))
+  #endif
+#endif
+#ifndef plasma_atomic_CAS_ptr_val_impl
+  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
+    #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
+            ((__typeof__(cmpval)) \
+             plasma_atomic_CAS_64_val_impl((uint64_t *)(ptr), \
+                                           (uint64_t)(cmpval), \
+                                           (uint64_t)(newval)))
+  #else
+    #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
+            ((__typeof__(cmpval)) \
+             plasma_atomic_CAS_32_val_impl((uint32_t *)(ptr), \
+                                           (uint32_t)(cmpval), \
+                                           (uint32_t)(newval)))
   #endif
 #endif
 
@@ -662,12 +712,22 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
   bool
   plasma_atomic_CAS_32_impl (uint32_t * const ptr,
                              uint32_t cmpval, const uint32_t newval);
+  uint64_t
+  plasma_atomic_CAS_64_val_impl (uint64_t * const ptr,
+                                 uint64_t cmpval, const uint64_t newval);
+  uint32_t
+  plasma_atomic_CAS_32_val_impl (uint32_t * const ptr,
+                                 uint32_t cmpval, const uint32_t newval);
   #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
     #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
             plasma_atomic_CAS_64_impl((ptr),(cmpval),(newval))
+    #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
+            plasma_atomic_CAS_64_val_impl((ptr),(cmpval),(newval))
   #else
     #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
             plasma_atomic_CAS_32_impl((ptr),(cmpval),(newval))
+    #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
+            plasma_atomic_CAS_32_val_impl((ptr),(cmpval),(newval))
   #endif
 #endif
 
@@ -737,6 +797,67 @@ plasma_atomic_CAS_32 (uint32_t * const ptr,
 }
 #endif
 
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+void *
+plasma_atomic_CAS_ptr_val (void ** const ptr, void *cmpval, void * const newval)
+  __attribute_nonnull_x__((1));
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+void *
+plasma_atomic_CAS_ptr_val (void ** const ptr, void *cmpval, void * const newval)
+{
+  #if defined(__IBMC__) || defined(__IBMCPP__)
+    /* AIX xlC compiler intrinsics __compare_and_swap(), __compare_and_swaplp()
+     * have some limitations.  See plasma_atomic_CAS_64_impl() macro for AIX */
+    #if defined(_LP64) || defined(__LP64__)  /* 64-bit */
+        return plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval);
+    #else
+        return plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval);
+    #endif
+  #else
+    return plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval);
+  #endif
+}
+#endif
+
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint64_t
+plasma_atomic_CAS_64_val (uint64_t * const ptr,
+                          uint64_t cmpval, const uint64_t newval)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint64_t
+plasma_atomic_CAS_64_val (uint64_t * const ptr,
+                          uint64_t cmpval, const uint64_t newval)
+{
+    return plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval);
+}
+#endif
+#endif
+
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint32_t
+plasma_atomic_CAS_32_val (uint32_t * const ptr,
+                          uint32_t cmpval, const uint32_t newval)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint32_t
+plasma_atomic_CAS_32_val (uint32_t * const ptr,
+                          uint32_t cmpval, const uint32_t newval)
+{
+    return plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval);
+}
+#endif
+
 /*(convenience to avoid compiler warnings about signed vs unsigned conversion)*/
 #define plasma_atomic_CAS_vptr(ptr,cmpval,newval) \
         plasma_atomic_CAS_ptr((void **)(ptr),  \
@@ -747,6 +868,15 @@ plasma_atomic_CAS_32 (uint32_t * const ptr,
 #define plasma_atomic_CAS_u32(ptr,cmpval,newval) \
         plasma_atomic_CAS_32((uint32_t *)(ptr),  \
                              (uint32_t)(cmpval),(uint32_t)(newval))
+#define plasma_atomic_CAS_vptr_val(ptr,cmpval,newval) \
+        plasma_atomic_CAS_ptr_val((void **)(ptr),  \
+                                  (void *)(cmpval),(void *)(newval))
+#define plasma_atomic_CAS_u64_val(ptr,cmpval,newval) \
+        plasma_atomic_CAS_64_val((uint64_t *)(ptr),  \
+                                 (uint64_t)(cmpval),(uint64_t)(newval))
+#define plasma_atomic_CAS_u32_val(ptr,cmpval,newval) \
+        plasma_atomic_CAS_32_val((uint32_t *)(ptr),  \
+                                 (uint32_t)(cmpval),(uint32_t)(newval))
 
 /* basic lock (32-bit) (0 == unlocked, 1 == locked)
  *   plasma_atomic_lock_acquire - basic lock providing acquire semantics
