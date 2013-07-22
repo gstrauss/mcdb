@@ -316,26 +316,26 @@ PLASMA_ATTR_Pragma_once
 #ifndef plasma_atomic_CAS_ptr_impl
   #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
     #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
-            plasma_atomic_CAS_64_impl((uint64_t *)(ptr), \
+            plasma_atomic_CAS_64_impl((uint64_t *)(ptr),    \
                                       (uint64_t)(cmpval),(uint64_t)(newval))
   #else
     #define plasma_atomic_CAS_ptr_impl(ptr, cmpval, newval) \
-            plasma_atomic_CAS_32_impl((uint32_t *)(ptr), \
+            plasma_atomic_CAS_32_impl((uint32_t *)(ptr),    \
                                       (uint32_t)(cmpval),(uint32_t)(newval))
   #endif
 #endif
 #ifndef plasma_atomic_CAS_ptr_val_impl
   #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
     #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
-            ((__typeof__(cmpval)) \
-             plasma_atomic_CAS_64_val_impl((uint64_t *)(ptr), \
-                                           (uint64_t)(cmpval), \
+            ((__typeof__(*(ptr)))                               \
+             plasma_atomic_CAS_64_val_impl((uint64_t *)(ptr),   \
+                                           (uint64_t)(cmpval),  \
                                            (uint64_t)(newval)))
   #else
     #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
-            ((__typeof__(cmpval)) \
-             plasma_atomic_CAS_32_val_impl((uint32_t *)(ptr), \
-                                           (uint32_t)(cmpval), \
+            ((__typeof__(*(ptr)))                               \
+             plasma_atomic_CAS_32_val_impl((uint32_t *)(ptr),   \
+                                           (uint32_t)(cmpval),  \
                                            (uint32_t)(newval)))
   #endif
 #endif
@@ -875,8 +875,9 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 /*(convenience to avoid compiler warnings about signed vs unsigned conversion)*/
 #define plasma_atomic_CAS_vptr(ptr,cmpval,newval) \
-        plasma_atomic_CAS_ptr((void **)(ptr),  \
-                              (void *)(cmpval),(void *)(newval))
+        ((__typeof__(*(ptr)))                     \
+         plasma_atomic_CAS_ptr((void **)(ptr),    \
+                               (void *)(cmpval),(void *)(newval)))
 #define plasma_atomic_CAS_u64(ptr,cmpval,newval) \
         plasma_atomic_CAS_64((uint64_t *)(ptr),  \
                              (uint64_t)(cmpval),(uint64_t)(newval))
@@ -884,8 +885,9 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
         plasma_atomic_CAS_32((uint32_t *)(ptr),  \
                              (uint32_t)(cmpval),(uint32_t)(newval))
 #define plasma_atomic_CAS_vptr_val(ptr,cmpval,newval) \
-        plasma_atomic_CAS_ptr_val((void **)(ptr),  \
-                                  (void *)(cmpval),(void *)(newval))
+        ((__typeof__(*(ptr)))                         \
+         plasma_atomic_CAS_ptr_val((void **)(ptr),    \
+                                   (void *)(cmpval),(void *)(newval)))
 #define plasma_atomic_CAS_u64_val(ptr,cmpval,newval) \
         plasma_atomic_CAS_64_val((uint64_t *)(ptr),  \
                                  (uint64_t)(cmpval),(uint64_t)(newval))
