@@ -1961,6 +1961,146 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
 
 
 /*
+ * plasma_atomic_exchange_n_ptr - atomic pointer  exchange
+ * plasma_atomic_exchange_n_64  - atomic uint64_t exchange
+ * plasma_atomic_exchange_n_32  - atomic uint32_t exchange
+ *
+ * (refer to C11/C++11 atomic_exchange_n())
+ *
+ * (memory_order_consume not a valid memmodel with atomic_exchange_n())
+ */
+
+#if __has_builtin(__atomic_exchange_n) || __GNUC_PREREQ(4,7)
+#define plasma_atomic_exchange_n_ptr(ptr, newval, memmodel) \
+        __atomic_exchange_n((ptr), (newval), (memmodel))
+#define plasma_atomic_exchange_n_64(ptr, newval, memmodel) \
+        __atomic_exchange_n((ptr), (newval), (memmodel))
+#define plasma_atomic_exchange_n_32(ptr, newval, memmodel) \
+        __atomic_exchange_n((ptr), (newval), (memmodel))
+#define plasma_atomic_exchange_n_vptr \
+        plasma_atomic_exchange_n_ptr
+#define plasma_atomic_exchange_n_u64 \
+        plasma_atomic_exchange_n_64
+#define plasma_atomic_exchange_n_u32 \
+        plasma_atomic_exchange_n_32
+#else  /* !(__has_builtin(__atomic_exchange_n) || __GNUC_PREREQ(4,7)) */
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+void *
+plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
+                              const enum memory_order memmodel)
+  __attribute_nonnull_x__((1));
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+void *
+plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
+                              const enum memory_order memmodel)
+{
+    if (memmodel != memory_order_acquire)
+        atomic_thread_fence(memmodel);
+  #if defined(plasma_atomic_xchg_32_acquire_impl)
+    return plasma_atomic_xchg_ptr_acquire_impl(ptr, newval);
+  #else
+   #if defined(plasma_atomic_xchg_32_impl)
+    void * const prev = plasma_atomic_xchg_ptr_impl(ptr, newval);
+   #else
+    void *prev;
+    do { prev = *ptr;
+    } while (prev != newval && !plasma_atomic_CAS_ptr(ptr, prev, newval));
+   #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return prev;
+  #endif
+}
+#endif
+
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint64_t
+plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
+                             const enum memory_order memmodel)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint64_t
+plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
+                             const enum memory_order memmodel)
+{
+    if (memmodel != memory_order_acquire)
+        atomic_thread_fence(memmodel);
+  #if defined(plasma_atomic_xchg_32_acquire_impl)
+    return plasma_atomic_xchg_64_acquire_impl(ptr, newval);
+  #else
+   #if defined(plasma_atomic_xchg_32_impl)
+    const uint64_t prev = plasma_atomic_xchg_64_impl(ptr, newval);
+   #else
+    uint64_t prev;
+    do { prev = *ptr;
+    } while (prev != newval && !plasma_atomic_CAS_64(ptr, prev, newval));
+   #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return prev;
+  #endif
+}
+#endif
+#endif
+
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint32_t
+plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
+                             const enum memory_order memmodel)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint32_t
+plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
+                             const enum memory_order memmodel)
+{
+    if (memmodel != memory_order_acquire)
+        atomic_thread_fence(memmodel);
+  #if defined(plasma_atomic_xchg_32_acquire_impl)
+    return plasma_atomic_xchg_32_acquire_impl(ptr, newval);
+  #else
+   #if defined(plasma_atomic_xchg_32_impl)
+    const uint32_t prev = plasma_atomic_xchg_32_impl(ptr, newval);
+   #else
+    uint32_t prev;
+    do { prev = *ptr;
+    } while (prev != newval && !plasma_atomic_CAS_32(ptr, prev, newval));
+   #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return prev;
+  #endif
+}
+#endif
+
+/*(convenience to avoid compiler warnings about signed vs unsigned conversion)*/
+#define plasma_atomic_exchange_n_vptr(ptr, newval, memmodel)            \
+        ((__typeof__(*(ptr)))                                           \
+         plasma_atomic_exchange_n_ptr((void **)(ptr), (void *)(newval), \
+                                      (memmodel)))
+#define plasma_atomic_exchange_n_u64(ptr, newval, memmodel)                \
+        plasma_atomic_exchange_n_64((uint64_t *)(ptr), (uint64_t)(newval), \
+                                    (memmodel))
+#define plasma_atomic_exchange_n_u32(ptr, newval, memmodel)                \
+        plasma_atomic_exchange_n_32((uint32_t *)(ptr), (uint32_t)(newval), \
+                                    (memmodel))
+
+#endif /* !(__has_builtin(__atomic_exchange_n) || __GNUC_PREREQ(4,7)) */
+
+
+/*
  * plasma_atomic_lock_acquire - basic lock providing acquire semantics
  * plasma_atomic_lock_release - basic unlock providing release semantics
  * plasma_atomic_lock_init (or PLASMA_ATOMIC_LOCK_INITIALIZER)
@@ -2000,9 +2140,13 @@ PLASMA_ATOMIC_C99INLINE
 bool
 plasma_atomic_lock_acquire (uint32_t * const ptr)
 {
+    /* basic lock is bi-state; xchg prior val of 0 means lock obtained */
+
+    /*return !plasma_atomic_exchange_n_32(ptr, 1, memory_order_acq_rel);*/
+    /*(optimization below avoids barrier (on some platforms) when xchg fails)*/
+
   #ifdef plasma_atomic_xchg_32_acquire_impl
 
-    /* basic lock is bi-state; xchg prior val of 0 means lock obtained */
     return !plasma_atomic_xchg_32_acquire_impl(ptr, 1);
 
   #else
@@ -2010,7 +2154,6 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
     #ifdef plasma_atomic_xchg_32_impl
       #define plasma_atomic_lock_nobarrier(ptr) \
               !plasma_atomic_xchg_32_impl((ptr), 1)
-              /* basic lock is bi-state; prior val of 0 means lock obtained */
     #else
       #define plasma_atomic_lock_nobarrier(ptr) \
               plasma_atomic_CAS_32((ptr), 0, 1)

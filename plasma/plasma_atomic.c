@@ -312,6 +312,36 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
                                      const enum memory_order success_memmodel,
                                      const enum memory_order failure_memmodel);
 
+__attribute_regparm__((3))
+extern inline
+void *
+plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
+                              const enum memory_order memmodel);
+__attribute_regparm__((3))
+void *
+plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
+                              const enum memory_order memmodel);
+
+__attribute_regparm__((3))
+extern inline
+uint64_t
+plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+uint64_t
+plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
+                             const enum memory_order memmodel);
+
+__attribute_regparm__((3))
+extern inline
+uint32_t
+plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+uint32_t
+plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
+                             const enum memory_order memmodel);
+
 #endif /* !(__has_builtin(__atomic_compare_exchange_n) || __GNUC_PREREQ(4,7)) */
 
 __attribute_regparm__((1))
