@@ -106,22 +106,6 @@ uint32_t
 plasma_atomic_CAS_32_val (uint32_t * const ptr,
                           uint32_t cmpval, const uint32_t newval);
 
-__attribute_regparm__((1))
-extern inline
-void
-plasma_atomic_lock_release (uint32_t * const ptr);
-__attribute_regparm__((1))
-void
-plasma_atomic_lock_release (uint32_t * const ptr);
-
-__attribute_regparm__((1))
-extern inline
-bool
-plasma_atomic_lock_acquire (uint32_t * const ptr);
-__attribute_regparm__((1))
-bool
-plasma_atomic_lock_acquire (uint32_t * const ptr);
-
 #ifdef plasma_atomic_load_explicit_szof
 
 #ifndef plasma_atomic_not_implemented_64
@@ -271,6 +255,22 @@ __attribute_regparm__((2))
 uint32_t
 plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval);
 #endif
+
+__attribute_regparm__((1))
+extern inline
+void
+plasma_atomic_lock_release (uint32_t * const ptr);
+__attribute_regparm__((1))
+void
+plasma_atomic_lock_release (uint32_t * const ptr);
+
+__attribute_regparm__((1))
+extern inline
+bool
+plasma_atomic_lock_acquire (uint32_t * const ptr);
+__attribute_regparm__((1))
+bool
+plasma_atomic_lock_acquire (uint32_t * const ptr);
 
 #endif /* !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) */
 

@@ -41,13 +41,6 @@
 PLASMA_ATTR_Pragma_once
 
 /*
- * plasma_atomic_lock_acquire - basic lock providing acquire semantics
- * plasma_atomic_lock_release - basic unlock providing release semantics
- * plasma_atomic_lock_init (or PLASMA_ATOMIC_LOCK_INITIALIZER)
- *
- * NB: unlike pthread mutex, plasma_atomic_lock_acquire() provides acquire
- * semantics and -not- sequential consistency (which would include StoreLoad)
- *
  * plasma_atomic_CAS_ptr - atomic pointer compare-and-swap (CAS)
  * plasma_atomic_CAS_64  - atomic 64-bit  compare-and-swap (CAS)
  * plasma_atomic_CAS_32  - atomic 32-bit  compare-and-swap (CAS)
@@ -900,66 +893,6 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
         plasma_atomic_CAS_32_val((uint32_t *)(ptr),  \
                                  (uint32_t)(cmpval),(uint32_t)(newval))
 
-/* basic lock (32-bit) (0 == unlocked, 1 == locked)
- *   plasma_atomic_lock_acquire - basic lock providing acquire semantics
- *   plasma_atomic_lock_release - basic unlock providing release semantics
- *   plasma_atomic_lock_init (or PLASMA_ATOMIC_LOCK_INITIALIZER)
- * NB: unlike pthread_mutex_t, plasma_atomic_lock_acquire() provides acquire
- * semantics and -not- sequential consistency (which would include StoreLoad) */
-#define PLASMA_ATOMIC_LOCK_INITIALIZER 0
-#define plasma_atomic_lock_init(ptr) (*(ptr) = 0)
-
-__attribute_regparm__((1))
-PLASMA_ATOMIC_C99INLINE
-void
-plasma_atomic_lock_release (uint32_t * const ptr)
-  __attribute_nonnull__;
-#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((1))
-PLASMA_ATOMIC_C99INLINE
-void
-plasma_atomic_lock_release (uint32_t * const ptr)
-{
-    plasma_atomic_st_32_release(ptr, 0);
-}
-#endif
-
-__attribute_regparm__((1))
-PLASMA_ATOMIC_C99INLINE
-bool
-plasma_atomic_lock_acquire (uint32_t * const ptr)
-  __attribute_nonnull__;
-#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((1))
-PLASMA_ATOMIC_C99INLINE
-bool
-plasma_atomic_lock_acquire (uint32_t * const ptr)
-{
-  #ifdef plasma_atomic_xchg_32_acquire_impl
-
-    /* basic lock is bi-state; xchg prior val of 0 means lock obtained */
-    return !plasma_atomic_xchg_32_acquire_impl(ptr, 1);
-
-  #else
-
-    #ifdef plasma_atomic_xchg_32_impl
-      #define plasma_atomic_lock_nobarrier(ptr) \
-              !plasma_atomic_xchg_32_impl((ptr), 1)
-              /* basic lock is bi-state; prior val of 0 means lock obtained */
-    #else
-      #define plasma_atomic_lock_nobarrier(ptr) \
-              plasma_atomic_CAS_32((ptr), 0, 1)
-    #endif
-    if (plasma_atomic_lock_nobarrier(ptr)) {
-        atomic_thread_fence(memory_order_acq_rel);
-        return true;
-    }
-    return false;
-
-  #endif
-}
-#endif
-
 
 /*
  * plasma_atomic_fetch_add_* - atomic fetch and add specialized implementations
@@ -1777,6 +1710,72 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
     plasma_atomic_fetch_xor_u32_implreturn(ptr, xorval, uint32_t);
 }
 #endif
+#endif
+
+
+/*
+ * plasma_atomic_lock_acquire - basic lock providing acquire semantics
+ * plasma_atomic_lock_release - basic unlock providing release semantics
+ * plasma_atomic_lock_init (or PLASMA_ATOMIC_LOCK_INITIALIZER)
+ *
+ * basic lock (32-bit) (0 == unlocked, 1 == locked)
+ *
+ * NB: unlike pthread mutex, plasma_atomic_lock_acquire() provides acquire
+ * semantics and -not- sequential consistency (which would include StoreLoad)
+ */
+
+#define PLASMA_ATOMIC_LOCK_INITIALIZER 0
+#define plasma_atomic_lock_init(ptr) (*(ptr) = 0)
+
+__attribute_regparm__((1))
+PLASMA_ATOMIC_C99INLINE
+void
+plasma_atomic_lock_release (uint32_t * const ptr)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((1))
+PLASMA_ATOMIC_C99INLINE
+void
+plasma_atomic_lock_release (uint32_t * const ptr)
+{
+    plasma_atomic_st_32_release(ptr, 0);
+}
+#endif
+
+__attribute_regparm__((1))
+PLASMA_ATOMIC_C99INLINE
+bool
+plasma_atomic_lock_acquire (uint32_t * const ptr)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((1))
+PLASMA_ATOMIC_C99INLINE
+bool
+plasma_atomic_lock_acquire (uint32_t * const ptr)
+{
+  #ifdef plasma_atomic_xchg_32_acquire_impl
+
+    /* basic lock is bi-state; xchg prior val of 0 means lock obtained */
+    return !plasma_atomic_xchg_32_acquire_impl(ptr, 1);
+
+  #else
+
+    #ifdef plasma_atomic_xchg_32_impl
+      #define plasma_atomic_lock_nobarrier(ptr) \
+              !plasma_atomic_xchg_32_impl((ptr), 1)
+              /* basic lock is bi-state; prior val of 0 means lock obtained */
+    #else
+      #define plasma_atomic_lock_nobarrier(ptr) \
+              plasma_atomic_CAS_32((ptr), 0, 1)
+    #endif
+    if (plasma_atomic_lock_nobarrier(ptr)) {
+        atomic_thread_fence(memory_order_acq_rel);
+        return true;
+    }
+    return false;
+
+  #endif
+}
 #endif
 
 
