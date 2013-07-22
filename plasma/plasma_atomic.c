@@ -256,6 +256,64 @@ uint32_t
 plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval);
 #endif
 
+#if !(__has_builtin(__atomic_compare_exchange_n) || __GNUC_PREREQ(4,7))
+
+__attribute_regparm__((3))
+extern inline
+bool
+plasma_atomic_compare_exchange_n_ptr (void ** const ptr,
+                                      void ** const cmpval,
+                                      void * const newval,
+                                      const bool weak,
+                                      const enum memory_order success_memmodel,
+                                      const enum memory_order failure_memmodel);
+__attribute_regparm__((3))
+bool
+plasma_atomic_compare_exchange_n_ptr (void ** const ptr,
+                                      void ** const cmpval,
+                                      void * const newval,
+                                      const bool weak,
+                                      const enum memory_order success_memmodel,
+                                      const enum memory_order failure_memmodel);
+
+__attribute_regparm__((3))
+extern inline
+bool
+plasma_atomic_compare_exchange_n_64 (uint64_t * const ptr,
+                                     uint64_t * const cmpval,
+                                     const uint64_t newval,
+                                     const bool weak,
+                                     const enum memory_order success_memmodel,
+                                     const enum memory_order failure_memmodel);
+__attribute_regparm__((3))
+bool
+plasma_atomic_compare_exchange_n_64 (uint64_t * const ptr,
+                                     uint64_t * const cmpval,
+                                     const uint64_t newval,
+                                     const bool weak,
+                                     const enum memory_order success_memmodel,
+                                     const enum memory_order failure_memmodel);
+
+__attribute_regparm__((3))
+extern inline
+bool
+plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
+                                     uint32_t * const cmpval,
+                                     const uint32_t newval,
+                                     const bool weak,
+                                     const enum memory_order success_memmodel,
+                                     const enum memory_order failure_memmodel);
+__attribute_regparm__((3))
+bool
+plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
+                                     uint32_t * const cmpval,
+                                     const uint32_t newval,
+                                     const bool weak,
+                                     const enum memory_order success_memmodel,
+                                     const enum memory_order failure_memmodel);
+
+#endif /* !(__has_builtin(__atomic_compare_exchange_n) || __GNUC_PREREQ(4,7)) */
+
 __attribute_regparm__((1))
 extern inline
 void
