@@ -355,7 +355,7 @@ extern "C" {
  *
  * http://software.intel.com/en-us/blogs/2007/11/30/volatile-almost-useless-for-multi-threaded-programming/
  * intended replacement when ptr is known to be an _Atomic type:
- *   atomic_load_explicit(ptr, memory_order_???)
+ *   atomic_load_explicit(ptr, memmodel)
  * Note: 32-bit processors, like 32-bit ARM, require special instructions
  * for 64-bit atomic load (not implemented here).
  */
@@ -367,7 +367,7 @@ extern "C" {
  *
  * http://software.intel.com/en-us/blogs/2007/11/30/volatile-almost-useless-for-multi-threaded-programming/
  * intended replacement when ptr is known to be an _Atomic type:
- *   atomic_store_explicit(ptr, val, memory_order_???)
+ *   atomic_store_explicit(ptr, val, memmodel)
  * Note: 32-bit processors, like 32-bit ARM, require special instructions
  * for 64-bit atomic store (not implemented here).
  */
@@ -1491,10 +1491,10 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
 #if (__has_builtin(__atomic_load_n) && __has_builtin(__atomic_load)) \
  || __GNUC_PREREQ(4,7)
 
-#define plasma_atomic_load_explicit(ptr, order) \
-        __atomic_load_n((ptr),(order))
-#define plasma_atomic_load_explicit_into(lval,ptr,order) \
-        __atomic_load((ptr),&(lval),(order))
+#define plasma_atomic_load_explicit(ptr, memmodel) \
+        __atomic_load_n((ptr),(memmodel))
+#define plasma_atomic_load_explicit_into(lval,ptr,memmodel) \
+        __atomic_load((ptr),&(lval),(memmodel))
 
 /*
  * #elif defined(__ia64__) || defined(_M_IA64)
@@ -1513,22 +1513,22 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
  * (cast the load through volatile to hint to compiler not to play tricks
  *  like multiple or early loads)  (This impl has a penalty on Itanium,
  *  and there are weaker volatile types in HP-UX, not used here) */
-#define plasma_atomic_load_explicit_into(lval, ptr, order)  \
-        do { if ((order) == memory_order_seq_cst)           \
-                 atomic_thread_fence(memory_order_seq_cst); \
-             (lval) = plasma_atomic_ld_nopt(ptr);           \
-             atomic_thread_fence(order);                    \
+#define plasma_atomic_load_explicit_into(lval, ptr, memmodel) \
+        do { if ((memmodel) == memory_order_seq_cst)          \
+                 atomic_thread_fence(memory_order_seq_cst);   \
+             (lval) = plasma_atomic_ld_nopt(ptr);             \
+             atomic_thread_fence(memmodel);                   \
         } while (0)
 
 #if defined(__GNUC__) || defined(__clang__)        \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590) \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x590)
 
-#define plasma_atomic_load_explicit(ptr, order)                              \
-        (__extension__({                                                     \
-          __typeof__(*(ptr)) plasma_atomic_tmp;                              \
-          plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(order)); \
-          plasma_atomic_tmp;                                                 \
+#define plasma_atomic_load_explicit(ptr, memmodel)                             \
+        (__extension__({                                                       \
+          __typeof__(*(ptr)) plasma_atomic_tmp;                                \
+          plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(memmodel));\
+          plasma_atomic_tmp;                                                   \
         }))
 
 #else
@@ -1540,22 +1540,22 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
  *  single inline routine for 1,2,4 byte quantities to take advantage of 32-bit
  *  register sizes, instead of creating different func for each integral size.)
  */
-#define plasma_atomic_load_explicit_szof(ptr, order)                   \
-        (sizeof(*(ptr)) > 4                                            \
-         ? __typeof__(*(ptr))                                          \
-             plasma_atomic_load_64_impl((ptr),(order),sizeof(*(ptr)))  \
-         : __typeof__(*(ptr))                                          \
-             plasma_atomic_load_32_impl((ptr),(order),sizeof(*(ptr))))
+#define plasma_atomic_load_explicit_szof(ptr, memmodel)                   \
+        (sizeof(*(ptr)) > 4                                               \
+         ? __typeof__(*(ptr))                                             \
+             plasma_atomic_load_64_impl((ptr),(memmodel),sizeof(*(ptr)))  \
+         : __typeof__(*(ptr))                                             \
+             plasma_atomic_load_32_impl((ptr),(memmodel),sizeof(*(ptr))))
 
-#define plasma_atomic_load_explicit(ptr, order) \
-        plasma_atomic_load_explicit_szof((ptr), (order))
+#define plasma_atomic_load_explicit(ptr, memmodel) \
+        plasma_atomic_load_explicit_szof((ptr), (memmodel))
 
 #ifndef plasma_atomic_not_implemented_64
 __attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_load_64_impl(const void * const restrict ptr,
-                           const enum memory_order order,
+                           const enum memory_order memmodel,
                            const size_t bytes)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
@@ -1563,13 +1563,13 @@ __attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
 plasma_atomic_load_64_impl(const void * const restrict ptr,
-                           const enum memory_order order,
+                           const enum memory_order memmodel,
                            const size_t bytes)
 {
     if (bytes == 8) {
         uint64_t plasma_atomic_tmp;
         plasma_atomic_load_explicit_into(plasma_atomic_tmp,
-                                         (const uint64_t *)ptr, order);
+                                         (const uint64_t *)ptr, memmodel);
         return plasma_atomic_tmp;
     }
     return ~(uint64_t)0;  /* bad input, just return -1 */
@@ -1581,7 +1581,7 @@ __attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_load_32_impl(const void * const restrict ptr,
-                           const enum memory_order order,
+                           const enum memory_order memmodel,
                            const size_t bytes)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
@@ -1589,19 +1589,22 @@ __attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
 plasma_atomic_load_32_impl(const void * const restrict ptr,
-                           const enum memory_order order,
+                           const enum memory_order memmodel,
                            const size_t bytes)
 {
     union { uint32_t i; uint16_t s; uint8_t c; } plasma_atomic_tmp;
     switch (bytes) {
       case 4:   plasma_atomic_load_explicit_into(plasma_atomic_tmp.i,
-                                                 (const uint32_t *)ptr, order);
+                                                 (const uint32_t *)ptr,
+                                                 memmodel);
                 return plasma_atomic_tmp.i;
       case 2:   plasma_atomic_load_explicit_into(plasma_atomic_tmp.s,
-                                                 (const uint16_t *)ptr, order);
+                                                 (const uint16_t *)ptr,
+                                                 memmodel);
                 return plasma_atomic_tmp.s;
       case 1:   plasma_atomic_load_explicit_into(plasma_atomic_tmp.c,
-                                                 (const uint8_t *)ptr, order);
+                                                 (const uint8_t *)ptr,
+                                                 memmodel);
                 return plasma_atomic_tmp.c;
       default:  return ~(uint32_t)0;  /* bad input; just return -1 */
     }
@@ -1630,8 +1633,8 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 #if __has_builtin(__atomic_store_n) \
  || __GNUC_PREREQ(4,7)
 
-#define plasma_atomic_store_explicit(ptr, val, order) \
-        __atomic_store_n((ptr),(val),(order))
+#define plasma_atomic_store_explicit(ptr, val, memmodel) \
+        __atomic_store_n((ptr),(val),(memmodel))
 
 /*
  * #elif defined(__ia64__) || defined(_M_IA64)
@@ -1650,10 +1653,10 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
  * (cast the store through volatile to hint to compiler not to play tricks
  *  like multiple or early loads)  (This impl has a penalty on Itanium,
  *  and there are weaker volatile types in HP-UX, not used here) */
-#define plasma_atomic_store_explicit(ptr, val, order)       \
-        do { atomic_thread_fence(order);                    \
+#define plasma_atomic_store_explicit(ptr, val, memmodel)    \
+        do { atomic_thread_fence(memmodel);                 \
              plasma_atomic_st_nopt((ptr),(val))             \
-             if ((order) == memory_order_seq_cst)           \
+             if ((memmodel) == memory_order_seq_cst)        \
                  atomic_thread_fence(memory_order_seq_cst); \
         } while (0)
 
