@@ -136,125 +136,165 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 
 #endif /* plasma_atomic_load_explicit_szof */
 
-#ifndef plasma_atomic_fetch_add_u32_impl
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 extern inline
 void *
-plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_add_ptr (void ** const ptr, ptrdiff_t addval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
 void *
-plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval);
-#endif
+plasma_atomic_fetch_add_ptr (void ** const ptr, ptrdiff_t addval,
+                             const enum memory_order memmodel);
 
-#ifdef plasma_atomic_fetch_add_u64_implreturn
-__attribute_regparm__((2))
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
 extern inline
 uint64_t
-plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
 uint64_t
-plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval);
+plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval,
+                             const enum memory_order memmodel);
 #endif
 
-#ifdef plasma_atomic_fetch_add_u32_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 extern inline
 uint32_t
-plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
 uint32_t
-plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval);
-#endif
+plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval,
+                             const enum memory_order memmodel);
 
-#ifndef plasma_atomic_fetch_or_u32_impl
-__attribute_regparm__((2))
-extern inline
-void *
-plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval);
-__attribute_regparm__((2))
-void *
-plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval);
-#endif
-
-#ifdef plasma_atomic_fetch_or_u64_implreturn
-__attribute_regparm__((2))
-extern inline
-uint64_t
-plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval);
-__attribute_regparm__((2))
-uint64_t
-plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval);
-#endif
-
-#ifdef plasma_atomic_fetch_or_u32_implreturn
-__attribute_regparm__((2))
-extern inline
-uint32_t
-plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval);
-__attribute_regparm__((2))
-uint32_t
-plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval);
-#endif
-
-#ifndef plasma_atomic_fetch_xor_u32_impl
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 extern inline
 void *
-plasma_atomic_fetch_xor_ptr (void * const ptr, uintptr_t xorval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_sub_ptr (void ** const ptr, ptrdiff_t subval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
 void *
-plasma_atomic_fetch_xor_ptr (void * const ptr, uintptr_t xorval);
-#endif
+plasma_atomic_fetch_sub_ptr (void ** const ptr, ptrdiff_t subval,
+                             const enum memory_order memmodel);
 
-#ifdef plasma_atomic_fetch_xor_u64_implreturn
-__attribute_regparm__((2))
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
 extern inline
 uint64_t
-plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_sub_u64 (uint64_t * const ptr, uint64_t subval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
 uint64_t
-plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval);
+plasma_atomic_fetch_sub_u64 (uint64_t * const ptr, uint64_t subval,
+                             const enum memory_order memmodel);
 #endif
 
-#ifdef plasma_atomic_fetch_xor_u32_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 extern inline
 uint32_t
-plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_sub_u32 (uint32_t * const ptr, uint32_t subval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
 uint32_t
-plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval);
-#endif
+plasma_atomic_fetch_sub_u32 (uint32_t * const ptr, uint32_t subval,
+                             const enum memory_order memmodel);
 
-#ifndef plasma_atomic_fetch_and_u32_impl
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 extern inline
 void *
-plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_or_ptr (void ** const ptr, uintptr_t orval,
+                            const enum memory_order memmodel);
+__attribute_regparm__((3))
 void *
-plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval);
-#endif
+plasma_atomic_fetch_or_ptr (void ** const ptr, uintptr_t orval,
+                            const enum memory_order memmodel);
 
-#ifdef plasma_atomic_fetch_and_u64_implreturn
-__attribute_regparm__((2))
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
 extern inline
 uint64_t
-plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval,
+                            const enum memory_order memmodel);
+__attribute_regparm__((3))
 uint64_t
-plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval);
+plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval,
+                            const enum memory_order memmodel);
 #endif
 
-#ifdef plasma_atomic_fetch_and_u32_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 extern inline
 uint32_t
-plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval);
-__attribute_regparm__((2))
+plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval,
+                            const enum memory_order memmodel);
+__attribute_regparm__((3))
 uint32_t
-plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval);
+plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval,
+                            const enum memory_order memmodel);
+
+__attribute_regparm__((3))
+extern inline
+void *
+plasma_atomic_fetch_and_ptr (void ** const ptr, uintptr_t andval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+void *
+plasma_atomic_fetch_and_ptr (void ** const ptr, uintptr_t andval,
+                             const enum memory_order memmodel);
+
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
+extern inline
+uint64_t
+plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+uint64_t
+plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval,
+                             const enum memory_order memmodel);
 #endif
+
+__attribute_regparm__((3))
+extern inline
+uint32_t
+plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+uint32_t
+plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval,
+                             const enum memory_order memmodel);
+
+__attribute_regparm__((3))
+extern inline
+void *
+plasma_atomic_fetch_xor_ptr (void ** const ptr, uintptr_t xorval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+void *
+plasma_atomic_fetch_xor_ptr (void ** const ptr, uintptr_t xorval,
+                             const enum memory_order memmodel);
+
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
+extern inline
+uint64_t
+plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+uint64_t
+plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval,
+                             const enum memory_order memmodel);
+#endif
+
+__attribute_regparm__((3))
+extern inline
+uint32_t
+plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+uint32_t
+plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval,
+                             const enum memory_order memmodel);
 
 #if !(__has_builtin(__atomic_compare_exchange_n) || __GNUC_PREREQ(4,7))
 

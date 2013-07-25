@@ -660,6 +660,8 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 /*
  * plasma_atomic_fetch_add_* - atomic fetch and add specialized implementations
+ *
+ * (*_nb_* is short for "no barrier" building block)
  */
 
 #if defined (_MSC_VER)
@@ -670,18 +672,18 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
    * (MS Windows is LLP64 ABI, so 'long' is 32-bits even when compiler 64-bit)*/
   #pragma intrinsic(_InterlockedExchangeAdd)
   #pragma intrinsic(_InterlockedExchangeAdd64)
-  #define plasma_atomic_fetch_add_u64_impl(ptr, addval) \
+  #define plasma_atomic_fetch_add_u64_nb_impl(ptr, addval) \
           _InterlockedExchangeAdd64((__int64 *)(ptr),(__int64)(addval))
-  #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
+  #define plasma_atomic_fetch_add_u32_nb_impl(ptr, addval) \
           _InterlockedExchangeAdd((long *)(ptr),(long)(addval))
 
 #elif defined(__sun) && defined(__SVR4)
 
-  #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
+  #define plasma_atomic_fetch_add_ptr_nb_impl(ptr,addval) \
           atomic_add_ptr((ptr),(ssize_t)(addval))
-  #define plasma_atomic_fetch_add_u64_impl(ptr,addval) \
+  #define plasma_atomic_fetch_add_u64_nb_impl(ptr,addval) \
           atomic_add_64((uint64_t *)(ptr),(int64_t)(addval))
-  #define plasma_atomic_fetch_add_u32_impl(ptr,addval) \
+  #define plasma_atomic_fetch_add_u32_nb_impl(ptr,addval) \
           atomic_add_32((uint32_t *)(ptr),(int32_t)(addval))
 
 #elif defined(__APPLE__) && defined(__MACH__)
@@ -692,9 +694,9 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
    * (result might need to be cast back to original type)
    * NB: subtract addval from result in order to return the original value;
    *     OSAtomicAdd*() returns the resulting value, not the original value */
-  #define plasma_atomic_fetch_add_u64_impl(ptr, addval) \
+  #define plasma_atomic_fetch_add_u64_nb_impl(ptr, addval) \
           (OSAtomicAdd64((int64_t)(addval),(int64_t *)(ptr))-(int64_t)(addval))
-  #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
+  #define plasma_atomic_fetch_add_u32_nb_impl(ptr, addval) \
           (OSAtomicAdd32((int32_t)(addval),(int32_t *)(ptr))-(int32_t)(addval))
 
 #elif defined(__ia64__) \
@@ -710,9 +712,9 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
    * _Asm_fetchadd supports optional _Asm_fence arg for .acq or .rel modifiers
    *   (not used here) */
   /*
-   * #define plasma_atomic_fetch_add_u64_impl(ptr, addval) \
+   * #define plasma_atomic_fetch_add_u64_nb_impl(ptr, addval) \
    *         _Asm_fetchadd(_FASZ_D,_SEM_REL,(ptr),(addval),_LDHINT_NONE)
-   * #define plasma_atomic_fetch_add_u32_impl(ptr, addval) \
+   * #define plasma_atomic_fetch_add_u32_nb_impl(ptr, addval) \
    *         _Asm_fetchadd(_FASZ_W,_SEM_REL,(ptr),(addval),_LDHINT_NONE)
    */
   /* FUTURE: if creating _acquire versions of these macros for use in locks
@@ -737,14 +739,14 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
 
-  #undef  plasma_atomic_fetch_add_ptr_impl
-  #undef  plasma_atomic_fetch_add_u64_impl
-  #undef  plasma_atomic_fetch_add_u32_impl
-  #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
+  #undef  plasma_atomic_fetch_add_ptr_nb_impl
+  #undef  plasma_atomic_fetch_add_u64_nb_impl
+  #undef  plasma_atomic_fetch_add_u32_nb_impl
+  #define plasma_atomic_fetch_add_ptr_nb_impl(ptr,addval) \
           __sync_fetch_and_add((ptr),(addval))
-  #define plasma_atomic_fetch_add_u64_impl(ptr,addval) \
+  #define plasma_atomic_fetch_add_u64_nb_impl(ptr,addval) \
           __sync_fetch_and_add((ptr),(addval))
-  #define plasma_atomic_fetch_add_u32_impl(ptr,addval) \
+  #define plasma_atomic_fetch_add_u32_nb_impl(ptr,addval) \
           __sync_fetch_and_add((ptr),(addval))
 
 #endif
@@ -758,11 +760,11 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
 
-  #define plasma_atomic_fetch_sub_ptr_impl(ptr,subval) \
+  #define plasma_atomic_fetch_sub_ptr_nb_impl(ptr,subval) \
           __sync_fetch_and_sub((ptr),(subval))
-  #define plasma_atomic_fetch_sub_u64_impl(ptr,subval) \
+  #define plasma_atomic_fetch_sub_u64_nb_impl(ptr,subval) \
           __sync_fetch_and_sub((ptr),(subval))
-  #define plasma_atomic_fetch_sub_u32_impl(ptr,subval) \
+  #define plasma_atomic_fetch_sub_u32_nb_impl(ptr,subval) \
           __sync_fetch_and_sub((ptr),(subval))
 
 #endif
@@ -777,16 +779,16 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
   /* (MS Windows is LLP64 ABI, so 'long' is 32-bits even when compiler 64-bit)*/
   #pragma intrinsic(_InterlockedOr)
   #pragma intrinsic(_InterlockedOr64)
-  #define plasma_atomic_fetch_or_u64_impl(ptr, orval) \
+  #define plasma_atomic_fetch_or_u64_nb_impl(ptr, orval) \
           _InterlockedOr64((__int64 *)(ptr),(__int64)(orval))
-  #define plasma_atomic_fetch_or_u32_impl(ptr, orval) \
+  #define plasma_atomic_fetch_or_u32_nb_impl(ptr, orval) \
           _InterlockedOr((long *)(ptr),(long)(orval))
 
 #elif defined(__sun) && defined(__SVR4)
 
-  #define plasma_atomic_fetch_or_u64_impl(ptr,orval) \
+  #define plasma_atomic_fetch_or_u64_nb_impl(ptr,orval) \
           atomic_or_64((uint64_t *)(ptr),(uint64_t)(orval))
-  #define plasma_atomic_fetch_or_u32_impl(ptr,orval) \
+  #define plasma_atomic_fetch_or_u32_nb_impl(ptr,orval) \
           atomic_or_32((uint32_t *)(ptr),(uint32_t)(orval))
 
 #elif defined(__APPLE__) && defined(__MACH__)
@@ -798,8 +800,8 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
            && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050) \
        || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) \
            && __IPHONE_OS_VERSION_MIN_REQUIRED-0 >= 30200)   )
-  #define plasma_atomic_fetch_or_u32_impl(ptr, orval) \
-          (OSAtomicOr32Orig((uint32_t)(orval),(uint32_t *)(ptr)))
+  #define plasma_atomic_fetch_or_u32_nb_impl(ptr, orval) \
+          OSAtomicOr32Orig((uint32_t)(orval),(uint32_t *)(ptr))
   #endif
 
 #elif defined(__ia64__) \
@@ -817,14 +819,14 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
 
-  #undef  plasma_atomic_fetch_or_ptr_impl
-  #undef  plasma_atomic_fetch_or_u64_impl
-  #undef  plasma_atomic_fetch_or_u32_impl
-  #define plasma_atomic_fetch_or_ptr_impl(ptr,orval) \
+  #undef  plasma_atomic_fetch_or_ptr_nb_impl
+  #undef  plasma_atomic_fetch_or_u64_nb_impl
+  #undef  plasma_atomic_fetch_or_u32_nb_impl
+  #define plasma_atomic_fetch_or_ptr_nb_impl(ptr,orval) \
           __sync_fetch_and_or((ptr),(orval))
-  #define plasma_atomic_fetch_or_u64_impl(ptr,orval) \
+  #define plasma_atomic_fetch_or_u64_nb_impl(ptr,orval) \
           __sync_fetch_and_or((ptr),(orval))
-  #define plasma_atomic_fetch_or_u32_impl(ptr,orval) \
+  #define plasma_atomic_fetch_or_u32_nb_impl(ptr,orval) \
           __sync_fetch_and_or((ptr),(orval))
 
 #endif
@@ -839,16 +841,16 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
   /* (MS Windows is LLP64 ABI, so 'long' is 32-bits even when compiler 64-bit)*/
   #pragma intrinsic(_InterlockedAnd)
   #pragma intrinsic(_InterlockedAnd64)
-  #define plasma_atomic_fetch_and_u64_impl(ptr, andval) \
+  #define plasma_atomic_fetch_and_u64_nb_impl(ptr, andval) \
           _InterlockedAnd64((__int64 *)(ptr),(__int64)(andval))
-  #define plasma_atomic_fetch_and_u32_impl(ptr, andval) \
+  #define plasma_atomic_fetch_and_u32_nb_impl(ptr, andval) \
           _InterlockedAnd((long *)(ptr),(long)(andval))
 
 #elif defined(__sun) && defined(__SVR4)
 
-  #define plasma_atomic_fetch_and_u64_impl(ptr,andval) \
+  #define plasma_atomic_fetch_and_u64_nb_impl(ptr,andval) \
           atomic_and_64((uint64_t *)(ptr),(uint64_t)(andval))
-  #define plasma_atomic_fetch_and_u32_impl(ptr,andval) \
+  #define plasma_atomic_fetch_and_u32_nb_impl(ptr,andval) \
           atomic_and_32((uint32_t *)(ptr),(uint32_t)(andval))
 
 #elif defined(__APPLE__) && defined(__MACH__)
@@ -860,8 +862,8 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
            && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050) \
        || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) \
            && __IPHONE_OS_VERSION_MIN_REQUIRED-0 >= 30200)   )
-  #define plasma_atomic_fetch_and_u32_impl(ptr, andval) \
-          (OSAtomicAnd32Orig((uint32_t)(andval),(uint32_t *)(ptr)))
+  #define plasma_atomic_fetch_and_u32_nb_impl(ptr, andval) \
+          OSAtomicAnd32Orig((uint32_t)(andval),(uint32_t *)(ptr))
   #endif
 
 #elif defined(__ia64__) \
@@ -879,14 +881,14 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
 
-  #undef  plasma_atomic_fetch_and_ptr_impl
-  #undef  plasma_atomic_fetch_and_u64_impl
-  #undef  plasma_atomic_fetch_and_u32_impl
-  #define plasma_atomic_fetch_and_ptr_impl(ptr,andval) \
+  #undef  plasma_atomic_fetch_and_ptr_nb_impl
+  #undef  plasma_atomic_fetch_and_u64_nb_impl
+  #undef  plasma_atomic_fetch_and_u32_nb_impl
+  #define plasma_atomic_fetch_and_ptr_nb_impl(ptr,andval) \
           __sync_fetch_and_and((ptr),(andval))
-  #define plasma_atomic_fetch_and_u64_impl(ptr,andval) \
+  #define plasma_atomic_fetch_and_u64_nb_impl(ptr,andval) \
           __sync_fetch_and_and((ptr),(andval))
-  #define plasma_atomic_fetch_and_u32_impl(ptr,andval) \
+  #define plasma_atomic_fetch_and_u32_nb_impl(ptr,andval) \
           __sync_fetch_and_and((ptr),(andval))
 
 #endif
@@ -901,9 +903,9 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
   /* (MS Windows is LLP64 ABI, so 'long' is 32-bits even when compiler 64-bit)*/
   #pragma intrinsic(_InterlockedXor)
   #pragma intrinsic(_InterlockedXor64)
-  #define plasma_atomic_fetch_xor_u64_impl(ptr, xorval) \
+  #define plasma_atomic_fetch_xor_u64_nb_impl(ptr, xorval) \
           _InterlockedXor64((__int64 *)(ptr),(__int64)(xorval))
-  #define plasma_atomic_fetch_xor_u32_impl(ptr, xorval) \
+  #define plasma_atomic_fetch_xor_u32_nb_impl(ptr, xorval) \
           _InterlockedXor((long *)(ptr),(long)(xorval))
 
 #elif defined(__sun) && defined(__SVR4)
@@ -919,8 +921,8 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
            && MAC_OS_X_VERSION_MIN_REQUIRED-0 >= 1050) \
        || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) \
            && __IPHONE_OS_VERSION_MIN_REQUIRED-0 >= 30200)   )
-  #define plasma_atomic_fetch_xor_u32_impl(ptr, xorval) \
-          (OSAtomicXor32Orig((uint32_t)(xorval),(uint32_t *)(ptr)))
+  #define plasma_atomic_fetch_xor_u32_nb_impl(ptr, xorval) \
+          OSAtomicXor32Orig((uint32_t)(xorval),(uint32_t *)(ptr))
   #endif
 
 #elif defined(__ia64__) \
@@ -938,22 +940,22 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
 
-  #undef  plasma_atomic_fetch_xor_ptr_impl
-  #undef  plasma_atomic_fetch_xor_u64_impl
-  #undef  plasma_atomic_fetch_xor_u32_impl
-  #define plasma_atomic_fetch_xor_ptr_impl(ptr,xorval) \
+  #undef  plasma_atomic_fetch_xor_ptr_nb_impl
+  #undef  plasma_atomic_fetch_xor_u64_nb_impl
+  #undef  plasma_atomic_fetch_xor_u32_nb_impl
+  #define plasma_atomic_fetch_xor_ptr_nb_impl(ptr,xorval) \
           __sync_fetch_and_xor((ptr),(xorval))
-  #define plasma_atomic_fetch_xor_u64_impl(ptr,xorval) \
+  #define plasma_atomic_fetch_xor_u64_nb_impl(ptr,xorval) \
           __sync_fetch_and_xor((ptr),(xorval))
-  #define plasma_atomic_fetch_xor_u32_impl(ptr,xorval) \
+  #define plasma_atomic_fetch_xor_u32_nb_impl(ptr,xorval) \
           __sync_fetch_and_xor((ptr),(xorval))
 
 #endif
 
 
 /*
- * plasma_atomic_fetch_op_u64_implreturn: atomic uint64_t fetch and <integer op>
- * plasma_atomic_fetch_op_u32_implreturn: atomic uint32_t fetch and <integer op>
+ * plasma_atomic_fetch_op_u64_nb_implloop: atomic uint64 fetch and <integer op>
+ * plasma_atomic_fetch_op_u32_nb_implloop: atomic uint32 fetch and <integer op>
  *
  * (generic CAS or LL/SC macros for inline funcs to which to
  *  fall back to in absense of more specialized implementations)
@@ -970,44 +972,32 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
    * to (long *) is valid.  If this macro is used in code compiled 32-bit, then
    * the cast will truncate the values.  Eliminate cast if valid in 32-bits. */
   #if defined(_LP64) || defined(__LP64__)
-  #define plasma_atomic_fetch_op_u64_implreturn(ptr, op, val, cast)       \
-          register uint64_t plasma_atomic_tmp;                            \
-          do { plasma_atomic_tmp = (uint64_t)__ldarx((long *)(ptr));      \
+  #define plasma_atomic_fetch_op_u64_nb_implloop(ptr, op, val, x)         \
+          do { (x) = (uint64_t)__ldarx((long *)(ptr));                    \
           } while (__builtin_expect(                                      \
-                     !(__stdcx((long *)(ptr),                             \
-                               (long)(plasma_atomic_tmp op (val)))), 0)); \
-          return (cast)plasma_atomic_tmp
+                     !(__stdcx((long *)(ptr), (long)((x) op (val)))), 0)) \
   #else
-  #define plasma_atomic_fetch_op_u64_implreturn(ptr, op, val, cast)       \
+  #define plasma_atomic_fetch_op_u64_nb_implloop(ptr, op, val, x)         \
           plasma_atomic_fetch_op_u64_NOT_IMPLEMENTED()
   #endif
 
-  #define plasma_atomic_fetch_op_u32_implreturn(ptr, op, val, cast)       \
-          register uint32_t plasma_atomic_tmp;                            \
-          do { plasma_atomic_tmp = (uint32_t)__lwarx((int *)(ptr));       \
+  #define plasma_atomic_fetch_op_u32_nb_implloop(ptr, op, val, x)         \
+          do { (x) = (uint32_t)__lwarx((int *)(ptr));                     \
           } while (__builtin_expect(                                      \
-                     !(__stwcx((int *)(ptr),                              \
-                               (int)(plasma_atomic_tmp op (val)))), 0));  \
-          return (cast)plasma_atomic_tmp
+                     !(__stwcx((int *)(ptr), (int)((x) op (val)))), 0))   \
 
 #else
 
   /* use CAS as fallback implementation when building atomic ops */
-  #define plasma_atomic_fetch_op_u64_implreturn(ptr, op, val, cast)           \
-          register uint64_t plasma_atomic_tmp;                                \
-          do { plasma_atomic_tmp = plasma_atomic_ld_nopt_T(uint64_t *,(ptr)); \
-          } while (__builtin_expect(                                          \
-                     !plasma_atomic_CAS_64((ptr), plasma_atomic_tmp,          \
-                                           plasma_atomic_tmp op (val)), 0));  \
-          return (cast)plasma_atomic_tmp
+  #define plasma_atomic_fetch_op_u64_nb_implloop(ptr, op, val, x)         \
+          do { (x) = plasma_atomic_ld_nopt_T(uint64_t *,(ptr));           \
+          } while (__builtin_expect(                                      \
+                     !plasma_atomic_CAS_64((ptr), (x), (x) op (val)), 0)) \
 
-  #define plasma_atomic_fetch_op_u32_implreturn(ptr, op, val, cast)           \
-          register uint32_t plasma_atomic_tmp;                                \
-          do { plasma_atomic_tmp = plasma_atomic_ld_nopt_T(uint32_t *,(ptr)); \
-          } while (__builtin_expect(                                          \
-                     !plasma_atomic_CAS_32((ptr), plasma_atomic_tmp,          \
-                                           plasma_atomic_tmp op (val)), 0));  \
-          return (cast)plasma_atomic_tmp
+  #define plasma_atomic_fetch_op_u32_nb_implloop(ptr, op, val, x)         \
+          do { (x) = plasma_atomic_ld_nopt_T(uint32_t *,(ptr));           \
+          } while (__builtin_expect(                                      \
+                     !plasma_atomic_CAS_32((ptr), (x), (x) op (val)), 0)) \
 
 #endif
 
@@ -1015,7 +1005,7 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 /*
  * plasma_atomic_fetch_{add,sub,or,and,xor}_{ptr,u64,u32}()
  *
- * (produced from _impl macros or inline funcs using _implreturn macros)
+ * (produced from _impl macros or inline funcs using _implloop macros)
  * (FUTURE: sections below could be generated)
  */
 
@@ -1026,103 +1016,121 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
  * plasma_atomic_fetch_add_u32 - atomic uint32_t fetch and add
  */
 
-#ifndef plasma_atomic_fetch_add_ptr_impl
+#ifndef plasma_atomic_fetch_add_ptr_nb_impl
   /*(64-bit Windows is LLP64, not LP64 ABI, so different macro for 64-bit ptr)*/
   #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
-    #ifdef  plasma_atomic_fetch_add_u64_impl
-    #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
-            plasma_atomic_fetch_add_u64_impl((ptr),(addval))
+    #ifdef  plasma_atomic_fetch_add_u64_nb_impl
+    #define plasma_atomic_fetch_add_ptr_nb_impl(ptr,addval) \
+            plasma_atomic_fetch_add_u64_nb_impl((ptr),(addval))
     #endif
   #else
-    #ifdef  plasma_atomic_fetch_add_u32_impl
-    #define plasma_atomic_fetch_add_ptr_impl(ptr,addval) \
-            plasma_atomic_fetch_add_u32_impl((ptr),(addval))
+    #ifdef  plasma_atomic_fetch_add_u32_nb_impl
+    #define plasma_atomic_fetch_add_ptr_nb_impl(ptr,addval) \
+            plasma_atomic_fetch_add_u32_nb_impl((ptr),(addval))
     #endif
   #endif
 #endif
 
-/* FUTURE: might make into inline function for consistent return type casting
- * and to avoid potential multiple evaluation of macro arguments */
-#ifdef  plasma_atomic_fetch_add_ptr_impl
-#define plasma_atomic_fetch_add_ptr(ptr,addval) \
-        plasma_atomic_fetch_add_ptr_impl((ptr),(addval))
-#endif
-#ifdef  plasma_atomic_fetch_add_u64_impl
-#define plasma_atomic_fetch_add_u64(ptr,addval) \
-        plasma_atomic_fetch_add_u64_impl((ptr),(addval))
-#endif
-#ifdef  plasma_atomic_fetch_add_u32_impl
-#define plasma_atomic_fetch_add_u32(ptr,addval) \
-        plasma_atomic_fetch_add_u32_impl((ptr),(addval))
+#if !defined(plasma_atomic_fetch_add_u64_nb_impl) \
+ && !defined(plasma_atomic_fetch_add_u64_nb_implloop)
+#define plasma_atomic_fetch_add_u64_nb_implloop(ptr, addval, cast) \
+        plasma_atomic_fetch_op_u64_nb_implloop((ptr), +, (addval), cast)
 #endif
 
-#if !defined(plasma_atomic_fetch_add_u64_impl) \
- && !defined(plasma_atomic_fetch_add_u64_implreturn)
-#define plasma_atomic_fetch_add_u64_implreturn(ptr, addval, cast) \
-        plasma_atomic_fetch_op_u64_implreturn((ptr), +, (addval), cast)
+#if !defined(plasma_atomic_fetch_add_u32_nb_impl) \
+ && !defined(plasma_atomic_fetch_add_u32_nb_implloop)
+#define plasma_atomic_fetch_add_u32_nb_implloop(ptr, addval, cast) \
+        plasma_atomic_fetch_op_u32_nb_implloop((ptr), +, (addval), cast)
 #endif
 
-#if !defined(plasma_atomic_fetch_add_u32_impl) \
- && !defined(plasma_atomic_fetch_add_u32_implreturn)
-#define plasma_atomic_fetch_add_u32_implreturn(ptr, addval, cast) \
-        plasma_atomic_fetch_op_u32_implreturn((ptr), +, (addval), cast)
-#endif
-
-#ifdef plasma_atomic_fetch_add_u32_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
-plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval)
+plasma_atomic_fetch_add_ptr (void ** const ptr, ptrdiff_t addval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
-plasma_atomic_fetch_add_ptr (void * const ptr, ptrdiff_t addval)
+plasma_atomic_fetch_add_ptr (void ** const ptr, ptrdiff_t addval,
+                             const enum memory_order memmodel)
 {
-  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)
-    plasma_atomic_fetch_add_u64_implreturn(ptr, addval, void *);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_add_ptr_nb_impl
+    register const uintptr_t x = (uintptr_t)
+      plasma_atomic_fetch_add_ptr_nb_impl(ptr, addval);
+  #elif defined(_LP64) || defined(__LP64__) || defined(_WIN64)
+    register uint64_t x;
+    plasma_atomic_fetch_add_u64_nb_implloop(ptr, addval, x);
   #else
-    plasma_atomic_fetch_add_u32_implreturn(ptr, addval, void *);
+    register uint32_t x;
+    plasma_atomic_fetch_add_u32_nb_implloop(ptr, addval, x);
   #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return (void *)x;
 }
-#endif
 #endif
 
 #ifndef plasma_atomic_not_implemented_64
-#ifdef plasma_atomic_fetch_add_u64_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
-plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval)
+plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
-plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval)
+plasma_atomic_fetch_add_u64 (uint64_t * const ptr, uint64_t addval,
+                             const enum memory_order memmodel)
 {
-    plasma_atomic_fetch_add_u64_implreturn(ptr, addval, uint64_t);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_add_u64_nb_impl
+    register const uint64_t x = plasma_atomic_fetch_add_u64_nb_impl(ptr,addval);
+  #else
+    register uint64_t x;
+    plasma_atomic_fetch_add_u64_nb_implloop(ptr, addval, x);
+  #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
 }
-#endif
 #endif
 #endif
 
-#ifdef plasma_atomic_fetch_add_u32_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
-plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
+plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
-plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
+plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval,
+                             const enum memory_order memmodel)
 {
-    plasma_atomic_fetch_add_u32_implreturn(ptr, addval, uint32_t);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_add_u32_nb_impl
+    register const uint32_t x = plasma_atomic_fetch_add_u32_nb_impl(ptr,addval);
+  #else
+    register uint32_t x;
+    plasma_atomic_fetch_add_u32_nb_implloop(ptr, addval, x);
+  #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
 }
-#endif
 #endif
 
 
@@ -1134,28 +1142,91 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
  * (leverage plasma_atomic_fetch_add_*() if compiler builtin is not available)
  */
 
-/* FUTURE: might make into inline function for consistent return type casting
- * and to avoid potential multiple evaluation of macro arguments */
-#ifdef  plasma_atomic_fetch_sub_ptr_impl
-#define plasma_atomic_fetch_sub_ptr(ptr,subval) \
-        plasma_atomic_fetch_sub_ptr_impl((ptr),(subval))
-#else
-#define plasma_atomic_fetch_sub_ptr(ptr,subval) \
-        plasma_atomic_fetch_add_ptr((ptr),(uintptr_t)(-(intptr_t)(subval)))
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+void *
+plasma_atomic_fetch_sub_ptr (void ** const ptr, ptrdiff_t subval,
+                             const enum memory_order memmodel)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+void *
+plasma_atomic_fetch_sub_ptr (void ** const ptr, ptrdiff_t subval,
+                             const enum memory_order memmodel)
+{
+  #ifdef plasma_atomic_fetch_sub_ptr_nb_impl
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+    register const uintptr_t x = (uintptr_t)
+      plasma_atomic_fetch_sub_ptr_nb_impl(ptr, subval);
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return (void *)x;
+  #else
+    return plasma_atomic_fetch_add_ptr((ptr),(uintptr_t)(-(intptr_t)(subval)),
+                                       memmodel);
+  #endif
+}
 #endif
-#ifdef  plasma_atomic_fetch_sub_u64_impl
-#define plasma_atomic_fetch_sub_u64(ptr,subval) \
-        plasma_atomic_fetch_sub_u64_impl((ptr),(subval))
-#else
-#define plasma_atomic_fetch_sub_u64(ptr,subval) \
-        plasma_atomic_fetch_add_u64((ptr),(uint64_t)(-(int64_t)(subval)))
+
+#ifndef plasma_atomic_not_implemented_64
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint64_t
+plasma_atomic_fetch_sub_u64 (uint64_t * const ptr, uint64_t subval,
+                             const enum memory_order memmodel)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint64_t
+plasma_atomic_fetch_sub_u64 (uint64_t * const ptr, uint64_t subval,
+                             const enum memory_order memmodel)
+{
+  #ifdef plasma_atomic_fetch_sub_u64_nb_impl
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+    register const uint64_t x = plasma_atomic_fetch_sub_u64_nb_impl(ptr,subval);
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
+  #else
+    return plasma_atomic_fetch_add_u64((ptr),(uint64_t)(-(int64_t)(subval)),
+                                       memmodel);
+  #endif
+}
 #endif
-#ifdef  plasma_atomic_fetch_sub_u32_impl
-#define plasma_atomic_fetch_sub_u32(ptr,subval) \
-        plasma_atomic_fetch_sub_u32_impl((ptr),(subval))
-#else
-#define plasma_atomic_fetch_sub_u32(ptr,subval) \
-        plasma_atomic_fetch_add_u32((ptr),(uint32_t)(-(int32_t)(subval)))
+#endif
+
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint32_t
+plasma_atomic_fetch_sub_u32 (uint32_t * const ptr, uint32_t subval,
+                             const enum memory_order memmodel)
+  __attribute_nonnull__;
+#ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
+__attribute_regparm__((3))
+PLASMA_ATOMIC_C99INLINE
+uint32_t
+plasma_atomic_fetch_sub_u32 (uint32_t * const ptr, uint32_t subval,
+                             const enum memory_order memmodel)
+{
+  #ifdef plasma_atomic_fetch_sub_u32_nb_impl
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+    register const uint32_t x = plasma_atomic_fetch_sub_u32_nb_impl(ptr,subval);
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
+  #else
+    return plasma_atomic_fetch_add_u32((ptr),(uint32_t)(-(int32_t)(subval)),
+                                       memmodel);
+  #endif
+}
 #endif
 
 
@@ -1165,103 +1236,121 @@ plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval)
  * plasma_atomic_fetch_or_u32 - atomic uint32_t fetch and or
  */
 
-#ifndef plasma_atomic_fetch_or_ptr_impl
+#ifndef plasma_atomic_fetch_or_ptr_nb_impl
   /*(64-bit Windows is LLP64, not LP64 ABI, so different macro for 64-bit ptr)*/
   #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
-    #ifdef  plasma_atomic_fetch_or_u64_impl
-    #define plasma_atomic_fetch_or_ptr_impl(ptr,orval) \
-            plasma_atomic_fetch_or_u64_impl((ptr),(orval))
+    #ifdef  plasma_atomic_fetch_or_u64_nb_impl
+    #define plasma_atomic_fetch_or_ptr_nb_impl(ptr,orval) \
+            plasma_atomic_fetch_or_u64_nb_impl((ptr),(orval))
     #endif
   #else
-    #ifdef  plasma_atomic_fetch_or_u32_impl
-    #define plasma_atomic_fetch_or_ptr_impl(ptr,orval) \
-            plasma_atomic_fetch_or_u32_impl((ptr),(orval))
+    #ifdef  plasma_atomic_fetch_or_u32_nb_impl
+    #define plasma_atomic_fetch_or_ptr_nb_impl(ptr,orval) \
+            plasma_atomic_fetch_or_u32_nb_impl((ptr),(orval))
     #endif
   #endif
 #endif
 
-/* FUTURE: might make into inline function for consistent return type casting
- * and to avoid potential multiple evaluation of macro arguments */
-#ifdef  plasma_atomic_fetch_or_ptr_impl
-#define plasma_atomic_fetch_or_ptr(ptr,orval) \
-        plasma_atomic_fetch_or_ptr_impl((ptr),(orval))
-#endif
-#ifdef  plasma_atomic_fetch_or_u64_impl
-#define plasma_atomic_fetch_or_u64(ptr,orval) \
-        plasma_atomic_fetch_or_u64_impl((ptr),(orval))
-#endif
-#ifdef  plasma_atomic_fetch_or_u32_impl
-#define plasma_atomic_fetch_or_u32(ptr,orval) \
-        plasma_atomic_fetch_or_u32_impl((ptr),(orval))
+#if !defined(plasma_atomic_fetch_or_u64_nb_impl) \
+ && !defined(plasma_atomic_fetch_or_u64_nb_implloop)
+#define plasma_atomic_fetch_or_u64_nb_implloop(ptr, orval, cast) \
+        plasma_atomic_fetch_op_u64_nb_implloop((ptr), |, (orval), cast)
 #endif
 
-#if !defined(plasma_atomic_fetch_or_u64_impl) \
- && !defined(plasma_atomic_fetch_or_u64_implreturn)
-#define plasma_atomic_fetch_or_u64_implreturn(ptr, orval, cast) \
-        plasma_atomic_fetch_op_u64_implreturn((ptr), |, (orval), cast)
+#if !defined(plasma_atomic_fetch_or_u32_nb_impl) \
+ && !defined(plasma_atomic_fetch_or_u32_nb_implloop)
+#define plasma_atomic_fetch_or_u32_nb_implloop(ptr, orval, cast) \
+        plasma_atomic_fetch_op_u32_nb_implloop((ptr), |, (orval), cast)
 #endif
 
-#if !defined(plasma_atomic_fetch_or_u32_impl) \
- && !defined(plasma_atomic_fetch_or_u32_implreturn)
-#define plasma_atomic_fetch_or_u32_implreturn(ptr, orval, cast) \
-        plasma_atomic_fetch_op_u32_implreturn((ptr), |, (orval), cast)
-#endif
-
-#ifndef plasma_atomic_fetch_or_ptr_impl
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
-plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval)
+plasma_atomic_fetch_or_ptr (void ** const ptr, uintptr_t orval,
+                            const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
-plasma_atomic_fetch_or_ptr (void * const ptr, uintptr_t orval)
+plasma_atomic_fetch_or_ptr (void ** const ptr, uintptr_t orval,
+                            const enum memory_order memmodel)
 {
-  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)
-    plasma_atomic_fetch_or_u64_implreturn(ptr, orval, void *);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_or_ptr_nb_impl
+    register const uintptr_t x = (uintptr_t)
+      plasma_atomic_fetch_or_ptr_nb_impl(ptr, orval);
+  #elif defined(_LP64) || defined(__LP64__) || defined(_WIN64)
+    register uint64_t x;
+    plasma_atomic_fetch_or_u64_nb_implloop(ptr, orval, x);
   #else
-    plasma_atomic_fetch_or_u32_implreturn(ptr, orval, void *);
+    register uint32_t x;
+    plasma_atomic_fetch_or_u32_nb_implloop(ptr, orval, x);
   #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return (void *)x;
 }
-#endif
 #endif
 
 #ifndef plasma_atomic_not_implemented_64
-#ifdef plasma_atomic_fetch_or_u64_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
-plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval)
+plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval,
+                            const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
-plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval)
+plasma_atomic_fetch_or_u64 (uint64_t * const ptr, uint64_t orval,
+                            const enum memory_order memmodel)
 {
-    plasma_atomic_fetch_or_u64_implreturn(ptr, orval, uint64_t);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_or_u64_nb_impl
+    register const uint64_t x = plasma_atomic_fetch_or_u64_nb_impl(ptr, orval);
+  #else
+    register uint64_t x;
+    plasma_atomic_fetch_or_u64_nb_implloop(ptr, orval, x);
+  #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
 }
-#endif
 #endif
 #endif
 
-#ifdef plasma_atomic_fetch_or_u32_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
-plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval)
+plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval,
+                            const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
-plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval)
+plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval,
+                            const enum memory_order memmodel)
 {
-    plasma_atomic_fetch_or_u32_implreturn(ptr, orval, uint32_t);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_or_u32_nb_impl
+    register const uint32_t x = plasma_atomic_fetch_or_u32_nb_impl(ptr, orval);
+  #else
+    register uint32_t x;
+    plasma_atomic_fetch_or_u32_nb_implloop(ptr, orval, x);
+  #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
 }
-#endif
 #endif
 
 
@@ -1271,103 +1360,121 @@ plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval)
  * plasma_atomic_fetch_and_u32 - atomic uint32_t fetch and and
  */
 
-#ifndef plasma_atomic_fetch_and_ptr_impl
+#ifndef plasma_atomic_fetch_and_ptr_nb_impl
   /*(64-bit Windows is LLP64, not LP64 ABI, so different macro for 64-bit ptr)*/
   #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
-    #ifdef  plasma_atomic_fetch_and_u64_impl
-    #define plasma_atomic_fetch_and_ptr_impl(ptr,andval) \
-            plasma_atomic_fetch_and_u64_impl((ptr),(andval))
+    #ifdef  plasma_atomic_fetch_and_u64_nb_impl
+    #define plasma_atomic_fetch_and_ptr_nb_impl(ptr,andval) \
+            plasma_atomic_fetch_and_u64_nb_impl((ptr),(andval))
     #endif
   #else
-    #ifdef  plasma_atomic_fetch_and_u32_impl
-    #define plasma_atomic_fetch_and_ptr_impl(ptr,andval) \
-            plasma_atomic_fetch_and_u32_impl((ptr),(andval))
+    #ifdef  plasma_atomic_fetch_and_u32_nb_impl
+    #define plasma_atomic_fetch_and_ptr_nb_impl(ptr,andval) \
+            plasma_atomic_fetch_and_u32_nb_impl((ptr),(andval))
     #endif
   #endif
 #endif
 
-/* FUTURE: might make into inline function for consistent return type casting
- * and to avoid potential multiple evaluation of macro arguments */
-#ifdef  plasma_atomic_fetch_and_ptr_impl
-#define plasma_atomic_fetch_and_ptr(ptr,andval) \
-        plasma_atomic_fetch_and_ptr_impl((ptr),(andval))
-#endif
-#ifdef  plasma_atomic_fetch_and_u64_impl
-#define plasma_atomic_fetch_and_u64(ptr,andval) \
-        plasma_atomic_fetch_and_u64_impl((ptr),(andval))
-#endif
-#ifdef  plasma_atomic_fetch_and_u32_impl
-#define plasma_atomic_fetch_and_u32(ptr,andval) \
-        plasma_atomic_fetch_and_u32_impl((ptr),(andval))
+#if !defined(plasma_atomic_fetch_and_u64_nb_impl) \
+ && !defined(plasma_atomic_fetch_and_u64_nb_implloop)
+#define plasma_atomic_fetch_and_u64_nb_implloop(ptr, andval, cast) \
+        plasma_atomic_fetch_op_u64_nb_implloop((ptr), &, (andval), cast)
 #endif
 
-#if !defined(plasma_atomic_fetch_and_u64_impl) \
- && !defined(plasma_atomic_fetch_and_u64_implreturn)
-#define plasma_atomic_fetch_and_u64_implreturn(ptr, andval, cast) \
-        plasma_atomic_fetch_op_u64_implreturn((ptr), &, (andval), cast)
+#if !defined(plasma_atomic_fetch_and_u32_nb_impl) \
+ && !defined(plasma_atomic_fetch_and_u32_nb_implloop)
+#define plasma_atomic_fetch_and_u32_nb_implloop(ptr, andval, cast) \
+        plasma_atomic_fetch_op_u32_nb_implloop((ptr), &, (andval), cast)
 #endif
 
-#if !defined(plasma_atomic_fetch_and_u32_impl) \
- && !defined(plasma_atomic_fetch_and_u32_implreturn)
-#define plasma_atomic_fetch_and_u32_implreturn(ptr, andval, cast) \
-        plasma_atomic_fetch_op_u32_implreturn((ptr), &, (andval), cast)
-#endif
-
-#ifndef plasma_atomic_fetch_and_ptr_impl
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
-plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval)
+plasma_atomic_fetch_and_ptr (void ** const ptr, uintptr_t andval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
-plasma_atomic_fetch_and_ptr (void * const ptr, uintptr_t andval)
+plasma_atomic_fetch_and_ptr (void ** const ptr, uintptr_t andval,
+                             const enum memory_order memmodel)
 {
-  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)
-    plasma_atomic_fetch_and_u64_implreturn(ptr, andval, void *);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_and_ptr_nb_impl
+    register const uintptr_t x = (uintptr_t)
+      plasma_atomic_fetch_and_ptr_nb_impl(ptr, andval);
+  #elif defined(_LP64) || defined(__LP64__) || defined(_WIN64)
+    register uint64_t x;
+    plasma_atomic_fetch_and_u64_nb_implloop(ptr, andval, x);
   #else
-    plasma_atomic_fetch_and_u32_implreturn(ptr, andval, void *);
+    register uint32_t x;
+    plasma_atomic_fetch_and_u32_nb_implloop(ptr, andval, x);
   #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return (void *)x;
 }
-#endif
 #endif
 
 #ifndef plasma_atomic_not_implemented_64
-#ifdef plasma_atomic_fetch_and_u64_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
-plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval)
+plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
-plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval)
+plasma_atomic_fetch_and_u64 (uint64_t * const ptr, uint64_t andval,
+                             const enum memory_order memmodel)
 {
-    plasma_atomic_fetch_and_u64_implreturn(ptr, andval, uint64_t);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_and_u64_nb_impl
+    register const uint64_t x = plasma_atomic_fetch_and_u64_nb_impl(ptr,andval);
+  #else
+    register uint64_t x;
+    plasma_atomic_fetch_and_u64_nb_implloop(ptr, andval, x);
+  #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
 }
-#endif
 #endif
 #endif
 
-#ifdef plasma_atomic_fetch_and_u32_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
-plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval)
+plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
-plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval)
+plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval,
+                             const enum memory_order memmodel)
 {
-    plasma_atomic_fetch_and_u32_implreturn(ptr, andval, uint32_t);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_and_u32_nb_impl
+    register const uint32_t x = plasma_atomic_fetch_and_u32_nb_impl(ptr,andval);
+  #else
+    register uint32_t x;
+    plasma_atomic_fetch_and_u32_nb_implloop(ptr, andval, x);
+  #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
 }
-#endif
 #endif
 
 
@@ -1377,103 +1484,121 @@ plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval)
  * plasma_atomic_fetch_xor_u32 - atomic uint32_t fetch and xor
  */
 
-#ifndef plasma_atomic_fetch_xor_ptr_impl
+#ifndef plasma_atomic_fetch_xor_ptr_nb_impl
   /*(64-bit Windows is LLP64, not LP64 ABI, so different macro for 64-bit ptr)*/
   #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)  /* 64-bit */
-    #ifdef  plasma_atomic_fetch_xor_u64_impl
-    #define plasma_atomic_fetch_xor_ptr_impl(ptr,xorval) \
-            plasma_atomic_fetch_xor_u64_impl((ptr),(xorval))
+    #ifdef  plasma_atomic_fetch_xor_u64_nb_impl
+    #define plasma_atomic_fetch_xor_ptr_nb_impl(ptr,xorval) \
+            plasma_atomic_fetch_xor_u64_nb_impl((ptr),(xorval))
     #endif
   #else
-    #ifdef  plasma_atomic_fetch_xor_u32_impl
-    #define plasma_atomic_fetch_xor_ptr_impl(ptr,xorval) \
-            plasma_atomic_fetch_xor_u32_impl((ptr),(xorval))
+    #ifdef  plasma_atomic_fetch_xor_u32_nb_impl
+    #define plasma_atomic_fetch_xor_ptr_nb_impl(ptr,xorval) \
+            plasma_atomic_fetch_xor_u32_nb_impl((ptr),(xorval))
     #endif
   #endif
 #endif
 
-/* FUTURE: might make into inline function for consistent return type casting
- * and to avoid potential multiple evaluation of macro arguments */
-#ifdef  plasma_atomic_fetch_xor_ptr_impl
-#define plasma_atomic_fetch_xor_ptr(ptr,xorval) \
-        plasma_atomic_fetch_xor_ptr_impl((ptr),(xorval))
-#endif
-#ifdef  plasma_atomic_fetch_xor_u64_impl
-#define plasma_atomic_fetch_xor_u64(ptr,xorval) \
-        plasma_atomic_fetch_xor_u64_impl((ptr),(xorval))
-#endif
-#ifdef  plasma_atomic_fetch_xor_u32_impl
-#define plasma_atomic_fetch_xor_u32(ptr,xorval) \
-        plasma_atomic_fetch_xor_u32_impl((ptr),(xorval))
+#if !defined(plasma_atomic_fetch_xor_u64_nb_impl) \
+ && !defined(plasma_atomic_fetch_xor_u64_nb_implloop)
+#define plasma_atomic_fetch_xor_u64_nb_implloop(ptr, xorval, cast) \
+        plasma_atomic_fetch_op_u64_nb_implloop((ptr), ^, (xorval), cast)
 #endif
 
-#if !defined(plasma_atomic_fetch_xor_u64_impl) \
- && !defined(plasma_atomic_fetch_xor_u64_implreturn)
-#define plasma_atomic_fetch_xor_u64_implreturn(ptr, xorval, cast) \
-        plasma_atomic_fetch_op_u64_implreturn((ptr), ^, (xorval), cast)
+#if !defined(plasma_atomic_fetch_xor_u32_nb_impl) \
+ && !defined(plasma_atomic_fetch_xor_u32_nb_implloop)
+#define plasma_atomic_fetch_xor_u32_nb_implloop(ptr, xorval, cast) \
+        plasma_atomic_fetch_op_u32_nb_implloop((ptr), ^, (xorval), cast)
 #endif
 
-#if !defined(plasma_atomic_fetch_xor_u32_impl) \
- && !defined(plasma_atomic_fetch_xor_u32_implreturn)
-#define plasma_atomic_fetch_xor_u32_implreturn(ptr, xorval, cast) \
-        plasma_atomic_fetch_op_u32_implreturn((ptr), ^, (xorval), cast)
-#endif
-
-#ifndef plasma_atomic_fetch_xor_ptr_impl
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
-plasma_atomic_fetch_xor_ptr (void * const ptr, uintptr_t xorval)
+plasma_atomic_fetch_xor_ptr (void ** const ptr, uintptr_t xorval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
-plasma_atomic_fetch_xor_ptr (void * const ptr, uintptr_t xorval)
+plasma_atomic_fetch_xor_ptr (void ** const ptr, uintptr_t xorval,
+                             const enum memory_order memmodel)
 {
-  #if defined(_LP64) || defined(__LP64__) || defined(_WIN64)
-    plasma_atomic_fetch_xor_u64_implreturn(ptr, xorval, void *);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_xor_ptr_nb_impl
+    register const uintptr_t x = (uintptr_t)
+      plasma_atomic_fetch_xor_ptr_nb_impl(ptr, xorval);
+  #elif defined(_LP64) || defined(__LP64__) || defined(_WIN64)
+    register uint64_t x;
+    plasma_atomic_fetch_xor_u64_nb_implloop(ptr, xorval, x);
   #else
-    plasma_atomic_fetch_xor_u32_implreturn(ptr, xorval, void *);
+    register uint32_t x;
+    plasma_atomic_fetch_xor_u32_nb_implloop(ptr, xorval, x);
   #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return (void *)x;
 }
-#endif
 #endif
 
 #ifndef plasma_atomic_not_implemented_64
-#ifdef plasma_atomic_fetch_xor_u64_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
-plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval)
+plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint64_t
-plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval)
+plasma_atomic_fetch_xor_u64 (uint64_t * const ptr, uint64_t xorval,
+                             const enum memory_order memmodel)
 {
-    plasma_atomic_fetch_xor_u64_implreturn(ptr, xorval, uint64_t);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_xor_u64_nb_impl
+    register const uint64_t x = plasma_atomic_fetch_xor_u64_nb_impl(ptr,xorval);
+  #else
+    register uint64_t x;
+    plasma_atomic_fetch_xor_u64_nb_implloop(ptr, xorval, x);
+  #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
 }
-#endif
 #endif
 #endif
 
-#ifdef plasma_atomic_fetch_xor_u32_implreturn
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
-plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
+plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval,
+                             const enum memory_order memmodel)
   __attribute_nonnull__;
 #ifdef PLASMA_ATOMIC_C99INLINE_FUNCS
-__attribute_regparm__((2))
+__attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 uint32_t
-plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
+plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval,
+                             const enum memory_order memmodel)
 {
-    plasma_atomic_fetch_xor_u32_implreturn(ptr, xorval, uint32_t);
+    if (memmodel != memory_order_acquire && memmodel != memory_order_consume)
+        atomic_thread_fence(memmodel);
+  #ifdef plasma_atomic_fetch_xor_u32_nb_impl
+    register const uint32_t x = plasma_atomic_fetch_xor_u32_nb_impl(ptr,xorval);
+  #else
+    register uint32_t x;
+    plasma_atomic_fetch_xor_u32_nb_implloop(ptr, xorval, x);
+  #endif
+    if (memmodel != memory_order_release)
+        atomic_thread_fence(memmodel != memory_order_seq_cst
+                            ? memmodel : memory_order_acq_rel);
+    return x;
 }
-#endif
 #endif
 
 
