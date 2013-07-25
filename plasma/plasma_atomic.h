@@ -1513,11 +1513,12 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval)
  * (cast the load through volatile to hint to compiler not to play tricks
  *  like multiple or early loads)  (This impl has a penalty on Itanium,
  *  and there are weaker volatile types in HP-UX, not used here) */
-#define plasma_atomic_load_explicit_into(lval, ptr, memmodel) \
-        do { if ((memmodel) == memory_order_seq_cst)          \
-                 atomic_thread_fence(memory_order_seq_cst);   \
-             (lval) = plasma_atomic_ld_nopt(ptr);             \
-             atomic_thread_fence(memmodel);                   \
+#define plasma_atomic_load_explicit_into(lval, ptr, memmodel)          \
+        do { if ((memmodel) == memory_order_seq_cst)                   \
+                 atomic_thread_fence(memory_order_seq_cst);            \
+             (lval) = plasma_atomic_ld_nopt(ptr);                      \
+             atomic_thread_fence((memmodel) != memory_order_seq_cst    \
+                                 ? (memmodel) : memory_order_acquire); \
         } while (0)
 
 #if defined(__GNUC__) || defined(__clang__)        \
@@ -1653,11 +1654,12 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
  * (cast the store through volatile to hint to compiler not to play tricks
  *  like multiple or early loads)  (This impl has a penalty on Itanium,
  *  and there are weaker volatile types in HP-UX, not used here) */
-#define plasma_atomic_store_explicit(ptr, val, memmodel)    \
-        do { atomic_thread_fence(memmodel);                 \
-             plasma_atomic_st_nopt((ptr),(val))             \
-             if ((memmodel) == memory_order_seq_cst)        \
-                 atomic_thread_fence(memory_order_seq_cst); \
+#define plasma_atomic_store_explicit(ptr, val, memmodel)               \
+        do { atomic_thread_fence((memmodel) != memory_order_seq_cst    \
+                                 ? (memmodel) : memory_order_release); \
+             plasma_atomic_st_nopt((ptr),(val));                       \
+             if ((memmodel) == memory_order_seq_cst)                   \
+                 atomic_thread_fence(memory_order_seq_cst);            \
         } while (0)
 
 #endif
@@ -1704,11 +1706,11 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 #else
 
   #define plasma_atomic_st_ptr_release_impl(ptr,newval) \
-          plasma_atomic_store_explicit((ptr), (newval), memory_order_release);
+          plasma_atomic_store_explicit((ptr), (newval), memory_order_release)
   #define plasma_atomic_st_64_release_impl(ptr,newval) \
-          plasma_atomic_store_explicit((ptr), (newval), memory_order_release);
+          plasma_atomic_store_explicit((ptr), (newval), memory_order_release)
   #define plasma_atomic_st_32_release_impl(ptr,newval) \
-          plasma_atomic_store_explicit((ptr), (newval), memory_order_release);
+          plasma_atomic_store_explicit((ptr), (newval), memory_order_release)
 
 #endif
 
