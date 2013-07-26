@@ -536,10 +536,10 @@ static const char * const restrict mcdb_usage =
    "         mcdbctl uniq  <fname.mcdb> [\"first\"|\"last\"]\n"
    "         mcdbctl dump  <fname.mcdb>\n"
    "         mcdbctl stats <fname.mcdb>\n"
-   "         mcdbctl get   <fname.mcdb> <key> [seq]\n";
+   "         mcdbctl get   <fname.mcdb> <key> [seq|\"all\"]\n";
 
 /*
- * mcdbctl get   <mcdb> <key> [seq]
+ * mcdbctl get   <mcdb> <key> [seq|"all"]
  * mcdbctl dump  <mcdb>
  * mcdbctl stats <mcdb>
  * mcdbctl make  <mcdb> <input-file>
