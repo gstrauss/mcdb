@@ -663,6 +663,48 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
                                  (uint32_t)(cmpval),(uint32_t)(newval))
 
 
+
+#if __has_builtin(__atomic_fetch_add) || __GNUC_PREREQ(4,7)
+
+
+  /* clang 3.3 supports GNUC __atomic_*()
+   * (check for __atomic_fetch_add() above is sufficient) */
+
+#define plasma_atomic_fetch_add_ptr(ptr, val, memmodel) \
+        __atomic_fetch_add((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_add_u64(ptr, val, memmodel) \
+        __atomic_fetch_add((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_add_u32(ptr, val, memmodel) \
+        __atomic_fetch_add((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_sub_ptr(ptr, val, memmodel) \
+        __atomic_fetch_sub((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_sub_u64(ptr, val, memmodel) \
+        __atomic_fetch_sub((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_sub_u32(ptr, val, memmodel) \
+        __atomic_fetch_sub((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_or_ptr(ptr, val, memmodel) \
+        __atomic_fetch_or((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_or_u64(ptr, val, memmodel) \
+        __atomic_fetch_or((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_or_u32(ptr, val, memmodel) \
+        __atomic_fetch_or((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_and_ptr(ptr, val, memmodel) \
+        __atomic_fetch_and((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_and_u64(ptr, val, memmodel) \
+        __atomic_fetch_and((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_and_u32(ptr, val, memmodel) \
+        __atomic_fetch_and((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_xor_ptr(ptr, val, memmodel) \
+        __atomic_fetch_xor((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_xor_u64(ptr, val, memmodel) \
+        __atomic_fetch_xor((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_xor_u32(ptr, val, memmodel) \
+        __atomic_fetch_xor((ptr), (val), (memmodel))
+
+
+#else  /* plasma_atomic_fetch_*() */
+
+
 /*
  * plasma_atomic_fetch_add_* - atomic fetch and add specialized implementations
  *
@@ -1602,6 +1644,9 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval,
     return x;
 }
 #endif
+
+
+#endif  /* plasma_atomic_fetch_*() */
 
 
 /*

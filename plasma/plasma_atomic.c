@@ -136,6 +136,8 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 
 #endif /* plasma_atomic_load_explicit_szof */
 
+#if !(__has_builtin(__atomic_fetch_add) || __GNUC_PREREQ(4,7))
+
 __attribute_regparm__((3))
 extern inline
 void *
@@ -167,6 +169,10 @@ __attribute_regparm__((3))
 uint32_t
 plasma_atomic_fetch_add_u32 (uint32_t * const ptr, uint32_t addval,
                              const enum memory_order memmodel);
+
+#endif /* !(__has_builtin(__atomic_fetch_add) || __GNUC_PREREQ(4,7)) */
+
+#if !(__has_builtin(__atomic_fetch_sub) || __GNUC_PREREQ(4,7))
 
 __attribute_regparm__((3))
 extern inline
@@ -200,6 +206,10 @@ uint32_t
 plasma_atomic_fetch_sub_u32 (uint32_t * const ptr, uint32_t subval,
                              const enum memory_order memmodel);
 
+#endif /* !(__has_builtin(__atomic_fetch_sub) || __GNUC_PREREQ(4,7)) */
+
+#if !(__has_builtin(__atomic_fetch_or) || __GNUC_PREREQ(4,7))
+
 __attribute_regparm__((3))
 extern inline
 void *
@@ -231,6 +241,10 @@ __attribute_regparm__((3))
 uint32_t
 plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval,
                             const enum memory_order memmodel);
+
+#endif /* !(__has_builtin(__atomic_fetch_or) || __GNUC_PREREQ(4,7)) */
+
+#if !(__has_builtin(__atomic_fetch_and) || __GNUC_PREREQ(4,7))
 
 __attribute_regparm__((3))
 extern inline
@@ -264,6 +278,10 @@ uint32_t
 plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval,
                              const enum memory_order memmodel);
 
+#endif /* !(__has_builtin(__atomic_fetch_and) || __GNUC_PREREQ(4,7)) */
+
+#if !(__has_builtin(__atomic_fetch_xor) || __GNUC_PREREQ(4,7))
+
 __attribute_regparm__((3))
 extern inline
 void *
@@ -295,6 +313,8 @@ __attribute_regparm__((3))
 uint32_t
 plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval,
                              const enum memory_order memmodel);
+
+#endif /* !(__has_builtin(__atomic_fetch_xor) || __GNUC_PREREQ(4,7)) */
 
 #if !(__has_builtin(__atomic_compare_exchange_n) || __GNUC_PREREQ(4,7))
 
@@ -352,37 +372,41 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
                                      const enum memory_order success_memmodel,
                                      const enum memory_order failure_memmodel);
 
-__attribute_regparm__((3))
-extern inline
-void *
-plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
-                              const enum memory_order memmodel);
-__attribute_regparm__((3))
-void *
-plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
-                              const enum memory_order memmodel);
-
-__attribute_regparm__((3))
-extern inline
-uint64_t
-plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
-                             const enum memory_order memmodel);
-__attribute_regparm__((3))
-uint64_t
-plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
-                             const enum memory_order memmodel);
-
-__attribute_regparm__((3))
-extern inline
-uint32_t
-plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
-                             const enum memory_order memmodel);
-__attribute_regparm__((3))
-uint32_t
-plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
-                             const enum memory_order memmodel);
-
 #endif /* !(__has_builtin(__atomic_compare_exchange_n) || __GNUC_PREREQ(4,7)) */
+
+#if !(__has_builtin(__atomic_exchange_n) || __GNUC_PREREQ(4,7))
+
+__attribute_regparm__((3))
+extern inline
+void *
+plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
+                              const enum memory_order memmodel);
+__attribute_regparm__((3))
+void *
+plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
+                              const enum memory_order memmodel);
+
+__attribute_regparm__((3))
+extern inline
+uint64_t
+plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+uint64_t
+plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
+                             const enum memory_order memmodel);
+
+__attribute_regparm__((3))
+extern inline
+uint32_t
+plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
+                             const enum memory_order memmodel);
+__attribute_regparm__((3))
+uint32_t
+plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
+                             const enum memory_order memmodel);
+
+#endif /* !(__has_builtin(__atomic_exchange_n) || __GNUC_PREREQ(4,7)) */
 
 __attribute_regparm__((1))
 extern inline
