@@ -679,12 +679,15 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 #elif defined(__sun) && defined(__SVR4)
 
-  #define plasma_atomic_fetch_add_ptr_nb_impl(ptr,addval) \
-          atomic_add_ptr((ptr),(ssize_t)(addval))
+  #define plasma_atomic_fetch_add_ptr_nb_impl(ptr,addval)  ((void *) \
+          ((char *)atomic_add_ptr_nv((ptr),(ssize_t)(addval)) \
+            - ((ssize_t)(addval))))
   #define plasma_atomic_fetch_add_u64_nb_impl(ptr,addval) \
-          atomic_add_64((uint64_t *)(ptr),(int64_t)(addval))
+          (atomic_add_64_nv((uint64_t *)(ptr),(int64_t)(addval)) \
+            - ((int64_t)(addval)))
   #define plasma_atomic_fetch_add_u32_nb_impl(ptr,addval) \
-          atomic_add_32((uint32_t *)(ptr),(int32_t)(addval))
+          (atomic_add_32_nv((uint32_t *)(ptr),(int32_t)(addval)) \
+            - ((int32_t)(addval)))
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
@@ -786,10 +789,7 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 #elif defined(__sun) && defined(__SVR4)
 
-  #define plasma_atomic_fetch_or_u64_nb_impl(ptr,orval) \
-          atomic_or_64((uint64_t *)(ptr),(uint64_t)(orval))
-  #define plasma_atomic_fetch_or_u32_nb_impl(ptr,orval) \
-          atomic_or_32((uint32_t *)(ptr),(uint32_t)(orval))
+  /* (fall back to inline funcs using generic CAS or LL/SC macros) */
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
@@ -848,10 +848,7 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 
 #elif defined(__sun) && defined(__SVR4)
 
-  #define plasma_atomic_fetch_and_u64_nb_impl(ptr,andval) \
-          atomic_and_64((uint64_t *)(ptr),(uint64_t)(andval))
-  #define plasma_atomic_fetch_and_u32_nb_impl(ptr,andval) \
-          atomic_and_32((uint32_t *)(ptr),(uint32_t)(andval))
+  /* (fall back to inline funcs using generic CAS or LL/SC macros) */
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
