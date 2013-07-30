@@ -57,7 +57,7 @@ ifeq ($(OSNAME),Darwin)
 ABI_FLAGS?=-m32
 endif
 ifeq ($(OSNAME),AIX)
-AR+=-X64
+AR+=-X32
 ABI_FLAGS?=-maix32
 endif
 ifeq ($(OSNAME),HP-UX)
