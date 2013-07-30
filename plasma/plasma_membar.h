@@ -774,7 +774,7 @@ typedef enum memory_order {
 #define atomic_thread_fence(order)  __c11_atomic_thread_fence(order)
 
 /* XXX: disable use of __atomic_thread_fence(), __atomic_signal_fence() on gcc.
- * gcc 4.7.2 appears to be missing compiler optiimization fence when used as
+ * gcc 4.7.2 appears to be missing compiler optimization fence when used as
  * atomic_thread_fence(memory_order_release) on x86_64 (both 32 and 64-bit)
  * when -O2 or -O3 is in effect. (tested on 1st gen Intel i5 M460 running
  * Fedora 18) (clang 3.3 does not exhibit same problem)  In plasma_atomic.h,

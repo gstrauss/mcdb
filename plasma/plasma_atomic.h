@@ -89,11 +89,16 @@ PLASMA_ATTR_Pragma_once
  *     plasma_atomic_xxx_T(), where T is type, implies memory_order_relaxed
  *     (i.e. no barrier), and plasma_atomic_xxx_T_mmm species memory_order.
  *
- * FUTURE: Detect and employ C11 atomics where available
  * FUTURE: Current plasma_atomic implementation is done w/ compiler intrinsics.
  *         Intrinsics might provide stronger (slower) memory barriers than
  *         required.  Might provide assembly code implementations with more
  *         precise barriers and to support additional compilers on each platform
+ *
+ * known current limitations:
+ * - not implemented: 64-bit ops on 32-bit CPU w/o help from compiler intrinsics
+ * - suboptimal: HP-UX on Itanium plasma implementation (should avoid volatile)
+ * - assumption: native 64-bit load or store is atomic even in 32-bit compile
+ *     (given natural alignment of load target and store target)
  */
 
 #if defined(_MSC_VER)
