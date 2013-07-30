@@ -98,7 +98,15 @@ static struct mcdb_mmap *_nss_mcdb_mmap[_nss_num_dbs];
 /* set*ent(), get*ent(), end*ent() are not thread-safe */
 /* (use thread-local storage of static struct mcdb array to increase safety) */
 
+#if !(defined(__APPLE__) && defined(__MACH__) \
+      && defined(__GNUC__) && !defined(__clang))
 static __thread struct mcdb _nss_mcdb_st[_nss_num_dbs];
+#else
+/* gcc 4.2.1 on Mac OSX does not support __thread thread-local storage;
+ * disable in order that the rest of mcdb may compile
+ * (currently harmless; nss_mcdb.c is not currently used on Mac OSX) */
+static struct mcdb _nss_mcdb_st[_nss_num_dbs];
+#endif
 
 #ifdef _FORTIFY_SOURCE
 static void _nss_mcdb_atexit(void)
