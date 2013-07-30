@@ -360,7 +360,8 @@ PLASMA_ATTR_Pragma_once
           __sync_bool_compare_and_swap((ptr), (cmpval), (newval))
   #define plasma_atomic_CAS_ptr_val_impl(ptr, cmpval, newval) \
           __sync_val_compare_and_swap((ptr), (cmpval), (newval))
-  #if !defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8) && !defined(INTEL_COMPILER)
+  #if !defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8) && !defined(INTEL_COMPILER) \
+   && !(defined(__APPLE__) && defined(__MACH__))
   #ifndef plasma_atomic_CAS_64_impl
   #define plasma_atomic_not_implemented_64
   #endif
@@ -1178,13 +1179,15 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 #if !defined(plasma_atomic_fetch_add_u64_nb_impl) \
  && !defined(plasma_atomic_fetch_add_u64_nb_implloop)
 #define plasma_atomic_fetch_add_u64_nb_implloop(ptr, addval, cast) \
-        plasma_atomic_fetch_op_u64_nb_implloop((ptr), +, (addval), cast)
+        plasma_atomic_fetch_op_u64_nb_implloop((uint64_t *)(ptr), +, (addval), \
+                                               cast)
 #endif
 
 #if !defined(plasma_atomic_fetch_add_u32_nb_impl) \
  && !defined(plasma_atomic_fetch_add_u32_nb_implloop)
 #define plasma_atomic_fetch_add_u32_nb_implloop(ptr, addval, cast) \
-        plasma_atomic_fetch_op_u32_nb_implloop((ptr), +, (addval), cast)
+        plasma_atomic_fetch_op_u32_nb_implloop((uint32_t *)(ptr), +, (addval), \
+                                               cast)
 #endif
 
 __attribute_regparm__((3))
@@ -1398,13 +1401,15 @@ plasma_atomic_fetch_sub_u32 (uint32_t * const ptr, uint32_t subval,
 #if !defined(plasma_atomic_fetch_or_u64_nb_impl) \
  && !defined(plasma_atomic_fetch_or_u64_nb_implloop)
 #define plasma_atomic_fetch_or_u64_nb_implloop(ptr, orval, cast) \
-        plasma_atomic_fetch_op_u64_nb_implloop((ptr), |, (orval), cast)
+        plasma_atomic_fetch_op_u64_nb_implloop((uint64_t *)(ptr), |, (orval), \
+                                               cast)
 #endif
 
 #if !defined(plasma_atomic_fetch_or_u32_nb_impl) \
  && !defined(plasma_atomic_fetch_or_u32_nb_implloop)
 #define plasma_atomic_fetch_or_u32_nb_implloop(ptr, orval, cast) \
-        plasma_atomic_fetch_op_u32_nb_implloop((ptr), |, (orval), cast)
+        plasma_atomic_fetch_op_u32_nb_implloop((uint32_t *)(ptr), |, (orval), \
+                                               cast)
 #endif
 
 __attribute_regparm__((3))
@@ -1522,13 +1527,15 @@ plasma_atomic_fetch_or_u32 (uint32_t * const ptr, uint32_t orval,
 #if !defined(plasma_atomic_fetch_and_u64_nb_impl) \
  && !defined(plasma_atomic_fetch_and_u64_nb_implloop)
 #define plasma_atomic_fetch_and_u64_nb_implloop(ptr, andval, cast) \
-        plasma_atomic_fetch_op_u64_nb_implloop((ptr), &, (andval), cast)
+        plasma_atomic_fetch_op_u64_nb_implloop((uint64_t *)(ptr), &, (andval), \
+                                               cast)
 #endif
 
 #if !defined(plasma_atomic_fetch_and_u32_nb_impl) \
  && !defined(plasma_atomic_fetch_and_u32_nb_implloop)
 #define plasma_atomic_fetch_and_u32_nb_implloop(ptr, andval, cast) \
-        plasma_atomic_fetch_op_u32_nb_implloop((ptr), &, (andval), cast)
+        plasma_atomic_fetch_op_u32_nb_implloop((uint32_t *)(ptr), &, (andval), \
+                                               cast)
 #endif
 
 __attribute_regparm__((3))
@@ -1646,13 +1653,15 @@ plasma_atomic_fetch_and_u32 (uint32_t * const ptr, uint32_t andval,
 #if !defined(plasma_atomic_fetch_xor_u64_nb_impl) \
  && !defined(plasma_atomic_fetch_xor_u64_nb_implloop)
 #define plasma_atomic_fetch_xor_u64_nb_implloop(ptr, xorval, cast) \
-        plasma_atomic_fetch_op_u64_nb_implloop((ptr), ^, (xorval), cast)
+        plasma_atomic_fetch_op_u64_nb_implloop((uint64_t *)(ptr), ^, (xorval), \
+                                               cast)
 #endif
 
 #if !defined(plasma_atomic_fetch_xor_u32_nb_impl) \
  && !defined(plasma_atomic_fetch_xor_u32_nb_implloop)
 #define plasma_atomic_fetch_xor_u32_nb_implloop(ptr, xorval, cast) \
-        plasma_atomic_fetch_op_u32_nb_implloop((ptr), ^, (xorval), cast)
+        plasma_atomic_fetch_op_u32_nb_implloop((uint32_t *)(ptr), ^, (xorval), \
+                                               cast)
 #endif
 
 __attribute_regparm__((3))
@@ -2349,7 +2358,7 @@ plasma_atomic_exchange_n_ptr (void ** const ptr, void * const newval,
     return plasma_atomic_xchg_ptr_acquire_impl(ptr, newval);
   #else
    #if defined(plasma_atomic_xchg_32_impl)
-    void * const prev = plasma_atomic_xchg_ptr_impl(ptr, newval);
+    void * const prev = (void *)plasma_atomic_xchg_ptr_impl(ptr, newval);
    #else
     void *prev;
     do { prev = *ptr;
