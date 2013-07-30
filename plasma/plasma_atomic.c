@@ -427,6 +427,19 @@ plasma_atomic_lock_acquire (uint32_t * const ptr);
 #endif /* !defined(__GNUC__) || defined(__GNUC_STDC_INLINE__) */
 
 
+#if !(__has_builtin(__atomic_fetch_add) || __GNUC_PREREQ(4,7))
+#include <stdio.h>
+int
+plasma_atomic_fetch_op_notimpl (const char * restrict func, const size_t varsz)
+{
+    fprintf(stderr,
+            "%s: plasma_atomic_fetch_<op> not implemented for size %zu bytes\n",
+            func ? func : "", varsz);
+    return -1;
+}
+#endif
+
+
 /* mutex-based fallback implementation, enabled by preprocessor define */
 #if defined(PLASMA_ATOMIC_MUTEX_FALLBACK)
 

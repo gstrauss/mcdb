@@ -663,6 +663,12 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
                                  (uint32_t)(cmpval),(uint32_t)(newval))
 
 
+/*
+ * plasma_atomic_fetch_{add,sub,or,and,xor} - atomic <op>, memory_order_seq_cst
+ * plasma_atomic_fetch_*_explicit - atomic <op> specifying memory order
+ *
+ * (limited support: at least 64-bit and 32-bit sizes, and maybe others)
+ */
 
 #if __has_builtin(__atomic_fetch_add) || __GNUC_PREREQ(4,7)
 
@@ -700,6 +706,31 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
         __atomic_fetch_xor((ptr), (val), (memmodel))
 #define plasma_atomic_fetch_xor_u32(ptr, val, memmodel) \
         __atomic_fetch_xor((ptr), (val), (memmodel))
+
+#define plasma_atomic_fetch_add_explicit(ptr, value, memmodel) \
+        __atomic_fetch_add((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_add(ptr, value) \
+        plasma_atomic_fetch_add_explicit((ptr), (value), memory_order_seq_cst)
+
+#define plasma_atomic_fetch_sub_explicit(ptr, value, memmodel) \
+        __atomic_fetch_sub((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_sub(ptr, value) \
+        plasma_atomic_fetch_sub_explicit((ptr), (value), memory_order_seq_cst)
+
+#define plasma_atomic_fetch_or_explicit(ptr, value, memmodel) \
+        __atomic_fetch_or((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_or(ptr, value) \
+        plasma_atomic_fetch_or_explicit((ptr), (value), memory_order_seq_cst)
+
+#define plasma_atomic_fetch_and_explicit(ptr, value, memmodel) \
+        __atomic_fetch_and((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_and(ptr, value) \
+        plasma_atomic_fetch_and_explicit((ptr), (value), memory_order_seq_cst)
+
+#define plasma_atomic_fetch_xor_explicit(ptr, value, memmodel) \
+        __atomic_fetch_xor((ptr), (val), (memmodel))
+#define plasma_atomic_fetch_xor(ptr, value) \
+        plasma_atomic_fetch_xor_explicit((ptr), (value), memory_order_seq_cst)
 
 
 #else  /* plasma_atomic_fetch_*() */
@@ -1646,7 +1677,74 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval,
 #endif
 
 
+__attribute_cold__
+int
+plasma_atomic_fetch_op_notimpl (const char *, const size_t);
+PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
+
+#define plasma_atomic_fetch_add_explicit(ptr, value, memmodel)           \
+        (sizeof(*(ptr)) == 4                                             \
+         ? (__typeof__(*(ptr)))                                          \
+             plasma_atomic_fetch_add_u32((ptr),(value),(memmodel))       \
+         : sizeof(*(ptr)) > 4                                            \
+             ? (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_add_u64((ptr),(value),(memmodel))   \
+             : (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_op_notimpl(__func__, sizeof(*(ptr))))
+#define plasma_atomic_fetch_add(ptr, value) \
+        plasma_atomic_fetch_add_explicit((ptr),(value),memory_order_seq_cst)
+
+#define plasma_atomic_fetch_sub_explicit(ptr, value, memmodel)           \
+        (sizeof(*(ptr)) == 4                                             \
+         ? (__typeof__(*(ptr)))                                          \
+             plasma_atomic_fetch_sub_u32((ptr),(value),(memmodel))       \
+         : sizeof(*(ptr)) > 4                                            \
+             ? (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_sub_u64((ptr),(value),(memmodel))   \
+             : (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_op_notimpl(__func__, sizeof(*(ptr))))
+#define plasma_atomic_fetch_sub(ptr, value) \
+        plasma_atomic_fetch_sub_explicit((ptr),(value),memory_order_seq_cst)
+
+#define plasma_atomic_fetch_or_explicit(ptr, value, memmodel)            \
+        (sizeof(*(ptr)) == 4                                             \
+         ? (__typeof__(*(ptr)))                                          \
+             plasma_atomic_fetch_or_u32((ptr),(value),(memmodel))        \
+         : sizeof(*(ptr)) > 4                                            \
+             ? (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_or_u64((ptr),(value),(memmodel))    \
+             : (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_op_notimpl(__func__, sizeof(*(ptr))))
+#define plasma_atomic_fetch_or(ptr, value) \
+        plasma_atomic_fetch_or_explicit((ptr),(value),memory_order_seq_cst)
+
+#define plasma_atomic_fetch_and_explicit(ptr, value, memmodel)           \
+        (sizeof(*(ptr)) == 4                                             \
+         ? (__typeof__(*(ptr)))                                          \
+             plasma_atomic_fetch_and_u32((ptr),(value),(memmodel))       \
+         : sizeof(*(ptr)) > 4                                            \
+             ? (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_and_u64((ptr),(value),(memmodel))   \
+             : (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_op_notimpl(__func__, sizeof(*(ptr))))
+#define plasma_atomic_fetch_and(ptr, value) \
+        plasma_atomic_fetch_and_explicit((ptr),(value),memory_order_seq_cst)
+
+#define plasma_atomic_fetch_xor_explicit(ptr, value, memmodel)           \
+        (sizeof(*(ptr)) == 4                                             \
+         ? (__typeof__(*(ptr)))                                          \
+             plasma_atomic_fetch_xor_u32((ptr),(value),(memmodel))       \
+         : sizeof(*(ptr)) > 4                                            \
+             ? (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_xor_u64((ptr),(value),(memmodel))   \
+             : (__typeof__(*(ptr)))                                      \
+                 plasma_atomic_fetch_op_notimpl(__func__, sizeof(*(ptr))))
+#define plasma_atomic_fetch_xor(ptr, value) \
+        plasma_atomic_fetch_xor_explicit((ptr),(value),memory_order_seq_cst)
+
+
 #endif  /* plasma_atomic_fetch_*() */
+
 
 
 /*
@@ -1715,9 +1813,9 @@ plasma_atomic_fetch_xor_u32 (uint32_t * const ptr, uint32_t xorval,
  */
 #define plasma_atomic_load_explicit_szof(ptr, memmodel)                   \
         (sizeof(*(ptr)) > 4                                               \
-         ? __typeof__(*(ptr))                                             \
+         ? (__typeof__(*(ptr)))                                           \
              plasma_atomic_load_64_impl((ptr),(memmodel),sizeof(*(ptr)))  \
-         : __typeof__(*(ptr))                                             \
+         : (__typeof__(*(ptr)))                                           \
              plasma_atomic_load_32_impl((ptr),(memmodel),sizeof(*(ptr))))
 
 #define plasma_atomic_load_explicit(ptr, memmodel) \
