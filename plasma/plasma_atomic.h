@@ -198,26 +198,90 @@ PLASMA_ATTR_Pragma_once
     #ifdef __cplusplus
     #include <builtins.h>
     #endif
-    #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval) \
-            __compare_and_swaplp((long *)(ptr),(long *)(&cmpval),(long)(newval))
-            /* !__check_lockd_mp((long *)(ptr),(long)(cmpval),(long)(newval)) */
     #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
             __compare_and_swap((int *)(ptr),(int *)(&cmpval),(int)(newval))
             /* !__check_lock_mp((int *)(ptr),(int)(cmpval),(int)(newval)) */
-    #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval) \
-            (__compare_and_swaplp((long *)(ptr), \
-                                  (long *)(&cmpval),(long)(newval)), (cmpval))
     #define plasma_atomic_CAS_32_val_impl(ptr, cmpval, newval) \
             (__compare_and_swap((int *)(ptr), \
                                 (int *)(&cmpval),(int)(newval)), (cmpval))
-    #define plasma_atomic_xchg_64_impl(ptr, newval) \
-            __fetch_and_swaplp((long *)(ptr),(long)(newval))
     #define plasma_atomic_xchg_32_impl(ptr, newval) \
             __fetch_and_swap((int *)(ptr),(int)(newval))
-    #if !defined(_LP64) && !defined(__LP64__)
-      /* AIX 64-bit intrinsics not available for 32-bit compilation
-       * (not implemented, but could fall back to mutex implementation,
-       *  or implement with 64-bit asm ops assuming a 64-bit processor.)*/
+    #if defined(_LP64) || defined(__LP64__)
+      #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval)         \
+              __compare_and_swaplp((long *)(ptr),                    \
+                                   (long *)(&cmpval),(long)(newval))
+              /*!__check_lockd_mp((long *)(ptr),(long)(cmpval),(long)(newval))*/
+      #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval) \
+              (__compare_and_swaplp((long *)(ptr), \
+                                    (long *)(&cmpval),(long)(newval)), (cmpval))
+      #define plasma_atomic_xchg_64_impl(ptr, newval) \
+              __fetch_and_swaplp((long *)(ptr),(long)(newval))
+    #elif defined(_ARCH_PPC64)
+      /* AIX 64-bit intrinsics not available for 32-bit compile.
+       * xlC sets _ARCH_PPC64 when compiler arch target is 64-bit architecture,
+       * even if compilation is 32-bit (xlc -q32)
+       * (could avoid a couple extra instructions including a branch if each use
+       *  of plasma_atomic_stdcx() in a loop were implemented completely in
+       *  assembly so loop could branch off condition code from stdcx. instead
+       *  of moving result from CR0 to a register (previously initialized 0),
+       *  followed by a cmp and branch) */
+      #define plasma_atomic_ldarx(ptr)                        \
+              __extension__ ({                                \
+                uint64_t plasma_atomic_tmp;                   \
+                __asm__ __volatile__ ("ldarx %0, 0, %1"       \
+                                     :"=r"(plasma_atomic_tmp) \
+                                     :"r"(ptr), "m"(*(ptr))   \
+                                     :"");                    \
+                plasma_atomic_tmp;                            \
+              })
+      #define plasma_atomic_stdcx(ptr, newval)                                 \
+              __extension__ ({                                                 \
+                int plasma_atomic_tmp = 0;                                     \
+                __asm__ __volatile__ ("\t stdcx. %2, 0, %3\n\t mfocrf %0, 0x80"\
+                                     :"=r"(plasma_atomic_tmp), "=m"(*(ptr))    \
+                                     :"r"(newval), "r"(ptr)                    \
+                                     :"cr0");                                  \
+                plasma_atomic_tmp;                                             \
+              })
+      #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval)                 \
+              __extension__ ({                                               \
+                bool plasma_atomic_tmp_rv;                                   \
+                do {                                                         \
+                    plasma_atomic_tmp_rv =                                   \
+                      ((cmpval) == plasma_atomic_ldarx((uint64_t *)(ptr)));  \
+                } while (__builtin_expect( plasma_atomic_tmp_rv, 1)          \
+                         && __builtin_expect(                                \
+                              !plasma_atomic_stdcx((uint64_t *)(ptr),        \
+                                                   (uint64_t)(newval)), 0)); \
+                plasma_atomic_tmp_rv;                                        \
+              })
+      #define plasma_atomic_CAS_64_val_impl(ptr, cmpval, newval)             \
+              __extension__ ({                                               \
+                uint64_t plasma_atomic_tmp_cas;                              \
+                do {                                                         \
+                    plasma_atomic_tmp_cas =                                  \
+                      plasma_atomic_ldarx((uint64_t *)(ptr));                \
+                } while (__builtin_expect(                                   \
+                           ((cmpval) == plasma_atomic_tmp_cas), 1)           \
+                         && __builtin_expect(                                \
+                              !plasma_atomic_stdcx((uint64_t *)(ptr),        \
+                                                   (uint64_t)(newval)), 0)); \
+                plasma_atomic_tmp_cas;                                       \
+              })
+      #define plasma_atomic_xchg_64_impl(ptr, newval)                     \
+              __extension__ ({                                            \
+                uint64_t plasma_atomic_tmp_xchg;                          \
+                do {                                                      \
+                    plasma_atomic_tmp_xchg =                              \
+                      plasma_atomic_ldarx((uint64_t *)(ptr));             \
+                } while (__builtin_expect(                                \
+                           !plasma_atomic_stdcx((uint64_t *)(ptr),        \
+                                                (uint64_t)(newval)), 0)); \
+                plasma_atomic_tmp_xchg;                                   \
+              })
+    #else
+      /* (32-bit compile targetting 32-bit CPU)
+       * (not implemented, but could fall back to mutex implementation) */
       #define plasma_atomic_not_implemented_64
     #endif
   #elif !defined(__GNUC__)/*avoid extra includes; gcc intrinsics further below*/
@@ -1044,13 +1108,18 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
    * (xlC v12 supports GNUC-style __sync_fetch_and_or(), not earlier vers) */
 
   /* __ldarx() is only valid in 64-bit mode according to IBM docs, so the cast
-   * to (long *) is valid.  If this macro is used in code compiled 32-bit, then
-   * the cast will truncate the values.  Eliminate cast if valid in 32-bits. */
+   * to (long *) is valid. */
   #if defined(_LP64) || defined(__LP64__)
   #define plasma_atomic_fetch_op_u64_nb_implloop(ptr, op, val, x)         \
           do { (x) = (uint64_t)__ldarx((long *)(ptr));                    \
           } while (__builtin_expect(                                      \
-                     !(__stdcx((long *)(ptr), (long)((x) op (val)))), 0)) \
+                     !__stdcx((long *)(ptr), (long)((x) op (val))), 0))
+  #elif defined(_ARCH_PPC64)
+  #define plasma_atomic_fetch_op_u64_nb_implloop(ptr, op, val, x)         \
+          do { (x) = (uint64_t)plasma_atomic_ldarx((uint64_t *)(ptr));    \
+          } while (__builtin_expect(                                      \
+                     !plasma_atomic_stdcx((uint64_t *)(ptr),              \
+                                          (uint64_t)((x) op (val))), 0))
   #else
   #define plasma_atomic_fetch_op_u64_nb_implloop(ptr, op, val, x)         \
           plasma_atomic_fetch_op_u64_NOT_IMPLEMENTED()
@@ -1059,7 +1128,7 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
   #define plasma_atomic_fetch_op_u32_nb_implloop(ptr, op, val, x)         \
           do { (x) = (uint32_t)__lwarx((int *)(ptr));                     \
           } while (__builtin_expect(                                      \
-                     !(__stwcx((int *)(ptr), (int)((x) op (val)))), 0))   \
+                     !__stwcx((int *)(ptr), (int)((x) op (val))), 0))
 
 #else
 
@@ -1067,12 +1136,12 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
   #define plasma_atomic_fetch_op_u64_nb_implloop(ptr, op, val, x)         \
           do { (x) = plasma_atomic_ld_nopt_T(uint64_t *,(ptr));           \
           } while (__builtin_expect(                                      \
-                     !plasma_atomic_CAS_64((ptr), (x), (x) op (val)), 0)) \
+                     !plasma_atomic_CAS_64((ptr), (x), (x) op (val)), 0))
 
   #define plasma_atomic_fetch_op_u32_nb_implloop(ptr, op, val, x)         \
           do { (x) = plasma_atomic_ld_nopt_T(uint32_t *,(ptr));           \
           } while (__builtin_expect(                                      \
-                     !plasma_atomic_CAS_32((ptr), (x), (x) op (val)), 0)) \
+                     !plasma_atomic_CAS_32((ptr), (x), (x) op (val)), 0))
 
 #endif
 
@@ -2310,10 +2379,10 @@ plasma_atomic_exchange_n_64 (uint64_t * const ptr, const uint64_t newval,
 {
     if (memmodel != memory_order_acquire)
         atomic_thread_fence(memmodel);
-  #if defined(plasma_atomic_xchg_32_acquire_impl)
+  #if defined(plasma_atomic_xchg_64_acquire_impl)
     return plasma_atomic_xchg_64_acquire_impl(ptr, newval);
   #else
-   #if defined(plasma_atomic_xchg_32_impl)
+   #if defined(plasma_atomic_xchg_64_impl)
     const uint64_t prev = plasma_atomic_xchg_64_impl(ptr, newval);
    #else
     uint64_t prev;
