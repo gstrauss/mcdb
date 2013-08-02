@@ -24,8 +24,8 @@
 #endif
 
 #include "nss_mcdb.h"
-#include "plasma/plasma_membar.h"
-#include "plasma/plasma_stdtypes.h"
+#include "../plasma/plasma_membar.h"
+#include "../plasma/plasma_stdtypes.h"
 
 #include <sys/stat.h>
 #include <fcntl.h>

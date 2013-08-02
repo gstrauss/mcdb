@@ -27,7 +27,7 @@
 #include "nss_mcdb_acct_make.h"
 #include "nss_mcdb_acct.h"
 #include "nss_mcdb.h"
-#include "uint32.h"
+#include "../uint32.h"
 
 #include <errno.h>
 #include <limits.h>

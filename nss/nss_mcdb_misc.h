@@ -27,9 +27,9 @@
 #define _BSD_SOURCE
 #endif
 
-#include "plasma/plasma_feature.h"
-#include "plasma/plasma_attr.h"
-#include "plasma/plasma_stdtypes.h"
+#include "../plasma/plasma_feature.h"
+#include "../plasma/plasma_attr.h"
+#include "../plasma/plasma_stdtypes.h"
 #include "nss_mcdb.h"
 PLASMA_ATTR_Pragma_once
 

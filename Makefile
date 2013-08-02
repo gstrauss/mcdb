@@ -6,9 +6,10 @@ else
 OSNAME:=$(shell /usr/bin/uname -s)
 endif
 
-.PHONY: all
-all: mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero \
-     libmcdb.so libmcdb.a libnss_mcdb.a libnss_mcdb_make.a libnss_mcdb.so.2
+.PHONY: all all_nss
+all: libmcdb.a libmcdb.so mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
+all_nss: nss/libnss_mcdb.a nss/libnss_mcdb_make.a nss/libnss_mcdb.so.2 \
+         nss/nss_mcdbctl
 
 PREFIX?=/usr/local
 ifneq (,$(PREFIX))
@@ -90,7 +91,7 @@ else
   endif
 endif
  
-# To disable uint32 and nointr C99 inline functions:
+# To disable uint32 C99 inline functions:
 #   -DNO_C99INLINE
 # Another option to smaller binary is -Os instead of -O3, and remove -Winline
 
@@ -104,8 +105,11 @@ ifeq ($(OSNAME),Linux)
   # earlier versions of GNU ld might not support -Wl,--hash-style,gnu
   # (safe to remove -Wl,--hash-style,gnu for RedHat Enterprise 4)
   LDFLAGS+=-Wl,-O,1 -Wl,--hash-style,gnu -Wl,-z,relro,-z,now
-  mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero: \
+  mcdbctl lib32/mcdbctl t/testmcdbmake t/testmcdbrand t/testzero: \
     LDFLAGS+=-Wl,-z,noexecstack
+  nss/nss_mcdbctl lib32/nss/nss_mcdbctl: \
+    LDFLAGS+=-Wl,-z,noexecstack
+  all: all_nss
 endif
 ifeq ($(OSNAME),Darwin)
   # clang 3.1 compiler supports __thread and TLS; gcc 4.2.1 does not
@@ -125,9 +129,10 @@ ifeq ($(OSNAME),AIX)
     RPATH= -Wl,-b,libpath:$(PREFIX)/lib$(LIB_BITS)
   endif
   # -lpthreads (AIX) for pthread_mutex_{lock,unlock}() in mcdb.o and nss_mcdb.o
-  libmcdb.so lib32/libmcdb.so libnss_mcdb.so.2 lib32/libnss_mcdb.so.2 \
-  mcdbctl nss_mcdbctl t/testmcdbrand: \
+  libmcdb.so lib32/libmcdb.so nss/libnss_mcdb.so.2 lib32/nss/libnss_mcdb.so.2 \
+  mcdbctl lib32/mcdbctl nss/nss_mcdbctl lib32/nss/mcdbctl t/testmcdbrand: \
     LDFLAGS+=-lpthreads
+  all: all_nss
 endif
 ifeq ($(OSNAME),HP-UX)
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
@@ -140,15 +145,19 @@ ifeq ($(OSNAME),SunOS)
   endif
   CFLAGS+=-D_POSIX_PTHREAD_SEMANTICS
   # -lsocket -lnsl for inet_pton() in nss_mcdb_netdb.o and nss_mcdb_netdb_make.o
-  libnss_mcdb.so.2 lib32/libnss_mcdb.so.2 nss_mcdbctl: \
-    LDFLAGS+=-lsocket -lnsl
+  nss/libnss_mcdb.so.2 lib32/nss/libnss_mcdb.so.2: LDFLAGS+=-lsocket -lnsl
+  nss/nss_mcdbctl lib32/nss/nss_mcdbctl:           LDFLAGS+=-lsocket -lnsl
   # -lrt for fdatasync() in mcdb_make.o, for sched_yield() in mcdb.o
-  libmcdb.so lib32/libmcdb.so mcdbctl nss_mcdbctl t/testmcdbrand: \
+  libmcdb.so lib32/libmcdb.so mcdbctl lib32/mcdbctl t/testmcdbrand: \
     LDFLAGS+=-lrt
+  nss/nss_mcdbctl lib32/nss/nss_mcdbctl: \
+    LDFLAGS+=-lrt
+  all: all_nss
 endif
 
 # heavy handed dependencies
-_DEPENDENCIES_ON_ALL_HEADERS_Makefile:= $(wildcard *.h) $(wildcard plasma/*.h) Makefile
+_DEPENDENCIES_ON_ALL_HEADERS_Makefile:= \
+  $(wildcard *.h) $(wildcard plasma/*.h) $(wildcard nss/*.h) Makefile
 
 # C99 and POSIX.1-2001 (SUSv3 _XOPEN_SOURCE=600)
 # C99 and POSIX.1-2008 (SUSv4 _XOPEN_SOURCE=700)
@@ -185,7 +194,7 @@ CFLAGS+=$(PTHREAD_FLAGS)
 #     #(64-bit)
 #     ABI_FLAGS=-q64
 #     #(additionally, xlc needs -qtls to recognized __thread keyword)
-#     nss_mcdb.o: CFLAGS+=-qtls=local-dynamic
+#     nss/nss_mcdb.o: CFLAGS+=-qtls=local-dynamic
 #   HP aCC
 #     CC=cc
 #     STDC99=-AC99
@@ -202,23 +211,25 @@ CFLAGS+=$(PTHREAD_FLAGS)
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
-nss_mcdb.o:       CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
-lib32/nss_mcdb.o: CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
+nss/nss_mcdb.o:       CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
+lib32/nss/nss_mcdb.o: CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
+
+NSS_PIC_OBJS:= nss/nss_mcdb.o nss/nss_mcdb_acct.o nss/nss_mcdb_authn.o \
+               nss/nss_mcdb_netdb.o
 
 PLASMA_OBJS:= plasma/plasma_atomic.o plasma/plasma_attr.o \
               plasma/plasma_endian.o plasma/plasma_spin.o
 
 PIC_OBJS:= mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
-           nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o \
-           $(PLASMA_OBJS)
+           $(PLASMA_OBJS) $(NSS_PIC_OBJS)
 $(PIC_OBJS): CFLAGS+=$(FPIC)
 
-# (nointr.o, uint32.o need not be included when fully inlined; adds 10K to .so)
+# (uint32.o need not be included when fully inlined; adds 12K to .so)
 ifeq ($(OSNAME),Linux)
-libnss_mcdb.so.2: LDFLAGS+=-Wl,-soname,$(@F) -Wl,--version-script,nss_mcdb.map
+nss/libnss_mcdb.so.2: \
+  LDFLAGS+=-Wl,-soname,$(@F) -Wl,--version-script,nss/nss_mcdb.map
 endif
-libnss_mcdb.so.2: mcdb.o nointr.o uint32.o $(PLASMA_OBJS) \
-                  nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
+nss/libnss_mcdb.so.2: mcdb.o nointr.o uint32.o $(PLASMA_OBJS) $(NSS_PIC_OBJS)
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
@@ -232,11 +243,11 @@ libmcdb.a: mcdb.o mcdb_error.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o \
            nointr.o uint32.o $(PLASMA_OBJS)
 	$(AR) -r $@ $^
 
-libnss_mcdb.a: nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o
+nss/libnss_mcdb.a: $(NSS_PIC_OBJS)
 	$(AR) -r $@ $^
 
-libnss_mcdb_make.a: nss_mcdb_make.o nss_mcdb_acct_make.o nss_mcdb_authn_make.o \
-                    nss_mcdb_netdb_make.o
+nss/libnss_mcdb_make.a: nss/nss_mcdb_make.o nss/nss_mcdb_acct_make.o \
+                        nss/nss_mcdb_authn_make.o nss/nss_mcdb_netdb_make.o
 	$(AR) -r $@ $^
 
 mcdbctl: mcdbctl.o libmcdb.a
@@ -253,7 +264,7 @@ t/testmcdbrand: t/testmcdbrand.o libmcdb.a
 t/testzero: t/testzero.o libmcdb.a
 	$(CC) -o $@ $(LDFLAGS) $^
 
-nss_mcdbctl: nss_mcdbctl.o libnss_mcdb_make.a libmcdb.a
+nss/nss_mcdbctl: nss/nss_mcdbctl.o nss/libnss_mcdb_make.a libmcdb.a
 	$(CC) -o $@ $(LDFLAGS) $^
 
 $(PREFIX)/lib $(PREFIX)/bin $(PREFIX)/sbin:
@@ -276,7 +287,7 @@ endif
 
 # (update library atomically (important to avoid crashing running programs))
 # (could use /usr/bin/install if available)
-$(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2: libnss_mcdb.so.2 \
+$(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2: nss/libnss_mcdb.so.2 \
                                            $(PREFIX)/lib$(LIB_BITS)
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
@@ -290,7 +301,7 @@ $(PREFIX_USR)/bin/mcdbctl: mcdbctl $(PREFIX_USR)/bin
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-$(PREFIX)/sbin/nss_mcdbctl: nss_mcdbctl $(PREFIX)/sbin
+$(PREFIX)/sbin/nss_mcdbctl: nss/nss_mcdbctl $(PREFIX)/sbin
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
@@ -328,7 +339,7 @@ ifeq (,$(MCDB_SKIP32))
 ifeq (,$(RPM_ARCH))
 ifeq (64,$(LIB_BITS))
 ifeq (,$(wildcard lib32))
-  $(shell mkdir -p lib32/plasma)
+  $(shell mkdir -p lib32/plasma lib32/nss)
 endif
 lib32/%.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
@@ -339,12 +350,12 @@ $(LIB32_PIC_OBJS): ABI_FLAGS=-m32
 $(LIB32_PIC_OBJS): CFLAGS+= $(FPIC)
 
 ifeq ($(OSNAME),Linux)
-lib32/libnss_mcdb.so.2: \
-  LDFLAGS+=-Wl,-soname,$(@F) -Wl,--version-script,nss_mcdb.map
+lib32/nss/libnss_mcdb.so.2: \
+  LDFLAGS+=-Wl,-soname,$(@F) -Wl,--version-script,nss/nss_mcdb.map
 endif
-lib32/libnss_mcdb.so.2: ABI_FLAGS=-m32
-lib32/libnss_mcdb.so.2: $(addprefix lib32/, mcdb.o nointr.o uint32.o \
-  nss_mcdb.o nss_mcdb_acct.o nss_mcdb_authn.o nss_mcdb_netdb.o $(PLASMA_OBJS))
+lib32/nss/libnss_mcdb.so.2: ABI_FLAGS=-m32
+lib32/nss/libnss_mcdb.so.2: $(addprefix lib32/, mcdb.o nointr.o uint32.o \
+                                                $(PLASMA_OBJS) $(NSS_PIC_OBJS))
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
 ifeq ($(OSNAME),Linux)
@@ -362,7 +373,7 @@ $(PREFIX_USR)/lib/libnss_mcdb.so.2: $(PREFIX)/lib/libnss_mcdb.so.2 \
 	[ -L $@ ] || /bin/ln -s ../../lib/$(<F) $@
 endif
 
-$(PREFIX)/lib/libnss_mcdb.so.2: lib32/libnss_mcdb.so.2 $(PREFIX)/lib
+$(PREFIX)/lib/libnss_mcdb.so.2: lib32/nss/libnss_mcdb.so.2 $(PREFIX)/lib
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
@@ -370,7 +381,9 @@ $(PREFIX_USR)/lib/libmcdb.so: lib32/libmcdb.so $(PREFIX_USR)/lib
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-all: lib32/libnss_mcdb.so.2 lib32/libmcdb.so
+all: lib32/libmcdb.so
+
+all_nss: lib32/nss/libnss_mcdb.so.2
 
 install: $(PREFIX)/lib/libnss_mcdb.so.2 $(PREFIX_USR)/lib/libnss_mcdb.so.2 \
          $(PREFIX_USR)/lib/libmcdb.so
@@ -410,11 +423,11 @@ endif
 .PHONY: clean clean-contrib realclean
 clean:
 	[ "$$($(usr_bin_id) -u)" != "0" ]
-	$(RM) *.o t/*.o plasma/*.o
+	$(RM) *.o t/*.o plasma/*.o nss/*.o
 	$(RM) -r lib32
-	$(RM) libmcdb.a libnss_mcdb.a libnss_mcdb_make.a
-	$(RM) libmcdb.so libnss_mcdb.so.2
-	$(RM) mcdbctl nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
+	$(RM) libmcdb.a nss/libnss_mcdb.a nss/libnss_mcdb_make.a
+	$(RM) libmcdb.so nss/libnss_mcdb.so.2
+	$(RM) mcdbctl nss/nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
 
 clean-contrib:
 	-$(MAKE) MCDB_File-bootstrap-clean

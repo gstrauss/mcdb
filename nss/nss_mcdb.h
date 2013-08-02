@@ -22,10 +22,10 @@
 #ifndef INCLUDED_NSS_MCDB_H
 #define INCLUDED_NSS_MCDB_H
 
-#include "plasma/plasma_feature.h"
-#include "plasma/plasma_attr.h"
-#include "plasma/plasma_stdtypes.h"
-#include "mcdb.h"
+#include "../plasma/plasma_feature.h"
+#include "../plasma/plasma_attr.h"
+#include "../plasma/plasma_stdtypes.h"
+#include "../mcdb.h"
 PLASMA_ATTR_Pragma_once
 
 #if defined(__linux__)

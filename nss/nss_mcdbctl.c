@@ -42,9 +42,9 @@
 #endif
 #include "nss_mcdb_netdb.h"
 #include "nss_mcdb_netdb_make.h"
-#include "mcdb_makefn.h"
-#include "nointr.h"
-#include "plasma/plasma_stdtypes.h"
+#include "../mcdb_makefn.h"
+#include "../nointr.h"
+#include "../plasma/plasma_stdtypes.h"
 
 #include <sys/stat.h>  /* stat(), fchmod(), umask() */
 #include <limits.h>

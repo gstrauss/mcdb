@@ -22,10 +22,10 @@
 #ifndef INCLUDED_NSS_MCDB_MAKE_H
 #define INCLUDED_NSS_MCDB_MAKE_H
 
-#include "plasma/plasma_feature.h"
-#include "plasma/plasma_attr.h"
-#include "plasma/plasma_stdtypes.h"
-#include "mcdb_make.h"
+#include "../plasma/plasma_feature.h"
+#include "../plasma/plasma_attr.h"
+#include "../plasma/plasma_stdtypes.h"
+#include "../mcdb_make.h"
 PLASMA_ATTR_Pragma_once
 
 struct nss_mcdb_make_wbuf {

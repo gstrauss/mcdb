@@ -29,8 +29,8 @@
 #define PLASMA_FEATURE_ENABLE_LARGEFILE
 
 #include "nss_mcdb_make.h"
-#include "nointr.h"
-#include "plasma/plasma_stdtypes.h" /* SIZE_MAX */
+#include "../nointr.h"
+#include "../plasma/plasma_stdtypes.h" /* SIZE_MAX */
 
 #include <sys/stat.h>
 #include <sys/mman.h> /* mmap() munmap() */

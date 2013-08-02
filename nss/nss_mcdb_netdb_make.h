@@ -22,9 +22,9 @@
 #ifndef INCLUDED_NSS_MCDB_NETDB_MAKE_H
 #define INCLUDED_NSS_MCDB_NETDB_MAKE_H
 
-#include "plasma/plasma_feature.h"
-#include "plasma/plasma_attr.h"
-#include "plasma/plasma_stdtypes.h"
+#include "../plasma/plasma_feature.h"
+#include "../plasma/plasma_attr.h"
+#include "../plasma/plasma_stdtypes.h"
 #include "nss_mcdb_make.h"
 PLASMA_ATTR_Pragma_once
 

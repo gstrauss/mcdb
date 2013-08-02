@@ -29,9 +29,9 @@
 /* _DARWIN_C_SOURCE for struct rpcent on Darwin */
 #define PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
 
-#include "plasma/plasma_feature.h"
-#include "plasma/plasma_attr.h"
-#include "plasma/plasma_stdtypes.h"
+#include "../plasma/plasma_feature.h"
+#include "../plasma/plasma_attr.h"
+#include "../plasma/plasma_stdtypes.h"
 #include "nss_mcdb.h"
 PLASMA_ATTR_Pragma_once
 
