@@ -248,7 +248,7 @@
  || __GNUC_PREREQ(4,3)
 #define __attribute_alloc_size__(pos)  __attribute__((__alloc_size__(pos)))
 #else
-#define __attribute_alloc_size__
+#define __attribute_alloc_size__(pos)
 #endif
 #endif
 
