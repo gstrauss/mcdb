@@ -67,9 +67,12 @@
  * Using the Windows Headers
  * http://msdn.microsoft.com/en-us/library/windows/desktop/aa383745%28v=vs.85%29.aspx
  * (see above links for more selective exclusion using NO* macros (e.g. NOCOMM))
+ * (see also Microsoft SDKs/Windows/v[*]/Include/Windows.h)
  * #include <plasma/plasma_feature.h> prior to #include <windows.h>
  * and then include select header files for the features needed,
- * e.g. #include <winsock2.h> for windows sockets */
+ * e.g. #include <winsock2.h> for windows sockets
+ * (using precompiled headers with MSVC can speed up compilation
+ *  and is a complementary alternative to reducing #includes) */
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -213,7 +216,8 @@
 
 /* (see plasma_attr.h PLASMA_ATTR_Pragma_once)
  * (duplicate internal logic here since plasma_feature.h included first) */
-#if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER) \
+#if defined(__clang__) || defined(__GNUC__) \
+ || (defined(_MSC_VER) && _MSC_VER >= 1020) \
  || defined(__IBMC__) || defined(__IBMCPP__) \
  || (defined(__HP_cc)  && __HP_cc-0  >= 62500) \
  || (defined(__HP_aCC) && __HP_aCC-0 >= 62500) /* HP aCC A.06.25 */

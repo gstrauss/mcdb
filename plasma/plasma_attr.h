@@ -844,7 +844,8 @@ void plasma_attr_sun_studio_shim_rarely_called (void);
 #endif
 
 /* https://github.com/bloomberg/bsl/blob/master/groups/bsl/bsls/bsls_ident.h */
-#if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER) \
+#if defined(__clang__) || defined(__GNUC__) \
+ || (defined(_MSC_VER) && _MSC_VER >= 1020) \
  || defined(__IBMC__) || defined(__IBMCPP__) \
  || (defined(__HP_cc)  && __HP_cc-0  >= 62500) \
  || (defined(__HP_aCC) && __HP_aCC-0 >= 62500) /* HP aCC A.06.25 */
