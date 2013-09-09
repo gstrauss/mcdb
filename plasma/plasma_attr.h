@@ -653,6 +653,10 @@ enum plasma_attr_mm_hint
  * https://blogs.oracle.com/sga/entry/typeof_and_alignof
  * Sun Studio C++:
  *   Keyword typeof is available under -features=gcc command line option.
+ * !! NOTE: there is a bug in Sun Studio C++ 12u1 (not tested on other versions)
+ *    32-bit compilation where __typeof__(x) mishandles x if x > 4 bytes large
+ *    bug filed with Oracle:
+ *       uint64_t x; __typeof__(x) y; assert(sizeof(y) == 8);
  *
  * xlC supports __typeof__()
  * The typeof and __typeof__ keywords are supported as follows:

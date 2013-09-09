@@ -1880,6 +1880,26 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
           plasma_atomic_tmp;                                                   \
         }))
 
+/* (Sun Studio 12u1 C++ 32-bit compile bug when __typeof__(x) and x>4 bytes)
+ * (workaround assumes 8-byte sized variable if variable > 4 bytes) */
+#if defined(__SUNPRO_CC) && !(defined(_LP64) || defined(__LP64__))
+#undef plasma_atomic_load_explicit
+#define plasma_atomic_load_explicit(ptr, memmodel)                             \
+        (sizeof(*(ptr)) <= 4                                                   \
+        ?(__extension__({                                                      \
+          __typeof__(*(ptr)+0) plasma_atomic_tmp;                              \
+          plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(memmodel));\
+          plasma_atomic_tmp;                                                   \
+         }))                                                                   \
+        :(__extension__({                                                      \
+          int64_t plasma_atomic_tmp;                                           \
+          plasma_atomic_load_explicit_into(plasma_atomic_tmp,                  \
+                                           (int64_t *)(ptr),(memmodel));       \
+          plasma_atomic_tmp;                                                   \
+         }))                                                                   \
+        )
+#endif
+
 #else
 
 /* (As of this writing, most general-purpose (and non-embedded) processors have
