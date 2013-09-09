@@ -45,7 +45,9 @@ PLASMA_ATTR_Pragma_once
 /* The asm memory constraint (:::"memory") is not required for pause, but
  * if provided acts as a compiler fence to disable compiler optimization,
  * e.g. in a spin loop where the spin variable is (incorrectly) not a load
- * of _Atomic with memory_order_acquire, or is not volatile. */
+ * of _Atomic, or is not volatile.  The __volatile__ on the asm (where present
+ * in the 'pause' implementations below) effects appropriate compiler fence.
+ * NB: volatile -does not- appear to result in a compiler fence for IBM xlC */
 
 #if defined(_MSC_VER)
 

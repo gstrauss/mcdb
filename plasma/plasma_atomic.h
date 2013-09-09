@@ -422,29 +422,48 @@ extern "C" {
 
 /*
  * plasma_atomic_ld_nopt - load value from ptr, avoiding compiler optimization
+ *   (intended for internal use; prefer plasma_atomic_load_explicit())
  *
  * http://software.intel.com/en-us/blogs/2007/11/30/volatile-almost-useless-for-multi-threaded-programming/
  * intended replacement when ptr is known to be an _Atomic type:
  *   atomic_load_explicit(ptr, memmodel)
  * Note: 32-bit processors, like 32-bit ARM, require special instructions
  * for 64-bit atomic load (not implemented here).
+ * (xlC compiler gets additional xlC intrinsic __fence() since it appears
+ *  that xlC does not honor 'volatile' as compiler fence)
  */
+#if defined(__IBMC__) || defined(__IBMCPP__)
+#define plasma_atomic_ld_nopt(ptr) (*(volatile __typeof__(ptr))(ptr)); __fence()
+#define plasma_atomic_ld_nopt_T(T,ptr) (*(volatile T)(ptr)); __fence()
+#else
 #define plasma_atomic_ld_nopt(ptr) (*(volatile __typeof__(ptr))(ptr))
 #define plasma_atomic_ld_nopt_T(T,ptr) (*(volatile T)(ptr))
+#endif
+
 
 /*
  * plasma_atomic_st_nopt - store value to ptr, avoiding compiler optimization
+ *   (intended for internal use; prefer plasma_atomic_store_explicit())
  *
  * http://software.intel.com/en-us/blogs/2007/11/30/volatile-almost-useless-for-multi-threaded-programming/
  * intended replacement when ptr is known to be an _Atomic type:
  *   atomic_store_explicit(ptr, val, memmodel)
  * Note: 32-bit processors, like 32-bit ARM, require special instructions
  * for 64-bit atomic store (not implemented here).
+ * (xlC compiler gets additional xlC intrinsic __fence() since it appears
+ *  that xlC does not honor 'volatile' as compiler fence)
  */
+#if defined(__IBMC__) || defined(__IBMCPP__)
+#define plasma_atomic_st_nopt(ptr,val) \
+        ((*(volatile __typeof__(ptr))(ptr)) = (val)); __fence()
+#define plasma_atomic_st_nopt_T(T,ptr,val) \
+        ((*(volatile T)(ptr)) = (val)); __fence()
+#else
 #define plasma_atomic_st_nopt(ptr,val) \
         ((*(volatile __typeof__(ptr))(ptr)) = (val))
 #define plasma_atomic_st_nopt_T(T,ptr,val) \
         ((*(volatile T)(ptr)) = (val))
+#endif
 
 
 /* plasma_atomic_xchg_ptr,64,32_acquire_impl() */
@@ -1870,12 +1889,15 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
         } while (0)
 
 #if defined(__GNUC__) || defined(__clang__)        \
+ || defined(__IBMC__) || defined(__IBMCPP__)       \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590) \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x590)
 
+/* (+0 on __typeof__(*(ptr)+0) is to avoid 'const' if type has 'const' attr)
+ * http://stackoverflow.com/questions/18063373/is-it-possible-to-un-const-typeof-in-gcc-pure-c */
 #define plasma_atomic_load_explicit(ptr, memmodel)                             \
         (__extension__({                                                       \
-          __typeof__(*(ptr)) plasma_atomic_tmp;                                \
+          __typeof__(*(ptr)+0) plasma_atomic_tmp;                              \
           plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(memmodel));\
           plasma_atomic_tmp;                                                   \
         }))
