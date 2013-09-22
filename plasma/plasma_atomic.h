@@ -791,30 +791,30 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
 #define plasma_atomic_fetch_xor_u32(ptr, val, memmodel) \
         __atomic_fetch_xor((ptr), (val), (memmodel))
 
-#define plasma_atomic_fetch_add_explicit(ptr, value, memmodel) \
+#define plasma_atomic_fetch_add_explicit(ptr, val, memmodel) \
         __atomic_fetch_add((ptr), (val), (memmodel))
-#define plasma_atomic_fetch_add(ptr, value) \
-        plasma_atomic_fetch_add_explicit((ptr), (value), memory_order_seq_cst)
+#define plasma_atomic_fetch_add(ptr, val) \
+        plasma_atomic_fetch_add_explicit((ptr), (val), memory_order_seq_cst)
 
-#define plasma_atomic_fetch_sub_explicit(ptr, value, memmodel) \
+#define plasma_atomic_fetch_sub_explicit(ptr, val, memmodel) \
         __atomic_fetch_sub((ptr), (val), (memmodel))
-#define plasma_atomic_fetch_sub(ptr, value) \
-        plasma_atomic_fetch_sub_explicit((ptr), (value), memory_order_seq_cst)
+#define plasma_atomic_fetch_sub(ptr, val) \
+        plasma_atomic_fetch_sub_explicit((ptr), (val), memory_order_seq_cst)
 
-#define plasma_atomic_fetch_or_explicit(ptr, value, memmodel) \
+#define plasma_atomic_fetch_or_explicit(ptr, val, memmodel) \
         __atomic_fetch_or((ptr), (val), (memmodel))
-#define plasma_atomic_fetch_or(ptr, value) \
-        plasma_atomic_fetch_or_explicit((ptr), (value), memory_order_seq_cst)
+#define plasma_atomic_fetch_or(ptr, val) \
+        plasma_atomic_fetch_or_explicit((ptr), (val), memory_order_seq_cst)
 
-#define plasma_atomic_fetch_and_explicit(ptr, value, memmodel) \
+#define plasma_atomic_fetch_and_explicit(ptr, val, memmodel) \
         __atomic_fetch_and((ptr), (val), (memmodel))
-#define plasma_atomic_fetch_and(ptr, value) \
-        plasma_atomic_fetch_and_explicit((ptr), (value), memory_order_seq_cst)
+#define plasma_atomic_fetch_and(ptr, val) \
+        plasma_atomic_fetch_and_explicit((ptr), (val), memory_order_seq_cst)
 
-#define plasma_atomic_fetch_xor_explicit(ptr, value, memmodel) \
+#define plasma_atomic_fetch_xor_explicit(ptr, val, memmodel) \
         __atomic_fetch_xor((ptr), (val), (memmodel))
-#define plasma_atomic_fetch_xor(ptr, value) \
-        plasma_atomic_fetch_xor_explicit((ptr), (value), memory_order_seq_cst)
+#define plasma_atomic_fetch_xor(ptr, val) \
+        plasma_atomic_fetch_xor_explicit((ptr), (val), memory_order_seq_cst)
 
 
 #else  /* plasma_atomic_fetch_*() */
