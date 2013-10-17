@@ -147,8 +147,10 @@ typedef double max_align_t;
 #define alignas(x)  __builtin_constant_p(x) \
                     ? __attribute_aligned__(x) \
                     : __attribute_aligned__(__alignof__(x))
-#else
+#elif !defined(_MSC_VER)
 #define alignas(x)  __attribute_aligned__(x)
+#else /* defined(_MSC_VER) */
+#define alignas(x)  __declspec_align__(x)
 #endif
 #endif
 

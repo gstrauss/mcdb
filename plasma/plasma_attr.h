@@ -108,6 +108,7 @@
  * http://docs.oracle.com/cd/E18659_01/html/821-1383/gjzmh.html
  *
  * IBM Visual Age support for __attributes__
+ * http://publib.boulder.ibm.com/infocenter/comphelp/v7v91/index.jsp?topic=/com.ibm.vacpp7a.doc/getstart/overview/port_gcc.htm
  * http://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8a.doc%2Flanguage%2Fref%2Fgcc_cext.htm
  * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlcpp111.aix.doc%2Fcompiler_ref%2Fopt_info.html
  * http://pic.dhe.ibm.com/infocenter/comphelp/v111v131/index.jsp?topic=%2Fcom.ibm.xlc111.aix.doc%2Flanguage_ref%2Fvariable_attrib.html
@@ -719,8 +720,11 @@ enum plasma_attr_mm_hint
  * (http://en.cppreference.com/w/cpp/language/alignas)
  *
  * portability: __attribute__((aligned)) can be at beginning or end of statement
- * but MS __declspec() is expected early in statement, not at end.  Therefore,
- * place __attribute_aligned__(x) early in statement for portability to Windows.
+ * except for xlC which supports __attribute__((aligned)) only at end of line.
+ * MS __declspec() is expected early in statement, not at end.
+ * Placement requirements makes use of this attribute less portable without
+ * use of redundant statements: place __declspec_align__(x) at the beginning
+ * of a statement and __attribute_aligned__(x) at the end of a statement.
  *
  * Oracle Solaris Studio C++ 12.2 finally adds support for aligned attribute.
  * Earlier versions support #pragma align, but mangled names must be used when
@@ -731,6 +735,14 @@ enum plasma_attr_mm_hint
  * and Sun Studio 12.2 C++.
  * POSIX documents posix_memalign() which some platforms support.
  * C11 provides aligned_alloc()
+ *
+ * Misaligned memory access -- loads and stores -- can have different penalties
+ * depending on whether the access is within a cache line, crosses a cache line,
+ * or crosses a memory page boundary.  Misaligned memory access on SPARC has
+ * historically been much, much worse than on x86, POWER, or ARM.  Even Itanium
+ * is substantially better except when misaligned access crosses memory page
+ * boundaries.  Therefore, performance problems can occur if memory needs to be
+ * aligned and __attribute_aligned__ is made a no-op when not supported.
  */
 #ifndef __attribute_aligned__
 #if __has_attribute(aligned) \
@@ -740,21 +752,19 @@ enum plasma_attr_mm_hint
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || defined(__HP_cc) || defined(__HP_aCC)
 #define __attribute_aligned__(x)  __attribute__((__aligned__ (x)))
-#elif defined(_MSC_VER)
+#else
+#define __attribute_aligned__(x)
+#endif
+#endif
+#ifndef __declspec_align__
+#if defined(_MSC_VER)
 /* Windows Data Alignment on IPF, x86, and x64
  * http://msdn.microsoft.com/en-us/library/aa290049%28v=vs.71%29.aspx
  * __declspec(align(x))
  * http://msdn.microsoft.com/en-us/library/83ythb65%28v=vs.90%29.aspx */
-#define __attribute_aligned__(x)  __declspec(align(x))
+#define __declspec_align__(x)  __declspec(align(x))
 #else
-/* Misaligned memory access -- loads and stores -- can have different penalties
- * depending on whether the access is within a cache line, crosses a cache line,
- * or crosses a memory page boundary.  Misaligned memory access on SPARC has
- * historically been much, much worse than on x86, POWER, or ARM.  Even Itanium
- * is substantially better except when misaligned access crosses memory page
- * boundaries.  Therefore, performance problems can occur if memory needs to be
- * aligned and __attribute_aligned__ made a no-op when not supported (below). */
-#define __attribute_aligned__(x)
+#define __declspec_align__(x)
 #endif
 #endif
 
