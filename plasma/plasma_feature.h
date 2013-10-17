@@ -236,4 +236,10 @@
 #endif
 
 
+/* ISO C forbids an empty translation unit (gcc -Wall -pedantic)
+ * (various compilers have different flags to quiet this warning)
+ * Introducing an innocuous typedef appears to be workaround to avoid warning */
+typedef int innocuous_typedef_to_quiet_empty_translation_unit_compiler_warning;
+
+
 #endif
