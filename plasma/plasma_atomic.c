@@ -495,3 +495,38 @@ plasma_atomic_CAS_32_val_impl (uint32_t * const ptr,
 }
 
 #endif   /* PLASMA_ATOMIC_MUTEX_FALLBACK */
+
+
+#if defined(__sparc)
+#if (defined(__SUNPRO_C)  && __SUNPRO_C  < 0x5100) \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC < 0x5100) /* Sun Studio < 12.1 */
+
+void
+plasma_atomic_SPARC_asm (void)
+{
+    /* SPARC Assembly Language Reference Manual
+     * http://docs.oracle.com/cd/E26502_01/html/E28387/docinfo.html
+     * http://sparc.org/standards/SPARCV9.pdf
+     */
+
+    __asm(".global plasma_atomic_load_8_SPARC\n"
+          ".type plasma_atomic_load_8_SPARC,#function\n"
+          "plasma_atomic_load_8_SPARC:\n"
+          "ldx [%o0], %o1\n"
+          "srlx %o1, 32, %o0\n"
+          "retl\n"
+          "srl %o1, 0, %o1\n");
+
+    __asm(".global plasma_atomic_store_8_SPARC\n"
+          ".type plasma_atomic_store_8_SPARC,#function\n"
+          "plasma_atomic_store_8_SPARC:\n"
+          "sllx %o1, 32, %o1\n"
+          "srl %o2, 0, %o2\n"
+          "or %o1, %o2, %o1\n"
+          "retl\n"
+          "stx %o1, [%o0]\n");
+}
+PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_SPARC_asm)
+
+#endif
+#endif

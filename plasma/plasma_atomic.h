@@ -83,6 +83,15 @@ PLASMA_ATTR_Pragma_once
  *
  * NB: Note: 64-bit ops might not be available when code is compiled 32-bits.
  *     (depends on the platform and compiler intrinsic support)
+ *     On AIX, 32-bit compilation should specify arch, e.g. -q32 -qarch=pwr5
+ *     or other 64-bit hardware -qarch, or else ld errors may look similar to:
+ *   ld: 0711-317 ERROR: Undefined symbol: .plasma_atomic_fetch_add_u64
+ *   ld: 0711-317 ERROR: Undefined symbol: .plasma_atomic_fetch_sub_u64
+ *   ld: 0711-317 ERROR: Undefined symbol: .plasma_atomic_fetch_or_u64
+ *   ld: 0711-317 ERROR: Undefined symbol: .plasma_atomic_fetch_and_u64
+ *   ld: 0711-317 ERROR: Undefined symbol: .plasma_atomic_fetch_xor_u64
+ *   ld: 0711-317 ERROR: Undefined symbol: .plasma_atomic_exchange_n_64
+ *   ld: 0711-317 ERROR: Undefined symbol: .plasma_atomic_compare_exchange_n_64
  *
  * NB: in contrast to C11 pattern where atomic_xxx() implies sequential
  *     consistency and atomic_xxx_explicit() specifies memory_order,
@@ -198,6 +207,9 @@ PLASMA_ATTR_Pragma_once
     #ifdef __cplusplus
     #include <builtins.h>
     #endif
+    typedef struct plasma_atomic_words
+                     {uint32_t hi; uint32_t lo;} __attribute_aligned__(8)
+                   plasma_atomic_words;
     #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
             __compare_and_swap((int *)(ptr),(int *)(&cmpval),(int)(newval))
             /* !__check_lock_mp((int *)(ptr),(int)(cmpval),(int)(newval)) */
@@ -225,23 +237,29 @@ PLASMA_ATTR_Pragma_once
        *  assembly so loop could branch off condition code from stdcx. instead
        *  of moving result from CR0 to a register (previously initialized 0),
        *  followed by a cmp and branch) */
-      #define plasma_atomic_ldarx(ptr)                        \
-              __extension__ ({                                \
-                uint64_t plasma_atomic_tmp;                   \
-                __asm__ __volatile__ ("ldarx %0, 0, %1"       \
-                                     :"=r"(plasma_atomic_tmp) \
-                                     :"r"(ptr), "m"(*(ptr))   \
-                                     :"");                    \
-                plasma_atomic_tmp;                            \
+      #define plasma_atomic_ldarx(ptr)                                       \
+              __extension__ ({                                               \
+                plasma_atomic_words plasma_atomic_tmpw;                      \
+                __asm__ volatile ("\t ldarx %0, %2, %3 \n"                   \
+                                  "\t srdi %1, %0, 32 \n"                    \
+                                 :"=r"(plasma_atomic_tmpw.lo),               \
+                                  "=r"(plasma_atomic_tmpw.hi)                \
+                                 :"i"(0),"r"(ptr),"m"(*(ptr)) : "");         \
+                *(uint64_t *)&plasma_atomic_tmpw;                            \
               })
-      #define plasma_atomic_stdcx(ptr, newval)                                 \
-              __extension__ ({                                                 \
-                int plasma_atomic_tmp = 0;                                     \
-                __asm__ __volatile__ ("\t stdcx. %2, 0, %3\n\t mfocrf %0, 0x80"\
-                                     :"=r"(plasma_atomic_tmp), "=m"(*(ptr))    \
-                                     :"r"(newval), "r"(ptr)                    \
-                                     :"cr0");                                  \
-                plasma_atomic_tmp;                                             \
+      #define plasma_atomic_stdcx(ptr, newval)                               \
+              __extension__ ({                                               \
+                plasma_atomic_words plasma_atomic_tmpw;                      \
+                int plasma_atomic_tmp = 0;                                   \
+                *(__typeof__(*(ptr)) *)&plasma_atomic_tmpw = (newval);       \
+                __asm__ volatile ("\t rldimi %2, %3, 32, 64 \n"              \
+                                  "\t stdcx. %2, 0, %4 \n"                   \
+                                  "\t mfocrf %0, 0x80 \n"                    \
+                                 :"=r"(plasma_atomic_tmp), "=m"(*(ptr))      \
+                                 :"r"(plasma_atomic_tmpw.lo),                \
+                                  "r"(plasma_atomic_tmpw.hi), "r"(ptr)       \
+                                 :"cr0");                                    \
+                plasma_atomic_tmp;                                           \
               })
       #define plasma_atomic_CAS_64_impl(ptr, cmpval, newval)                 \
               __extension__ ({                                               \
@@ -350,7 +368,7 @@ PLASMA_ATTR_Pragma_once
 
   /* (note: __sync_* builtins provide compiler optimization fence) */
   /* Linux kernel user helper functions on ARM
-   * https://github.com/torvalds/linux/blob/master/Documentation/arm/kernel_user_helpers.txt 
+   * https://github.com/torvalds/linux/blob/master/Documentation/arm/kernel_user_helpers.txt
    * and (likely) used by compiler intrinsics
    * http://gcc.gnu.org/wiki/Atomic
    *   (see Built-in atomic support by architecture) */
@@ -439,6 +457,10 @@ extern "C" {
 #define plasma_atomic_ld_nopt(ptr) (*(volatile __typeof__(ptr))(ptr))
 #define plasma_atomic_ld_nopt_T(T,ptr) (*(volatile T)(ptr))
 #endif
+#define plasma_atomic_ld_nopt_into(lval,ptr) \
+        do { (lval) = plasma_atomic_ld_nopt(ptr); } while (0)
+#define plasma_atomic_ld_nopt_T_into(lval,T,ptr) \
+        do { (lval) = plasma_atomic_ld_nopt(T,(ptr)); } while (0)
 
 
 /*
@@ -455,9 +477,9 @@ extern "C" {
  */
 #if defined(__IBMC__) || defined(__IBMCPP__)
 #define plasma_atomic_st_nopt(ptr,val) \
-        ((*(volatile __typeof__(ptr))(ptr)) = (val)); __fence()
+        do { ((*(volatile __typeof__(ptr))(ptr)) = (val)); __fence(); } while(0)
 #define plasma_atomic_st_nopt_T(T,ptr,val) \
-        ((*(volatile T)(ptr)) = (val)); __fence()
+        do { ((*(volatile T)(ptr)) = (val)); __fence(); } while (0)
 #else
 #define plasma_atomic_st_nopt(ptr,val) \
         ((*(volatile __typeof__(ptr))(ptr)) = (val))
@@ -527,7 +549,7 @@ extern "C" {
    * An example is ldstub (load-store-unsigned-byte) assembly instruction on
    * SPARC which stores 0xFF in unsigned char.  XXX: Not handled here are any
    * cases where a similar limitation applies to 32- or 64-bit exchange.
-   * Note: gcc __sync_lock_release adds mfence on x86, and is not used in 
+   * Note: gcc __sync_lock_release adds mfence on x86, and is not used in
    * plasma_atomic.h since mfence barrier is stronger than needed for release
    * barrier provided by plasma_atomic_lock_release() for cacheable memory */
   #undef  plasma_atomic_xchg_ptr_acquire_impl
@@ -1888,6 +1910,112 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
                                  ? (memmodel) : memory_order_acquire); \
         } while (0)
 
+
+/* (xlC in 32-bit needs to load a 64-bit quantity into hi and lo words) */
+#if (defined(__IBMC__) || defined(__IBMCPP__)) \
+ && !(defined(_LP64) || defined(__LP64__))
+#ifdef __IBMC__
+#define plasma_atomic_load_8_POWER(lval,ptr)                 \
+  do {                                                       \
+    plasma_atomic_words *plasma_atomic_tmpw =                \
+      (plasma_atomic_words *)(uintptr_t)(char *)&(lval);     \
+    __asm__ volatile ("\t ld %0, %2 \n\t srdi %1, %0, 32 \n" \
+                     :"=r"(plasma_atomic_tmpw->lo),          \
+                      "=r"(plasma_atomic_tmpw->hi)           \
+                     :"m"(*(ptr)));                          \
+  } while (0)
+#else /* defined(__IBMCPP__); xlC did not work with the above macro */
+#define plasma_atomic_load_8_POWER(lval,ptr)            \
+  do {                                                  \
+    plasma_atomic_words plasma_atomic_tmpw;             \
+    __asm__ volatile ("ld %0, %2\n\t srdi %1, %0, 32\n" \
+                 :"=r"(plasma_atomic_tmpw.lo),          \
+                  "=r"(plasma_atomic_tmpw.hi)           \
+                 :"m"(*(ptr)));                         \
+    (lval) = *(__typeof__(lval) *)&plasma_atomic_tmpw;  \
+  } while (0)
+#endif
+
+#undef plasma_atomic_load_explicit_into
+#define plasma_atomic_load_explicit_into(lval, ptr, memmodel)          \
+        do { if ((memmodel) == memory_order_seq_cst)                   \
+                 atomic_thread_fence(memory_order_seq_cst);            \
+             if (sizeof(*(ptr)) <= 4)                                  \
+                 plasma_atomic_ld_nopt_into((lval),(ptr));             \
+             else                                                      \
+                 plasma_atomic_load_8_POWER((lval),(ptr));             \
+             atomic_thread_fence((memmodel) != memory_order_seq_cst    \
+                                 ? (memmodel) : memory_order_acquire); \
+        } while (0)
+#endif
+
+
+#if (defined(__SUNPRO_C) || defined(__SUNPRO_CC)) \
+ && !(defined(_LP64) || defined(__LP64__))
+
+#if (defined(__SUNPRO_C)  && __SUNPRO_C  < 0x5100) \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC < 0x5100) /* Sun Studio < 12.1 */
+
+    /*(out-of-line functions due to limited asm support in earlier Sun Studio)*/
+  #ifdef __cplusplus
+  extern "C" {
+  #endif
+    __attribute_pure__
+    uint64_t plasma_atomic_load_8_SPARC (const uint64_t * restrict);
+    __attribute_pure__
+    void plasma_atomic_store_8_SPARC (uint64_t * restrict, uint64_t);
+    #pragma no_side_effect(plasma_atomic_load_8_SPARC)
+    #pragma no_side_effect(plasma_atomic_store_8_SPARC)
+  #ifdef __cplusplus
+  }
+  #endif
+
+    #undef plasma_atomic_load_explicit_into
+    #define plasma_atomic_load_explicit_into(lval, ptr, memmodel)          \
+            do { if ((memmodel) == memory_order_seq_cst)                   \
+                     atomic_thread_fence(memory_order_seq_cst);            \
+                 if (sizeof(*(ptr)) <= 4)                                  \
+                     (lval) = plasma_atomic_ld_nopt(ptr);                  \
+                 else                                                      \
+                     (lval) = plasma_atomic_load_8_SPARC(ptr);             \
+                 atomic_thread_fence((memmodel) != memory_order_seq_cst    \
+                                     ? (memmodel) : memory_order_acquire); \
+            } while (0)
+
+#else   /* Sun Studio 12.1 + */
+
+    typedef struct plasma_atomic_words
+                     {uint32_t hi; uint32_t lo;} __attribute_aligned__(8)
+                   plasma_atomic_words;
+    #define plasma_atomic_load_8_SPARC(lval,ptr)             \
+      do {                                                   \
+        plasma_atomic_words *plasma_atomic_tmpw =            \
+          (plasma_atomic_words *)(uintptr_t)(char *)&(lval); \
+        __asm volatile ("\t ldx [%2],%1 \n"                  \
+                        "\t srlx %1,32,%0 \n"                \
+                        "\t srl %1,0,%1 !%3 \n"              \
+                       :"=r"(plasma_atomic_tmpw->hi),        \
+                        "=r"(plasma_atomic_tmpw->lo)         \
+                       :"r"(ptr), "m"(*(ptr)));              \
+      } while (0)
+
+    #undef plasma_atomic_load_explicit_into
+    #define plasma_atomic_load_explicit_into(lval, ptr, memmodel)          \
+            do { if ((memmodel) == memory_order_seq_cst)                   \
+                     atomic_thread_fence(memory_order_seq_cst);            \
+                 if (sizeof(*(ptr)) <= 4)                                  \
+                     plasma_atomic_ld_nopt_into((lval),(ptr));             \
+                 else                                                      \
+                     plasma_atomic_load_8_SPARC(lval,ptr);                 \
+                 atomic_thread_fence((memmodel) != memory_order_seq_cst    \
+                                     ? (memmodel) : memory_order_acquire); \
+            } while (0)
+
+#endif  /* Sun Studio 12.1 + */
+
+#endif  /* Sun Studio and 32-bit compilation */
+
+
 #if defined(__GNUC__) || defined(__clang__)        \
  || defined(__IBMC__) || defined(__IBMCPP__)       \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590) \
@@ -1902,7 +2030,17 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
           plasma_atomic_tmp;                                                   \
         }))
 
-/* (Sun Studio 12u1 C++ 32-bit compile bug when __typeof__(x) and x>4 bytes)
+#ifdef __IBMC__  /*(note: might fail to compile if (*ptr) type is a const ptr)*/
+#undef plasma_atomic_load_explicit
+#define plasma_atomic_load_explicit(ptr, memmodel)                             \
+        (__extension__({                                                       \
+          __typeof__(*(ptr)) plasma_atomic_tmp;                                \
+          plasma_atomic_load_explicit_into(plasma_atomic_tmp,(ptr),(memmodel));\
+          plasma_atomic_tmp;                                                   \
+        }))
+#endif
+
+/* (Sun Studio 12.1 C++ 32-bit compile bug when __typeof__(x) and x>4 bytes)
  * (workaround assumes 8-byte sized variable if variable > 4 bytes) */
 #if defined(__SUNPRO_CC) && !(defined(_LP64) || defined(__LP64__))
 #undef plasma_atomic_load_explicit
@@ -1914,9 +2052,9 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
           plasma_atomic_tmp;                                                   \
          }))                                                                   \
         :(__extension__({                                                      \
-          int64_t plasma_atomic_tmp;                                           \
+          uint64_t plasma_atomic_tmp;                                          \
           plasma_atomic_load_explicit_into(plasma_atomic_tmp,                  \
-                                           (int64_t *)(ptr),(memmodel));       \
+                                           (uint64_t *)(ptr),(memmodel));      \
           plasma_atomic_tmp;                                                   \
          }))                                                                   \
         )
@@ -1937,6 +2075,19 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
              plasma_atomic_load_64_impl((ptr),(memmodel),sizeof(*(ptr)))  \
          : (__typeof__(*(ptr)))                                           \
              plasma_atomic_load_32_impl((ptr),(memmodel),sizeof(*(ptr))))
+
+/* (Sun Studio 12.1 C++ 32-bit compile bug when __typeof__(x) and x>4 bytes)
+ * (workaround assumes 8-byte sized variable if variable > 4 bytes) */
+#if defined(__SUNPRO_CC) && !(defined(_LP64) || defined(__LP64__))
+#undef plasma_atomic_load_explicit_szof
+#define plasma_atomic_load_explicit_szof(ptr, memmodel)                   \
+        (sizeof(*(ptr)) > 4                                               \
+         ? (uint64_t)                                                     \
+             plasma_atomic_load_64_impl((ptr),(memmodel),sizeof(*(ptr)))  \
+         : (__typeof__(*(ptr)))                                           \
+             plasma_atomic_load_32_impl((ptr),(memmodel),sizeof(*(ptr))))
+#endif
+
 
 #define plasma_atomic_load_explicit(ptr, memmodel) \
         plasma_atomic_load_explicit_szof((ptr), (memmodel))
@@ -1983,7 +2134,12 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
                            const enum memory_order memmodel,
                            const size_t bytes)
 {
+  #if defined(__SUNPRO_C) && !(defined(_LP64) || defined(__LP64__))
+    /*(avoid compiler error in not-taken code path to 8-byte ld)*/
+    union { uint32_t i; uint16_t s; uint8_t c; uint64_t u64; }plasma_atomic_tmp;
+  #else
     union { uint32_t i; uint16_t s; uint8_t c; } plasma_atomic_tmp;
+  #endif
     switch (bytes) {
       case 4:   plasma_atomic_load_explicit_into(plasma_atomic_tmp.i,
                                                  (const uint32_t *)ptr,
@@ -2053,6 +2209,108 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
         } while (0)
 
 #endif
+
+
+/* (xlC in 32-bit needs to store a 64-bit quantity from hi and lo words) */
+#if (defined(__IBMC__) || defined(__IBMCPP__)) \
+ && !(defined(_LP64) || defined(__LP64__))
+
+#ifdef __IBMC__
+  /* workaround bug in xlc 11 (C compiler) which was not emitting inline asm
+   * (There are probably better ways to workaround the bug) */
+#define plasma_atomic_store_8_POWER(ptr,val)               \
+  do {                                                     \
+     plasma_atomic_words plasma_atomic_tmpw;               \
+     int workaround;                                       \
+     *(__typeof__(*(ptr)) *)&plasma_atomic_tmpw = (val);   \
+     __asm__ volatile ("\t rldimi %2, %3, 32, 64 \n"       \
+                       "\t std %2, %1 \n"                  \
+                       "\t mfocrf %0, 0x80 \n"             \
+                      :"=r"(workaround),"=m"(*(ptr))       \
+                      :"r"(plasma_atomic_tmpw.lo),         \
+                       "r"(plasma_atomic_tmpw.hi));        \
+  } while (0)
+#else /* defined(__IBMCPP__) */
+#define plasma_atomic_store_8_POWER(ptr,val)               \
+  do {                                                     \
+     plasma_atomic_words plasma_atomic_tmpw;               \
+     *(__typeof__(*(ptr)) *)&plasma_atomic_tmpw = (val);   \
+     __asm__ volatile ("\t rldimi %1, %2, 32, 64 \n"       \
+                       "\t std %1, %0 \n"                  \
+                      :"=m"(*(ptr))                        \
+                      :"r"(plasma_atomic_tmpw.lo),         \
+                       "r"(plasma_atomic_tmpw.hi));        \
+  } while (0)
+#endif
+
+#undef plasma_atomic_store_explicit
+#define plasma_atomic_store_explicit(ptr, val, memmodel)               \
+        do { atomic_thread_fence((memmodel) != memory_order_seq_cst    \
+                                 ? (memmodel) : memory_order_release); \
+             if (sizeof(*(ptr)) <= 4)                                  \
+                 plasma_atomic_st_nopt((ptr),(val));                   \
+             else                                                      \
+                 plasma_atomic_store_8_POWER((ptr),(val));             \
+             if ((memmodel) == memory_order_seq_cst)                   \
+                 atomic_thread_fence(memory_order_seq_cst);            \
+        } while (0)
+
+#endif /* xlC and 32-bit compilation */
+
+
+/* (Sun Studio in 32-bit needs to store 64-bit quantity from hi and lo words)
+ * (val might be a constant, so store in temporary)
+ * (compiler bug in __typeof__() on 8-byte size in __SUNPROC_CC in 32-bit,
+ *  which is why cast (uint64_t)(val) instead of using __typeof__ as for xlC) */
+#if (defined(__SUNPRO_C) || defined(__SUNPRO_CC)) \
+ && !(defined(_LP64) || defined(__LP64__))
+
+#if (defined(__SUNPRO_C)  && __SUNPRO_C  < 0x5100) \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC < 0x5100) /* Sun Studio < 12.1 */
+
+    /*(out-of-line functions due to limited asm support in earlier Sun Studio)*/
+  #ifdef __cplusplus
+  extern "C" {
+  #endif
+    __attribute_pure__
+    void plasma_atomic_store_8_SPARC (uint64_t * restrict, uint64_t);
+    #pragma no_side_effect(plasma_atomic_store_8_SPARC)
+  #ifdef __cplusplus
+  }
+  #endif
+
+#else /* Sun Studio 12.1 + */
+
+  #define plasma_atomic_store_8_SPARC(ptr,val)               \
+    do {                                                     \
+      plasma_atomic_words plasma_atomic_tmpw;                \
+      *(uint64_t *)&plasma_atomic_tmpw.hi = (uint64_t)(val); \
+      __asm volatile ("\t sllx %1,32,%1 \n"                  \
+                      "\t srl %2,0,%2 \n"                    \
+                      "\t or %1,%2,%1 \n"                    \
+                      "\t stx %1, [%3] !%0 \n"               \
+                     :"=m"(*(ptr))                           \
+                     :"r"(plasma_atomic_tmpw.hi),            \
+                      "r"(plasma_atomic_tmpw.lo),            \
+                      "r"(ptr));                             \
+    } while (0)
+
+#endif /* Sun Studio 12.1 + */
+
+#undef plasma_atomic_store_explicit
+#define plasma_atomic_store_explicit(ptr, val, memmodel)               \
+        do { atomic_thread_fence((memmodel) != memory_order_seq_cst    \
+                                 ? (memmodel) : memory_order_release); \
+             if (sizeof(*(ptr)) <= 4)                                  \
+                 plasma_atomic_st_nopt((ptr),(val));                   \
+             else                                                      \
+                 plasma_atomic_store_8_SPARC((ptr),(val));             \
+             if ((memmodel) == memory_order_seq_cst)                   \
+                 atomic_thread_fence(memory_order_seq_cst);            \
+        } while (0)
+
+#endif /* Sun Studio and 32-bit compilation */
+
 
 #define plasma_atomic_store(ptr, val) \
         plasma_atomic_store_explicit((ptr), (val), memory_order_seq_cst)

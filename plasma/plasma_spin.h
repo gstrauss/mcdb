@@ -155,11 +155,11 @@ PLASMA_ATTR_Pragma_once
    * the condition code register a few times.  If instead of inline assembly,
    * this was implemented as a routine in a shared library, then a function
    * optimized for the specific architecture and model could be used */
-  #if defined(SUNPRO_C)
+  #if defined(__SUNPRO_C)
     #define plasma_spin_pause()  __asm __volatile__ ("rd %%ccr, %%g0 \n\t" \
                                                      "rd %%ccr, %%g0 \n\t" \
                                                      "rd %%ccr, %%g0")
-  #else /* defined(SUNPRO_CC) || defined(__GNUC__) */
+  #else /* defined(__SUNPRO_CC) || defined(__GNUC__) */
     #define plasma_spin_pause()  __asm __volatile__ ("rd %ccr, %g0 \n\t" \
                                                      "rd %ccr, %g0 \n\t" \
                                                      "rd %ccr, %g0")

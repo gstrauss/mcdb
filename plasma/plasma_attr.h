@@ -732,7 +732,7 @@ enum plasma_attr_mm_hint
  *   http://docs.oracle.com/cd/E18659_01/html/821-1383/bkbjx.html#bkbjy
  * Solaris standard libc does provide memalign() for allocating aligned memory,
  * but only #pragma align for stack or global alignment, until Sun Studio 12 C
- * and Sun Studio 12.2 C++.
+ * and Sun Studio 12.2 C++ (according to doc, but syntax accepted in 12.1 C++).
  * POSIX documents posix_memalign() which some platforms support.
  * C11 provides aligned_alloc()
  *
@@ -749,7 +749,7 @@ enum plasma_attr_mm_hint
  || defined(__GNUC__) /* __GNUC_PREREQ(?,?) */ \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
- || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5100) /* Sun Studio 12.1 C++ */ \
  || defined(__HP_cc) || defined(__HP_aCC)
 #define __attribute_aligned__(x)  __attribute__((__aligned__ (x)))
 #else
@@ -829,16 +829,22 @@ enum plasma_attr_mm_hint
         PLASMA_ATTR_Pragma(no_side_effect(func))
 #define PLASMA_ATTR_Pragma_rarely_called(func) \
         PLASMA_ATTR_Pragma(rarely_called(func))
-#define plasma_attr_pragma_execution_frequency_very_low \
-        plasma_attr_sun_studio_shim_rarely_called()
+#define PLASMA_ATTR_Pragma_execution_frequency_very_low \
+        plasma_attr_sun_studio_shim_rarely_called();
 
 /* Sun Studio compiler does not currently provide a means to statically tag
  * code paths as likely or unlikely.  However, a function (not inlined) that
  * is marked as rarely_called and no_side_effect might be effective substitute.
  * https://github.com/bloomberg/bsl/blob/master/groups/bsl/bsls/bsls_performancehint.h */
+#ifdef __cplusplus
+extern "C" {
+#endif
 void plasma_attr_sun_studio_shim_rarely_called (void);
 #pragma rarely_called(plasma_attr_sun_studio_shim_rarely_called)
 #pragma no_side_effect(plasma_attr_sun_studio_shim_rarely_called)
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

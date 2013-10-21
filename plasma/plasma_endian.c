@@ -100,6 +100,7 @@ plasma_endian_SPARC_asm (void)
             "retl\n"
             "ldxa  [%o0] 0x88, %o0\n");
 }
+PLASMA_ATTR_Pragma_rarely_called(plasma_endian_SPARC_asm)
 
 #endif
 #endif

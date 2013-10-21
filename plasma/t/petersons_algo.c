@@ -27,7 +27,12 @@
 
 #ifndef _XOPEN_SOURCE
 #ifdef __cplusplus
+#ifdef _AIX
+#define __STDC_FORMAT_MACROS
+#define _XOPEN_SOURCE 600
+#else
 #define _XOPEN_SOURCE 500
+#endif
 #if defined(__sun) && defined(__SVR4) /* define __EXTENSIONS__ for PRIu64 */
 #define __EXTENSIONS__
 #endif
@@ -103,7 +108,7 @@ check_threads_done (const int thrnum)
 }
 
 #ifdef __cplusplus
-extern "C"
+extern "C" {
 #endif
 static void *
 spinner (void * const arg)
@@ -136,6 +141,9 @@ spinner (void * const arg)
 
     return NULL;
 }
+#ifdef __cplusplus
+}
+#endif
 
 int
 main (int argc, char *argv[])
