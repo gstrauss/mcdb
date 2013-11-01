@@ -342,7 +342,7 @@ plasma_spin_lock_acquire_spinloop (plasma_spin_lock_t * const spin)
 
 bool
 plasma_spin_lock_acquire_spindecay (plasma_spin_lock_t * const spin,
-                                    int pause, int pause32, int yield)
+                                    int pause1, int pause32, int yield)
   __attribute_nonnull__;
 
 #ifdef __cplusplus

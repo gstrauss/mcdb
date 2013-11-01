@@ -48,14 +48,14 @@ plasma_spin_lock_acquire_spinloop (plasma_spin_lock_t * const spin)
 
 bool
 plasma_spin_lock_acquire_spindecay (plasma_spin_lock_t * const spin,
-                                    int pause, int pause32, int yield)
+                                    int pause1, int pause32, int yield)
 {
     /* ((uint32_t *) cast also works for Apple OSSpinLock, which is int32_t) */
     uint32_t * const lck = (uint32_t *)&spin->lck;
     do {
         while (plasma_atomic_load_explicit(lck, memory_order_relaxed)) {
-            if (pause) {
-                --pause;
+            if (pause1) {
+                --pause1;
                 plasma_spin_pause();
             }
             else if (pause32) {
