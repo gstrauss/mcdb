@@ -392,6 +392,8 @@
 #if __has_attribute(nothrow) \
  || __GNUC_PREREQ(3,3)
 #define __attribute_nothrow__  __attribute__((__nothrow__))
+#elif defined(__SUNPRO_CC) /* Sun Studio C++ */
+#define __attribute_nothrow__  throw()
 #elif defined(_MSC_VER)
 #define __attribute_nothrow__  __declspec(nothrow)
 #else
