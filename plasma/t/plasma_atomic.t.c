@@ -24,6 +24,9 @@
  * TODO: optional interfaces in plasma_atomic.h to cast inputs, quell compiler
  *       type mismatch warnings -- only sizeof(type) matters for atomics
  *       (discard type-safety and assume arguments are appropriate sizes)
+ *       (NB: casting to different type and dereferencing
+ *        violates strict aliasing rules, so look into ways to communicate
+ *        this to compiler, such as gcc __attribute__((may_alias)) )
  */
 
 /* note: tests int32_t and int64_t sizes; char and short not tested below */
@@ -33,6 +36,12 @@
 #include "../plasma_membar.h"
 #include "../plasma_stdtypes.h"
 #include "../plasma_test.h"
+
+#if defined(__IBMC__) || defined(__IBMCPP__)
+#if !defined(_LP64) && !defined(__LP64__) && !defined(_ARCH_PPC64)
+#error "plasma_atomic.h 64-bit ops require: xlc -qarch=pwr5 or better 64-bit POWER arch"
+#endif
+#endif
 
 #define PLASMA_ATOMIC_T_RELAXED_LOOP_ITERATIONS 64
 
