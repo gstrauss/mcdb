@@ -384,7 +384,8 @@ uint32_to_ascii_base10 (const uint32_t x, char * const restrict buf)
  * (avoids call to more flexible, but more expensive snprintf())
  * returns number of characters added to buffer (num from 1 to 11, inclusive)
  * (string is not NUL-terminated)
- * (buf must be at least 11 chars in length; not checked) */
+ * (buf must be at least 11 chars in length; not checked)
+ * (buf size >= 12 chars can: buf[(int32_to_ascii_base_10(x, buf))] = '\0'; ) */
 UINT32_C99INLINE
 uint32_t
 int32_to_ascii_base10 (int32_t x, char * restrict buf)
@@ -397,8 +398,16 @@ int32_to_ascii_base10 (int32_t x, char * restrict buf)
 {
     const uint32_t pre = (x < 0);
     if (pre) {
-        x = -x;
-        *buf++ = '-';
+        if (__builtin_expect( (x != (int32_t)0x80000000u), 1)) {/*test INT_MIN*/
+            x = -x;
+            *buf++ = '-';
+        }
+        else { /* special-case INT_MIN; -INT_MIN overflows and equals INT_MIN */
+            PLASMA_ATTR_Pragma_execution_frequency_very_low
+            /*memcpy(buf, "-2147483648", 11);*//* would require <string.h> */
+            int i; for (i=0; i < 11; ++i) buf[i] = ("-2147483648")[i];
+            return 11;
+        }
     }
     return pre + uint32_to_ascii_base10((uint32_t)x, buf);
 }
