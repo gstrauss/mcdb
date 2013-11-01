@@ -191,6 +191,7 @@ CFLAGS+=$(PTHREAD_FLAGS)
 #     FPIC=-qpic=small
 #     SHLIB=-qmkshrobj
 #     WARNING_FLAGS=
+#     CFLAGS+=-qnoignerrno
 #     #(64-bit)
 #     ABI_FLAGS=-q64
 #     #(additionally, xlc needs -qtls to recognized __thread keyword)

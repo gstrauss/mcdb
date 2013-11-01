@@ -27,7 +27,9 @@
 #define _BSD_SOURCE
 #endif
 /* _DARWIN_C_SOURCE for struct rpcent on Darwin */
+#ifndef PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
 #define PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
+#endif
 
 #include "../plasma/plasma_feature.h"
 #include "../plasma/plasma_attr.h"

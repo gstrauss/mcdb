@@ -102,10 +102,10 @@ mcdb_makefn_start (struct mcdb_make * const restrict m,
 }
 
 int
-mcdb_makefn_finish (struct mcdb_make * const restrict m, const bool sync)
+mcdb_makefn_finish (struct mcdb_make * const restrict m, const bool datasync)
 {
     return fchmod(m->fd, m->st_mode) == 0
-        && (!sync || fdatasync(m->fd) == 0)
+        && (!datasync || fdatasync(m->fd) == 0)
         && nointr_close(m->fd) == 0     /* NFS might report write errors here */
         && (m->fd = -2, rename(m->fntmp, m->fname) == 0) /*(fd=-2 flag closed)*/
       ? (m->fd = -1, EXIT_SUCCESS)
