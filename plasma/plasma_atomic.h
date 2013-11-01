@@ -768,6 +768,13 @@ plasma_atomic_CAS_32_val (uint32_t * const ptr,
         plasma_atomic_CAS_32_val((uint32_t *)(ptr),  \
                                  (uint32_t)(cmpval),(uint32_t)(newval))
 
+#define plasma_atomic_CAS_ptr_vcast \
+        plasma_atomic_CAS_vptr
+#define plasma_atomic_CAS_64_ucast \
+        plasma_atomic_CAS_u64
+#define plasma_atomic_CAS_32_ucast \
+        plasma_atomic_CAS_u32
+
 
 /*
  * plasma_atomic_fetch_{add,sub,or,and,xor} - atomic <op>, memory_order_seq_cst
@@ -2400,6 +2407,12 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
         plasma_atomic_compare_exchange_n_64
 #define plasma_atomic_compare_exchange_n_u32 \
         plasma_atomic_compare_exchange_n_32
+#define plasma_atomic_compare_exchange_n_ptr_vcast \
+        plasma_atomic_compare_exchange_n_ptr
+#define plasma_atomic_compare_exchange_n_64_ucast \
+        plasma_atomic_compare_exchange_n_64
+#define plasma_atomic_compare_exchange_n_32_ucast \
+        plasma_atomic_compare_exchange_n_32
 #else  /* !(__has_builtin(__atomic_compare_exchange_n) || __GNUC_PREREQ(4,7)) */
 __attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
@@ -2407,7 +2420,7 @@ bool
 plasma_atomic_compare_exchange_n_ptr (void ** const ptr,
                                       void ** const cmpval,
                                       void * const newval,
-                                      const bool weak,
+                                      const bool weak  __attribute_unused__,
                                       const enum memory_order success_memmodel,
                                       const enum memory_order failure_memmodel)
   __attribute_nonnull_x__((2));
@@ -2418,7 +2431,7 @@ bool
 plasma_atomic_compare_exchange_n_ptr (void ** const ptr,
                                       void ** const cmpval,
                                       void * const newval,
-                                      const bool weak,
+                                      const bool weak  __attribute_unused__,
                                       const enum memory_order success_memmodel,
                                       const enum memory_order failure_memmodel)
 {
@@ -2447,7 +2460,7 @@ bool
 plasma_atomic_compare_exchange_n_64 (uint64_t * const ptr,
                                      uint64_t * const cmpval,
                                      const uint64_t newval,
-                                     const bool weak,
+                                     const bool weak  __attribute_unused__,
                                      const enum memory_order success_memmodel,
                                      const enum memory_order failure_memmodel)
   __attribute_nonnull__;
@@ -2458,7 +2471,7 @@ bool
 plasma_atomic_compare_exchange_n_64 (uint64_t * const ptr,
                                      uint64_t * const cmpval,
                                      const uint64_t newval,
-                                     const bool weak,
+                                     const bool weak  __attribute_unused__,
                                      const enum memory_order success_memmodel,
                                      const enum memory_order failure_memmodel)
 {
@@ -2487,7 +2500,7 @@ bool
 plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
                                      uint32_t * const cmpval,
                                      const uint32_t newval,
-                                     const bool weak,
+                                     const bool weak  __attribute_unused__,
                                      const enum memory_order success_memmodel,
                                      const enum memory_order failure_memmodel)
   __attribute_nonnull__;
@@ -2498,7 +2511,7 @@ bool
 plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
                                      uint32_t * const cmpval,
                                      const uint32_t newval,
-                                     const bool weak,
+                                     const bool weak  __attribute_unused__,
                                      const enum memory_order success_memmodel,
                                      const enum memory_order failure_memmodel)
 {
@@ -2547,6 +2560,13 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
                                             (success_memmodel),         \
                                             (failure_memmodel))
 
+#define plasma_atomic_compare_exchange_n_ptr_vcast \
+        plasma_atomic_compare_exchange_n_vptr
+#define plasma_atomic_compare_exchange_n_64_ucast \
+        plasma_atomic_compare_exchange_n_u64
+#define plasma_atomic_compare_exchange_n_32_ucast \
+        plasma_atomic_compare_exchange_n_u32
+
 #endif /* !(__has_builtin(__atomic_compare_exchange_n) || __GNUC_PREREQ(4,7)) */
 
 
@@ -2559,6 +2579,7 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
  */
 
 #if __has_builtin(__atomic_compare_exchange) || __GNUC_PREREQ(4,7)
+
 #define plasma_atomic_compare_exchange_ptr(ptr, cmpval, newval, weak,   \
                                            success_memmodel,            \
                                            failure_memmodel)            \
@@ -2574,13 +2595,22 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
                                           failure_memmodel)             \
         __atomic_compare_exchange((ptr), (cmpval), (newval), (weak),    \
                                   (success_memmodel), (failure_memmodel))
+
 #define plasma_atomic_compare_exchange_vptr \
         plasma_atomic_compare_exchange_ptr
 #define plasma_atomic_compare_exchange_u64 \
         plasma_atomic_compare_exchange_64
 #define plasma_atomic_compare_exchange_u32 \
         plasma_atomic_compare_exchange_32
+#define plasma_atomic_compare_exchange_ptr_vcast \
+        plasma_atomic_compare_exchange_ptr
+#define plasma_atomic_compare_exchange_64_ucast \
+        plasma_atomic_compare_exchange_64
+#define plasma_atomic_compare_exchange_32_ucast \
+        plasma_atomic_compare_exchange_32
+
 #else  /* !(__has_builtin(__atomic_compare_exchange) || __GNUC_PREREQ(4,7)) */
+
 #define plasma_atomic_compare_exchange_ptr(ptr, cmpval, newval, weak,         \
                                            success_memmodel, failure_memmodel)\
         plasma_atomic_compare_exchange_n_ptr((ptr),(cmpval),*(newval),(weak), \
@@ -2596,6 +2626,7 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
         plasma_atomic_compare_exchange_n_32((ptr),(cmpval),*(newval),(weak),  \
                                             (success_memmodel),               \
                                             (failure_memmodel))
+
 /*(convenience to avoid compiler warnings about signed vs unsigned conversion)*/
 #define plasma_atomic_compare_exchange_vptr(ptr, cmpval, newval, weak,         \
                                             success_memmodel, failure_memmodel)\
@@ -2612,6 +2643,14 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
         plasma_atomic_compare_exchange_n_u32((ptr),(cmpval),*(newval),(weak),  \
                                              (success_memmodel),               \
                                              (failure_memmodel))
+
+#define plasma_atomic_compare_exchange_ptr_vcast \
+        plasma_atomic_compare_exchange_n_vptr
+#define plasma_atomic_compare_exchange_64_ucast \
+        plasma_atomic_compare_exchange_n_u64
+#define plasma_atomic_compare_exchange_32_ucast \
+        plasma_atomic_compare_exchange_n_u32
+
 #endif /* !(__has_builtin(__atomic_compare_exchange) || __GNUC_PREREQ(4,7)) */
 
 
@@ -2626,6 +2665,7 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
  */
 
 #if __has_builtin(__atomic_exchange_n) || __GNUC_PREREQ(4,7)
+
 #define plasma_atomic_exchange_n_ptr(ptr, newval, memmodel) \
         __atomic_exchange_n((ptr), (newval), (memmodel))
 #define plasma_atomic_exchange_n_64(ptr, newval, memmodel) \
@@ -2638,7 +2678,15 @@ plasma_atomic_compare_exchange_n_32 (uint32_t * const ptr,
         plasma_atomic_exchange_n_64
 #define plasma_atomic_exchange_n_u32 \
         plasma_atomic_exchange_n_32
+#define plasma_atomic_exchange_n_ptr_vcast \
+        plasma_atomic_exchange_n_ptr
+#define plasma_atomic_exchange_n_64_ucast \
+        plasma_atomic_exchange_n_64
+#define plasma_atomic_exchange_n_32_ucast \
+        plasma_atomic_exchange_n_32
+
 #else  /* !(__has_builtin(__atomic_exchange_n) || __GNUC_PREREQ(4,7)) */
+
 __attribute_regparm__((3))
 PLASMA_ATOMIC_C99INLINE
 void *
@@ -2751,6 +2799,13 @@ plasma_atomic_exchange_n_32 (uint32_t * const ptr, const uint32_t newval,
 #define plasma_atomic_exchange_n_u32(ptr, newval, memmodel)                \
         plasma_atomic_exchange_n_32((uint32_t *)(ptr), (uint32_t)(newval), \
                                     (memmodel))
+
+#define plasma_atomic_exchange_n_ptr_vcast \
+        plasma_atomic_exchange_n_vptr
+#define plasma_atomic_exchange_n_64_ucast \
+        plasma_atomic_exchange_n_u64
+#define plasma_atomic_exchange_n_32_ucast \
+        plasma_atomic_exchange_n_u32
 
 #endif /* !(__has_builtin(__atomic_exchange_n) || __GNUC_PREREQ(4,7)) */
 
