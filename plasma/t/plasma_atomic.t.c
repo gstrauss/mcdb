@@ -35,6 +35,7 @@
 #include "../plasma_attr.h"
 #include "../plasma_membar.h"
 #include "../plasma_stdtypes.h"
+#include "../plasma_sysconf.h"
 #include "../plasma_test.h"
 
 #if defined(__IBMC__) || defined(__IBMCPP__)
@@ -1058,8 +1059,10 @@ int
 main (int argc, char *argv[])
 {
     int rc = true;
-    const int nprocs = (int)plasma_test_sysconf_nprocs();
+    long nprocs = plasma_sysconf_nprocessors_onln();
+    if (nprocs < 1)
+        nprocs = 1;
     rc &= plasma_atomic_t_relaxed();
-    rc &= plasma_atomic_t_nthreads_add(nprocs);
+    rc &= plasma_atomic_t_nthreads_add((int)nprocs);
     return !rc;
 }

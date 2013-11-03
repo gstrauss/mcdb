@@ -110,11 +110,6 @@ int
 plasma_test_barrier_wait (void);
 
 
-__attribute_noinline__
-uint32_t
-plasma_test_sysconf_nprocs (void);
-
-
 #ifdef __cplusplus
 }
 #endif

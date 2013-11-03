@@ -12,6 +12,7 @@ plasma_ident.h    - ident strings
 plasma_membar.h   - memory barriers
 plasma_spin.h     - spin loop components
 plasma_stdtypes.h - standard types
+plasma_sysconf.h  - system configuration info
 plasma_test.h     - test framework support
 
 plasma provides portability macros for compiler and hardware micro operations.
