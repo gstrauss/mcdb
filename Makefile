@@ -219,7 +219,8 @@ NSS_PIC_OBJS:= nss/nss_mcdb.o nss/nss_mcdb_acct.o nss/nss_mcdb_authn.o \
                nss/nss_mcdb_netdb.o
 
 PLASMA_OBJS:= plasma/plasma_atomic.o plasma/plasma_attr.o \
-              plasma/plasma_endian.o plasma/plasma_spin.o
+              plasma/plasma_endian.o plasma/plasma_spin.o \
+              plasma/plasma_sysconf.o plasma/plasma_test.o
 
 PIC_OBJS:= mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
            $(PLASMA_OBJS) $(NSS_PIC_OBJS)
@@ -314,7 +315,9 @@ install-plasma-headers: plasma/plasma_atomic.h \
                         plasma/plasma_ident.h \
                         plasma/plasma_membar.h \
                         plasma/plasma_spin.h \
-                        plasma/plasma_stdtypes.h
+                        plasma/plasma_stdtypes.h \
+                        plasma/plasma_sysconf.h \
+                        plasma/plasma_test.h
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb/plasma
 	umask 333; \
 	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/plasma/
