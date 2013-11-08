@@ -139,9 +139,10 @@ plasma_atomic_t_relaxed_32 (void)
     rc &= PLASMA_TEST_COND(x32 == -1);
 
   #if !defined(__IBMC__) || !defined(__OPTIMIZE__) || !(__OPTIMIZE__ == 3)
-    /* XXX: xlc 11.1 bug hangs(?) at -O3 or higher optimization */
-
-    /* and: 0 (anti-identity) */
+    /* XXX: xlc -O3 bug optimizes away load-and-reserve, so no reservation taken
+     *      and store-conditional always fails (and we loop on lost reservation)
+     */
+    /* and: 0 (result is always 0) */
     x32 = 0xFFFFFFFF;
     r32 = plasma_atomic_fetch_and_u32(&x32, 0, memory_order_relaxed);
     plasma_membar_ccfence();
@@ -156,6 +157,17 @@ plasma_atomic_t_relaxed_32 (void)
         rc &= PLASMA_TEST_COND_IDX((r32&~(1<<i)) == x32, i);
     }
     rc &= PLASMA_TEST_COND(x32 == 0);
+
+  #if !defined(__IBMC__) || !defined(__OPTIMIZE__) || !(__OPTIMIZE__ == 3)
+    /* XXX: xlc -O3 bug optimizes away load-and-reserve, so no reservation taken
+     *      and store-conditional always fails (and we loop on lost reservation)
+     */
+    /* xor: 0 (identity) */
+    x32 = 0xFFFFFFFF;
+    r32 = plasma_atomic_fetch_xor_u32(&x32, 0, memory_order_relaxed);
+    plasma_membar_ccfence();
+    rc &= PLASMA_TEST_COND(r32 == x32);
+  #endif
 
     /* xor: loop over each bit */
     for (i=0; i < (int)(sizeof(x32)<<3); ++i) {
@@ -320,9 +332,10 @@ plasma_atomic_t_relaxed_64 (void)
     rc &= PLASMA_TEST_COND(x64 == -1LL);
 
   #if !defined(__IBMC__) || !defined(__OPTIMIZE__) || !(__OPTIMIZE__ == 3)
-    /* XXX: xlc 11.1 bug hangs(?) at -O3 or higher optimization */
-
-    /* and: 0 (anti-identity) */
+    /* XXX: xlc -O3 bug optimizes away load-and-reserve, so no reservation taken
+     *      and store-conditional always fails (and we loop on lost reservation)
+     */
+    /* and: 0 (result is always 0) */
     x64 = (int64_t)0xFFFFFFFFFFFFFFFFuLL;
     r64 = plasma_atomic_fetch_and_u64(&x64, 0, memory_order_relaxed);
     plasma_membar_ccfence();
@@ -337,6 +350,17 @@ plasma_atomic_t_relaxed_64 (void)
         rc &= PLASMA_TEST_COND_IDX((r64&~(1LL<<i)) == x64, i);
     }
     rc &= PLASMA_TEST_COND(x64 == 0);
+
+  #if !defined(__IBMC__) || !defined(__OPTIMIZE__) || !(__OPTIMIZE__ == 3)
+    /* XXX: xlc -O3 bug optimizes away load-and-reserve, so no reservation taken
+     *      and store-conditional always fails (and we loop on lost reservation)
+     */
+    /* xor: 0 (identity) */
+    x64 = (int64_t)0xFFFFFFFFFFFFFFFFuLL;
+    r64 = plasma_atomic_fetch_xor_u64(&x64, 0, memory_order_relaxed);
+    plasma_membar_ccfence();
+    rc &= PLASMA_TEST_COND(r64 == x64);
+  #endif
 
     /* xor: loop over each bit */
     for (i=0; i < (int)(sizeof(x64)<<3); ++i) {
@@ -506,9 +530,10 @@ plasma_atomic_t_relaxed_ptr (void)
     rc &= PLASMA_TEST_COND(x64 == (void *)(intptr_t)-1LL);
 
   #if !defined(__IBMC__) || !defined(__OPTIMIZE__) || !(__OPTIMIZE__ == 3)
-    /* XXX: xlc 11.1 bug hangs(?) at -O3 or higher optimization */
-
-    /* and: 0 (anti-identity) */
+    /* XXX: xlc -O3 bug optimizes away load-and-reserve, so no reservation taken
+     *      and store-conditional always fails (and we loop on lost reservation)
+     */
+    /* and: 0 (result is always 0) */
     x64 = (void *)(intptr_t)0xFFFFFFFFFFFFFFFFuLL;
     r64 = plasma_atomic_fetch_and_ptr(&x64, 0, memory_order_relaxed);
     plasma_membar_ccfence();
@@ -524,6 +549,17 @@ plasma_atomic_t_relaxed_ptr (void)
         rc &= PLASMA_TEST_COND_IDX((void *)((intptr_t)r64&~(1LL<<i)) == x64, i);
     }
     rc &= PLASMA_TEST_COND(x64 == 0);
+
+  #if !defined(__IBMC__) || !defined(__OPTIMIZE__) || !(__OPTIMIZE__ == 3)
+    /* XXX: xlc -O3 bug optimizes away load-and-reserve, so no reservation taken
+     *      and store-conditional always fails (and we loop on lost reservation)
+     */
+    /* xor: 0 (identity) */
+    x64 = (void *)(intptr_t)0xFFFFFFFFFFFFFFFFuLL;
+    r64 = plasma_atomic_fetch_xor_ptr(&x64, 0, memory_order_relaxed);
+    plasma_membar_ccfence();
+    rc &= PLASMA_TEST_COND(r64 == x64);
+  #endif
 
     /* xor: loop over each bit */
     for (i=0; i < (int)(sizeof(x64)<<3); ++i) {
@@ -668,9 +704,10 @@ plasma_atomic_t_relaxed_ptr (void)
     rc &= PLASMA_TEST_COND(x32 == (void *)(intptr_t)-1);
 
   #if !defined(__IBMC__) || !defined(__OPTIMIZE__) || !(__OPTIMIZE__ == 3)
-    /* XXX: xlc 11.1 bug hangs(?) at -O3 or higher optimization */
-
-    /* and: 0 (anti-identity) */
+    /* XXX: xlc -O3 bug optimizes away load-and-reserve, so no reservation taken
+     *      and store-conditional always fails (and we loop on lost reservation)
+     */
+    /* and: 0 (result is always 0) */
     x32 = (void *)(intptr_t)0xFFFFFFFF;
     r32 = plasma_atomic_fetch_and_ptr(&x32, 0, memory_order_relaxed);
     plasma_membar_ccfence();
@@ -685,6 +722,17 @@ plasma_atomic_t_relaxed_ptr (void)
         rc &= PLASMA_TEST_COND_IDX((void *)((intptr_t)r32&~(1<<i)) == x32, i);
     }
     rc &= PLASMA_TEST_COND(x32 == 0);
+
+  #if !defined(__IBMC__) || !defined(__OPTIMIZE__) || !(__OPTIMIZE__ == 3)
+    /* XXX: xlc -O3 bug optimizes away load-and-reserve, so no reservation taken
+     *      and store-conditional always fails (and we loop on lost reservation)
+     */
+    /* xor: 0 (identity) */
+    x32 = 0xFFFFFFFF;
+    r32 = plasma_atomic_fetch_xor_ptr(&x32, 0, memory_order_relaxed);
+    plasma_membar_ccfence();
+    rc &= PLASMA_TEST_COND(r32 == x32);
+  #endif
 
     /* xor: loop over each bit */
     for (i=0; i < (int)(sizeof(x32)<<3); ++i) {
