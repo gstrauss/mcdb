@@ -29,10 +29,20 @@
 #include "plasma_attr.h"
 #include "plasma_membar.h"
 #include "plasma_atomic.h"
+#include "plasma_endian.h"
 PLASMA_ATTR_Pragma_once
 
 #if defined(__APPLE__) && defined(__MACH__)
 #include <libkern/OSAtomic.h>
+#endif
+
+#ifndef PLASMA_SPIN_C99INLINE
+#define PLASMA_SPIN_C99INLINE C99INLINE
+#endif
+#ifndef NO_C99INLINE
+#ifndef PLASMA_SPIN_C99INLINE_FUNCS
+#define PLASMA_SPIN_C99INLINE_FUNCS
+#endif
 #endif
 
 /* spinlocks / busy-wait loops that pause briefly (versus spinning on nop
@@ -87,6 +97,10 @@ PLASMA_ATTR_Pragma_once
    * http://stackoverflow.com/questions/7086220/what-does-rep-nop-mean-in-x86-assembly
    * http://stackoverflow.com/questions/7371869/minimum-time-a-thread-can-pause-in-linux
    */
+   /* http://gcc.gnu.org/onlinedocs/gcc/X86-Built_002din-Functions.html
+    * GCC provides __builtin_ia32_pause()
+    *   Generates the pause machine instruction with a compiler memory barrier. 
+    * (not sure if preferred vis-a-vis _mm_pause() or asm "pause" (below)) */
    /* avoid pulling in the large header xmmintrin.h just for plasma_spin_pause()
     * clang xmmintrin.h defines _mm_pause() as pause
     * #if defined(__clang__) || defined(__INTEL_COMPILER)
@@ -298,7 +312,8 @@ typedef uint32_t plasma_spin_lock_lock_t;
 #endif
 
 
-typedef struct plasma_spin_lock_t {
+typedef __attribute_aligned__(16)
+struct plasma_spin_lock_t {
     plasma_spin_lock_lock_t lck;
     uint32_t udata32; /* user data 4-bytes */
     uint64_t udata64; /* user data 8-bytes */
@@ -345,10 +360,246 @@ plasma_spin_lock_acquire_spindecay (plasma_spin_lock_t * const spin,
                                     int pause1, int pause32, int yield)
   __attribute_nonnull__;
 
-#ifdef __cplusplus
+
+/* plasma_spin_tktlock_*()  ticket lock
+ * (see bottom of file for ticket lock references)
+ *
+ * plasma_spin_tktlock_init()
+ * plasma_spin_tktlock_is_free()
+ * plasma_spin_tktlock_acquire()
+ * plasma_spin_tktlock_acquire_spinloop() 
+ * plasma_spin_tktlock_release()
+ * 
+ * Note: no trylock interface for ticket lock; trylock can be approximated by
+ * checking plasma_spin_tktlock_is_free() prior to attempting to obtain lock,
+ * but doing so might result in two cache line misses to obtain lock, similar
+ * to CAS.
+ */
+
+typedef __attribute_aligned__(16)
+struct plasma_spin_tktlock_t {
+    union { uint32_t u; struct { uint16_t le; uint16_t be; } t; } lck;
+    uint32_t udata32; /* user data 4-bytes */
+    uint64_t udata64; /* user data 8-bytes */
+} plasma_spin_tktlock_t;
+
+#define PLASMA_SPIN_TKTLOCK_TKTMAX       0xFFFFu
+#define PLASMA_SPIN_TKTLOCK_TKTINC       0x10000u
+#define PLASMA_SPIN_TKTLOCK_MASK(x)      ((x) &  PLASMA_SPIN_TKTLOCK_TKTMAX)
+#define PLASMA_SPIN_TKTLOCK_SHIFT(x)     ((x) >> 16)
+
+#ifdef __STDC_C99
+#define PLASMA_SPIN_TKTLOCK_INITIALIZER {.lck.u = 0, .udata32 = 0, .udata64 = 0}
+#else
+#define PLASMA_SPIN_TKTLOCK_INITIALIZER { { 0 }, 0, 0 }
+#endif
+#define plasma_spin_tktlock_init(t) ((t)->lck.u=0,(t)->udata32=0,(t)->udata64=0)
+
+PLASMA_SPIN_C99INLINE
+bool
+plasma_spin_tktlock_is_free (const plasma_spin_tktlock_t * const restrict spin)
+  __attribute_nonnull__;
+#ifdef PLASMA_SPIN_C99INLINE_FUNCS
+PLASMA_SPIN_C99INLINE
+bool
+plasma_spin_tktlock_is_free (const plasma_spin_tktlock_t * const restrict spin)
+{
+    const uint32_t tkt = spin->lck.u;
+    return (PLASMA_SPIN_TKTLOCK_SHIFT(tkt) == PLASMA_SPIN_TKTLOCK_MASK(tkt));
 }
 #endif
 
+/*(plasma_spin_tktlock_acquire_spinloop() always returns true)*/
+__attribute_noinline__
+bool
+plasma_spin_tktlock_acquire_spinloop (plasma_spin_tktlock_t *
+                                        const restrict spin, uint32_t tkt)
+  __attribute_nonnull__;
+
+/*(plasma_spin_tktlock_acquire() always returns true)*/
+PLASMA_SPIN_C99INLINE
+bool
+plasma_spin_tktlock_acquire (plasma_spin_tktlock_t * const restrict spin)
+  __attribute_nonnull__;
+#ifdef PLASMA_SPIN_C99INLINE_FUNCS
+PLASMA_SPIN_C99INLINE
+bool
+plasma_spin_tktlock_acquire (plasma_spin_tktlock_t * const restrict spin)
+{
+    const uint32_t tkt = /* increment ticket count (high 16-bits of lck) */
+      plasma_atomic_fetch_add_u32(&spin->lck.u, PLASMA_SPIN_TKTLOCK_TKTINC,
+                                  memory_order_relaxed);
+    if (__builtin_expect(
+          (PLASMA_SPIN_TKTLOCK_SHIFT(tkt)==PLASMA_SPIN_TKTLOCK_MASK(tkt)), 1)) {
+        /* (atomic rmw op provides acquire barrier on some platforms (e.g. x86);
+         *  emit barrier only if platform requires barrier after rmw atomic)
+         * (not sure if atomic_thread_fence(memory_order_acq_rel) does same)*/
+        plasma_membar_atomic_thread_fence_acq_rel();
+        return true;
+    }
+    return plasma_spin_tktlock_acquire_spinloop(spin, tkt);
+}
+#endif
+
+PLASMA_SPIN_C99INLINE
+void
+plasma_spin_tktlock_release (plasma_spin_tktlock_t * const restrict spin)
+  __attribute_nonnull__;
+#ifdef PLASMA_SPIN_C99INLINE_FUNCS
+PLASMA_SPIN_C99INLINE
+void
+plasma_spin_tktlock_release (plasma_spin_tktlock_t * const restrict spin)
+{
+    /* increment ticket num ready to be served (low 16-bits of lck) */
+    /* must write only 16 bits (and avoid more expensive atomic exchange);
+     * use union to avoid type-punning pointer between uint32_t and uint16_t
+     * (writing then reading different members of union is unspecified in C std)
+     * In C99, Annex J (non-normative) "J.1 Unspecified behavior. The following
+     * are unspecified: The value of a union member other than the last one 
+     * stored into (6.2.6.1)."  However, the result appears predictable in
+     * practice, as long as the structure is naturally aligned and naturally
+     * packed without padding.  Also, note that reading the 16-bit value,
+     * incrementing it, and storing it is not a race condition with
+     * plasma_spin_tktlock_acquire() -- which does 32-bit atomic add, including
+     * 16 bits modified here -- since acquire does not modify these 16 bits.
+     * NB: must test behavior with different compiler optimization levels and
+     * ensure that pointer aliasing in union is not optimized into incorrect
+     * code.  Might need to disable optimization on this routine or set
+     * compiler optimization fences if atomic store does not provide barrier */
+  #if defined(__LITTLE_ENDIAN__)
+    uint16_t * const ptr = &spin->lck.t.le;
+  #elif defined(__BIG_ENDIAN__)
+    uint16_t * const ptr = &spin->lck.t.be;
+  #endif
+    const uint16_t n = *ptr + (uint16_t)1u;
+    plasma_atomic_store_explicit(ptr, n, memory_order_release);
+}
+#endif
+
+
+/* plasma_spin_taglock_*() (fuzzy ticket lock)
+ * (alternative to strict ticket lock)
+ * 
+ * Traditional ticket lock is fair, with each waiting thread acquiring the lock
+ * in strict progression.  However, when a ticket lock is released and the count
+ * incremented, the thread waiting for that ticket number might be sleeping,
+ * which delays everyone.  plasma_spin_taglock_*() provides an alternative.
+ * With a small number of threads spinning for the same batch of tag numbers,
+ * there is a higher probability that at least one will be actively spinning
+ * and able to grab the lock without further delay, while at the same time
+ * avoiding a thundering herd.  Those with tags in the batch all get the lock
+ * before the next batch, so the number of waiters for the taglock converges
+ * to one for each batch, maintaining some fairness, though fuzzier than
+ * traditional, strictly fair ticket lock.
+ *
+ * Additional features:
+ * - plasma_spin_taglock allows for higher priority threads to compete for the
+ *   lock with the current batch, instead of going to the end of the queue,
+ *   (high priority threads can use plasma_spin_taglock_acquire_urgent())
+ *   (high priority threads using this might starve low priority threads)
+ */
+
+typedef __attribute_aligned__(16)
+struct plasma_spin_taglock_t {
+    uint32_t lck;
+    uint32_t tag;
+    uint64_t udata64; /* user data 8-bytes */
+} plasma_spin_taglock_t;
+
+#define PLASMA_SPIN_TAGLOCK_TAGMAX       0x7FFFFFFFu
+#define PLASMA_SPIN_TAGLOCK_ORVAL        0x80000000u
+#define PLASMA_SPIN_TAGLOCK_MASK(x)      ((x) &  PLASMA_SPIN_TAGLOCK_TAGMAX)
+#define PLASMA_SPIN_TAGLOCK_IS_LOCKED(x) ((x) &  PLASMA_SPIN_TAGLOCK_ORVAL)
+#define PLASMA_SPIN_TAGLOCK_UNLOCKVAL(x) ((x) & ~PLASMA_SPIN_TAGLOCK_ORVAL)
+#define PLASMA_SPIN_TAGLOCK_LOCKVAL(x)   ((x) |  PLASMA_SPIN_TAGLOCK_ORVAL)
+
+#ifdef __STDC_C99
+#define PLASMA_SPIN_TAGLOCK_INITIALIZER { .lck = 0, .tag = 0, .udata64 = 0 }
+#else
+#define PLASMA_SPIN_TAGLOCK_INITIALIZER { 0, 0, 0 }
+#endif
+#define plasma_spin_taglock_init(t) ((t)->lck=0, (t)->tag=0, (t)->udata64=0)
+
+#define plasma_spin_taglock_is_free(taglock) \
+        (!PLASMA_SPIN_TAGLOCK_IS_LOCKED((taglock)->lck))
+
+#define plasma_spin_taglock_is_contended(taglock) \
+        ((taglock)->lck != PLASMA_SPIN_TAGLOCK_MASK((taglock)->tag))
+
+#ifndef __ia64__
+#define PLASMA_SPIN_TAGLOCK_VIA_FETCH_OR
+#endif
+
+/* NOTE: plasma_spin_taglock_acquire_try() is *unfair*; avoid under contention
+ * (e.g. caller might first check lock using plasma_spin_taglock_is_contended()
+ *  or maintain a flag in separate cache line to call acquire vs acquire_try) */
+PLASMA_SPIN_C99INLINE
+bool
+plasma_spin_taglock_acquire_try (plasma_spin_taglock_t * const restrict taglock)
+  __attribute_nonnull__;
+#ifdef PLASMA_SPIN_C99INLINE_FUNCS
+PLASMA_SPIN_C99INLINE
+bool
+plasma_spin_taglock_acquire_try (plasma_spin_taglock_t * const restrict taglock)
+{
+  #ifdef PLASMA_SPIN_TAGLOCK_VIA_FETCH_OR
+    uint32_t * const restrict lck = (uint32_t *)&taglock->lck;
+    const uint32_t cmp =
+      plasma_atomic_fetch_or_u32(lck, PLASMA_SPIN_TAGLOCK_ORVAL,
+                                 memory_order_relaxed);
+    if (!PLASMA_SPIN_TAGLOCK_IS_LOCKED(cmp)) {
+        /* jumped queue by locking without incrementing tag
+         * (so decrement lck since taglock_release will increment lck) */
+        *lck = PLASMA_SPIN_TAGLOCK_LOCKVAL(cmp-1);
+        plasma_membar_atomic_thread_fence_acq_rel();
+        return true;
+    }
+    return false;
+  #else /* Must read prior to CAS, so check if contended before CAS attempt */
+    uint32_t * const restrict lck = (uint32_t *)&taglock->lck;
+    const uint32_t cmp = *lck;/* bypass queue if not locked and not contended */
+    if (cmp == PLASMA_SPIN_TAGLOCK_MASK(taglock->tag)/*(jump queue:(cmp - 1))*/
+        && plasma_atomic_CAS_32(lck,cmp,PLASMA_SPIN_TAGLOCK_LOCKVAL(cmp - 1))) {
+        plasma_membar_atomic_thread_fence_acq_rel();
+        return true;
+    }
+    return false;
+  #endif
+}
+#endif
+
+
+bool
+plasma_spin_taglock_acquire (plasma_spin_taglock_t * const restrict taglock)
+  __attribute_nonnull__;
+
+/* NOTE: plasma_spin_taglock_acquire_urgent() is *unfair*
+ * (but that is the point); avoid many urgent contenders */
+bool
+plasma_spin_taglock_acquire_urgent (plasma_spin_taglock_t *
+                                      const restrict taglock)
+  __attribute_nonnull__;
+
+
+PLASMA_SPIN_C99INLINE
+void
+plasma_spin_taglock_release (plasma_spin_taglock_t * const restrict taglock)
+  __attribute_nonnull__;
+#ifdef PLASMA_SPIN_C99INLINE_FUNCS
+PLASMA_SPIN_C99INLINE
+void
+plasma_spin_taglock_release (plasma_spin_taglock_t * const restrict taglock)
+{
+    uint32_t * const restrict lck = &taglock->lck;
+    plasma_atomic_store_explicit(lck, PLASMA_SPIN_TAGLOCK_UNLOCKVAL(1u+*lck),
+                                 memory_order_release);
+}
+#endif
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
@@ -397,4 +648,10 @@ http://cbloomrants.blogspot.com/2010/09/09-12-10-defficiency-of-windows-multi.ht
  *
  * Apple OSAtomic.h Reference
  * https://developer.apple.com/library/mac/#documentation/System/Reference/OSAtomic_header_reference/Reference/reference.html#//apple_ref/doc/uid/TP40011482
+ *
+ * Ticket lock
+ * http://en.wikipedia.org/wiki/Ticket_lock
+ * http://en.wikipedia.org/wiki/Fetch-and-add
+ * http://lwn.net/Articles/267968/   (including comments)
+ * http://www.intel.com/content/dam/www/public/us/en/documents/white-papers/xeon-lock-scaling-analysis-paper.pdf
  */
