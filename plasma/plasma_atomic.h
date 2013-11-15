@@ -2987,6 +2987,48 @@ plasma_atomic_lock_acquire (uint32_t * const ptr)
  * No workaround is necessary if software checks that MSRC001_1023h[33] is set on all processors that may execute the code. The value in MSRC001_1023h[33] may not be the same on all processors in a multi-processor system.
  */
 
+/* NOTE: *not* handled in plasma_atomic.h; gcc -fPIC and CMPXCHG8B bug
+ *
+ * (various bugs fixed in gcc 4.4 series; gcc <4.4 already reached end-of-life)
+ *
+ * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=37651
+ *   __sync_bool_compare_and_swap creates wrong code with -fPIC
+ * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51332
+ *   __sync_add_and_fetch segfaults when -fPIC is enabled
+ * http://stackoverflow.com/questions/6756985/correct-way-to-wrap-cmpxchg8b-in-gcc-inline-assembly-32-bits
+ *
+ * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=39431
+ * http://gcc.gnu.org/ml/gcc-patches/2009-03/msg00586.html
+ *   [PATCH] Avoid spill failures with cmpxchg8b (PR target/39431)
+ *   ((fixed in gcc 4.4))
+ *
+ * RHEL5 RPM available with fix (RHEL5 ships with gcc 4.1.2)
+ * https://rhn.redhat.com/errata/RHBA-2013-0029.html
+ * Previously, GCC did not correctly handle processor registers and used an
+ * incorrect memory operand when processing the CMPXCHG8B instruction. As a
+ * consequence, the compiler generated erroneous code if the "-fPIC" option was
+ * used.
+ *
+ * http://gcc.gnu.org/ml/gcc-help/2012-01/msg00024.html
+ *   For a workaround, I suggest
+ *   int main(int argc, char * argv[])
+ *   {
+ *       static long long foo;
+ *       long long *volatile fooptr = &foo;
+ *       return __sync_add_and_fetch(fooptr, foo);
+ *   }
+ *   as this seems to force GCC 4.2.4 to compute the address first,
+ *   rather than try to access the variable via the GOT as part of the
+ *   cmpxchg8b instruction.
+ *
+ * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=46254
+ * ICE: in find_reloads, at reload.c:3806 (unable to generate reloads) with -fPIC -mcmodel={medium|large} and __sync_val_compare_and_swap
+ *   ((Fixed for 4.7.2+.))
+ *
+ * http://sam.zoy.org/blog/2007-04-13-shlib-with-non-pic-code-have-inline-assembly-and-pic-mix-well
+ * http://www.technovelty.org/arch/compare-and-swap-with-pic.html
+ */
+
 /*
  * plasma_atomic.h aims for simplicity and support of a small set of modern
  * hardware and compilers.  Authoritative sources provided above.
