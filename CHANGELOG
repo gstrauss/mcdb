@@ -1,5 +1,21 @@
 mcdb change log
 
+mcdb v0.09 (2013.11.15)
+- plasma_atomic:
+  - C11/C++11 additions
+  - Sun Studio and IBM xlC inline assembly for atomics in 32-bit compile
+- plasma_stdtypes: C11/C++11 alignof and alignas
+- plasma_attr: attribute additions
+- plasma_membar.h: Linux kernel user helpers for ARM
+- plasma/plasma_spin: plasma_spin_tktlock and plasma_spin_taglock
+- New plasma/* components:
+- plasma/plasma_endian.h   - byteorder endian conversion macros
+- plasma/plasma_ident.h    - portability macros for ident string
+- plasma/plasma_sysconf.h  - system configuration info
+- plasma/plasma_test.h     - basic test framework support
+- plasma/t/petersons_algo.c  - Peterson's algorithm for mutual exclusion
+- plasma/t/plasma_atomic.t.c - plasma_atomic.[ch] tests
+
 mcdb v0.08 (2013.06.08)
 - plasma/* - portability macros for compiler and hardware micro operations
 - plasma/plasma_atomic.h   - atomic operations
