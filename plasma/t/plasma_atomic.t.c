@@ -428,7 +428,7 @@ plasma_atomic_t_relaxed_ptr (void)
      ,(void *)(intptr_t)0x0000000080000000uLL /* ((int64_t)INT_MAX)+1 */
      ,(void *)(intptr_t)0x7FFFFFFFFFFFFFFFuLL /* INT64_MAX */
     };
-    void *x64, *r64;
+    const void *x64, *r64;
     int i, rc = true;
     const int iters = PLASMA_ATOMIC_T_RELAXED_LOOP_ITERATIONS;
 
@@ -516,14 +516,15 @@ plasma_atomic_t_relaxed_ptr (void)
 
     /* or: 0 (identity) */
     r64 = x64 = (void *)(intptr_t)0xFFFFFFFFFFFFFFFFuLL;
-    (void)plasma_atomic_fetch_or_ptr(&x64, 0, memory_order_relaxed);
+    (void)plasma_atomic_fetch_or_ptr((intptr_t *)&x64, 0, memory_order_relaxed);
     plasma_membar_ccfence();
     rc &= PLASMA_TEST_COND(r64 == x64);
 
     /* or: loop over each bit */
     for (i=0, x64=0; i < (int)(sizeof(x64)<<3); ++i) {
         plasma_membar_ccfence();
-        r64 = plasma_atomic_fetch_or_ptr(&x64, (1LL<<i), memory_order_relaxed);
+        r64 = (void *)plasma_atomic_fetch_or_ptr((intptr_t *)&x64, (1LL<<i),
+                                                 memory_order_relaxed);
         plasma_membar_ccfence();
         rc &= PLASMA_TEST_COND_IDX((void *)((intptr_t)r64|(1LL<<i)) == x64, i);
     }
@@ -535,7 +536,8 @@ plasma_atomic_t_relaxed_ptr (void)
      */
     /* and: 0 (result is always 0) */
     x64 = (void *)(intptr_t)0xFFFFFFFFFFFFFFFFuLL;
-    r64 = plasma_atomic_fetch_and_ptr(&x64, 0, memory_order_relaxed);
+    r64 = (void *)plasma_atomic_fetch_and_ptr((intptr_t *)&x64, 0,
+                                              memory_order_relaxed);
     plasma_membar_ccfence();
     rc &= PLASMA_TEST_COND(x64 == 0);
   #endif
@@ -544,7 +546,8 @@ plasma_atomic_t_relaxed_ptr (void)
     x64 = (void *)(intptr_t)0xFFFFFFFFFFFFFFFFuLL;
     for (i=0; i < (int)(sizeof(x64)<<3); ++i) {
         plasma_membar_ccfence();
-        r64 = plasma_atomic_fetch_and_ptr(&x64,~(1LL<<i), memory_order_relaxed);
+        r64 = (void *)plasma_atomic_fetch_and_ptr((intptr_t *)&x64, ~(1LL<<i),
+                                                  memory_order_relaxed);
         plasma_membar_ccfence();
         rc &= PLASMA_TEST_COND_IDX((void *)((intptr_t)r64&~(1LL<<i)) == x64, i);
     }
@@ -556,7 +559,8 @@ plasma_atomic_t_relaxed_ptr (void)
      */
     /* xor: 0 (identity) */
     x64 = (void *)(intptr_t)0xFFFFFFFFFFFFFFFFuLL;
-    r64 = plasma_atomic_fetch_xor_ptr(&x64, 0, memory_order_relaxed);
+    r64 = (void *)plasma_atomic_fetch_xor_ptr((intptr_t *)&x64, 0,
+                                              memory_order_relaxed);
     plasma_membar_ccfence();
     rc &= PLASMA_TEST_COND(r64 == x64);
   #endif
@@ -565,7 +569,8 @@ plasma_atomic_t_relaxed_ptr (void)
     for (i=0; i < (int)(sizeof(x64)<<3); ++i) {
         x64 = (void *)(intptr_t)0xFFFFFFFFFFFFFFFFuLL;
         plasma_membar_ccfence();
-        r64 = plasma_atomic_fetch_xor_ptr(&x64, (1LL<<i), memory_order_relaxed);
+        r64 = (void *)plasma_atomic_fetch_xor_ptr((intptr_t *)&x64, (1LL<<i),
+                                                  memory_order_relaxed);
         plasma_membar_ccfence();
         rc &= PLASMA_TEST_COND_IDX((void *)((intptr_t)r64^(1LL<<i)) == x64, i);
     }
@@ -574,7 +579,8 @@ plasma_atomic_t_relaxed_ptr (void)
     /* exchange (swap) */
     x64 = 0;
     plasma_membar_ccfence();
-    r64 = plasma_atomic_exchange_n_vptr(&x64, (intptr_t)0xFFFFFFFFFFFFFFFFuLL,
+    r64 = plasma_atomic_exchange_n_vptr(&x64,
+                                        (void *)(intptr_t)0xFFFFFFFFFFFFFFFFuLL,
                                         memory_order_relaxed);
     plasma_membar_ccfence();
     rc &= PLASMA_TEST_COND(r64 == 0);
@@ -588,7 +594,8 @@ plasma_atomic_t_relaxed_ptr (void)
     plasma_membar_ccfence();
     r64 = 0;
     (void)plasma_atomic_compare_exchange_n_vptr(&x64, &r64,
-                                                (intptr_t)0xFFFFFFFFFFFFFFFFuLL,
+                                                (void *)
+                                                  (intptr_t)0xFFFFFFFFFFFFFFFFuLL,
                                                 0,
                                                 memory_order_relaxed,
                                                 memory_order_relaxed);
