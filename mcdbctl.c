@@ -38,6 +38,7 @@
 #include "nointr.h"
 #include "uint32.h"
 #include "plasma/plasma_stdtypes.h"
+#include "plasma/plasma_sysconf.h"
 
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -45,7 +46,7 @@
 #include <stdio.h>   /* printf(), IOV_MAX */
 #include <stdlib.h>  /* malloc(), free(), EXIT_SUCCESS */
 #include <string.h>  /* strlen() */
-#include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO _SC_PAGESIZE */
+#include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO */
 #include <sys/uio.h> /* writev() */
 #include <limits.h>  /* SSIZE_MAX */
 
@@ -69,7 +70,7 @@ mcdb_madv_initmark(unsigned char * const ptr, const uintptr_t sz, size_t offset)
 {
     if (offset != 0) {
         /* round up if non-zero to avoid calling dontneed on mcdb header page */
-        const uintptr_t pagesz = ((uintptr_t)sysconf(_SC_PAGESIZE)) - 1;
+        const uintptr_t pagesz = ((uintptr_t)plasma_sysconf_pagesize()) - 1u;
         offset = (offset + pagesz) & ~pagesz;/* round up to nearest page size */
     }
     return (sz)-(offset) >= (1u << 25)

@@ -46,6 +46,7 @@
 #include "nointr.h"
 #include "uint32.h"
 #include "plasma/plasma_stdtypes.h"
+#include "plasma/plasma_sysconf.h"
 
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -430,7 +431,7 @@ mcdb_make_start(struct mcdb_make * const restrict m, const int fd,
     m->fd        = fd;
     m->fn_malloc = fn_malloc;
     m->fn_free   = fn_free;
-    m->pgalign   = ~( ((size_t)sysconf(_SC_PAGESIZE)) - 1 );
+    m->pgalign   = ~( ((size_t)plasma_sysconf_pagesize()) - 1u );
     m->head[0]   = (struct mcdb_hplist *)
                    fn_malloc(sizeof(struct mcdb_hplist) * MCDB_SLOTS);
     memset(m->count, 0, MCDB_SLOTS * sizeof(uint32_t));
