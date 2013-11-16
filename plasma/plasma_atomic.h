@@ -2222,9 +2222,8 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 #if (defined(__IBMC__) || defined(__IBMCPP__)) \
  && !(defined(_LP64) || defined(__LP64__))
 
-#ifdef __IBMC__
-  /* workaround bug in xlc 11 (C compiler) which was not emitting inline asm
-   * (There are probably better ways to workaround the bug) */
+/* workaround bug in xlC 11 (C and C++) which is not emitting inline asm
+ * (There are probably better ways to workaround the bug than excess mfocrf) */
 #define plasma_atomic_store_8_POWER(ptr,val)               \
   do {                                                     \
      plasma_atomic_words plasma_atomic_tmpw;               \
@@ -2237,18 +2236,6 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
                       :"r"(plasma_atomic_tmpw.lo),         \
                        "r"(plasma_atomic_tmpw.hi));        \
   } while (0)
-#else /* defined(__IBMCPP__) */
-#define plasma_atomic_store_8_POWER(ptr,val)               \
-  do {                                                     \
-     plasma_atomic_words plasma_atomic_tmpw;               \
-     *(__typeof__(*(ptr)) *)&plasma_atomic_tmpw = (val);   \
-     __asm__ volatile ("\t rldimi %1, %2, 32, 64 \n"       \
-                       "\t std %1, %0 \n"                  \
-                      :"=m"(*(ptr))                        \
-                      :"r"(plasma_atomic_tmpw.lo),         \
-                       "r"(plasma_atomic_tmpw.hi));        \
-  } while (0)
-#endif
 
 #undef plasma_atomic_store_explicit
 #define plasma_atomic_store_explicit(ptr, val, memmodel)               \
