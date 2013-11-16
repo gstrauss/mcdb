@@ -38,6 +38,10 @@
 #include "../plasma_sysconf.h"
 #include "../plasma_test.h"
 
+#ifdef PLASMA_FEATURE_POSIX
+#include <unistd.h>  /* alarm() */
+#endif
+
 #if defined(__IBMC__) || defined(__IBMCPP__)
 #if !defined(_LP64) && !defined(__LP64__) && !defined(_ARCH_PPC64)
 #error "plasma_atomic.h 64-bit ops require: xlc -qarch=pwr5 or better 64-bit POWER arch"
@@ -1117,6 +1121,12 @@ main (int argc, char *argv[])
     long nprocs = plasma_sysconf_nprocessors_onln();
     if (nprocs < 1)
         nprocs = 1;
+    if (nprocs > 32)
+        nprocs = 32;  /*(place upper bound on num threads created in tests)*/
+    /* expect all tests to complete in <2 mins  (revisit as necessary)
+     * (threaded tests take more time as CPU core count increases) */
+    alarm(120);
+
     rc &= plasma_atomic_t_relaxed();
     rc &= plasma_atomic_t_nthreads_add((int)nprocs);
     return !rc;
