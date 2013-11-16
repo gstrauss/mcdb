@@ -24,10 +24,10 @@
 
 #include "plasma_test.h"
 #include "plasma_attr.h"
+#include "plasma_feature.h"
 #include "plasma_stdtypes.h"
 
 #include <errno.h>
-#include <pthread.h>
 #include <stdio.h>    /* fprintf() */
 #include <stdlib.h>   /* malloc() free() calloc() realloc() abort() */
 #include <string.h>   /* strerror() */
@@ -81,6 +81,79 @@ plasma_test_perror_abort (const char *func, const int line,
     fprintf(stderr, "%s:%d: %s: %s\n", func, line, errstr, strerror(errnum));
     abort();
 }
+
+
+
+#ifdef PLASMA_FEATURE_POSIX
+
+#include <pthread.h>
+#include <unistd.h>   /* _POSIX_BARRIERS (if supported) */
+
+/* pthread barriers are optional POSIX extension not implemented on Mac OSX */
+#ifndef _POSIX_BARRIERS
+
+/* Brent Priddy provides a simple implementation of pthread barriers in
+ * http://stackoverflow.com/questions/3640853/performance-test-sem-t-v-s-dispatch-semaphore-t-and-pthread-once-t-v-s-dispat
+ * Note: code has been modified from original posted on link above */
+
+typedef int pthread_barrierattr_t;
+typedef struct
+{
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    int count;
+    int tripCount;
+} pthread_barrier_t;
+
+static int
+pthread_barrier_init (pthread_barrier_t * const restrict barrier,
+                      const pthread_barrierattr_t * const restrict attr
+                        __attribute_unused__,
+                      const unsigned int count)
+{
+    if (    0 != count
+         && 0 == pthread_mutex_init(&barrier->mutex, 0)) {
+        if (0 == pthread_cond_init(&barrier->cond, 0)) {
+            barrier->tripCount = count;
+            barrier->count = 0;
+            return 0;
+        }
+        else
+            pthread_mutex_destroy(&barrier->mutex);
+    }
+    else if (count == 0)
+        errno = EINVAL;
+    return -1;
+}
+
+static int
+pthread_barrier_destroy (pthread_barrier_t * const restrict barrier)
+{
+    pthread_cond_destroy(&barrier->cond);
+    pthread_mutex_destroy(&barrier->mutex);
+    return 0;
+}
+
+static int
+pthread_barrier_wait (pthread_barrier_t * const restrict barrier)
+{
+    int rc=0; /*(rc 0 for waiters, non-zero for PTHREAD_BARRIER_SERIAL_THREAD)*/
+    pthread_mutex_lock(&barrier->mutex);
+    ++barrier->count < barrier->tripCount
+      ? pthread_cond_wait(&barrier->cond, &barrier->mutex)
+      : (pthread_cond_broadcast(&barrier->cond), (rc = 1));
+    pthread_mutex_unlock(&barrier->mutex);
+    return rc;
+}
+
+#endif /* !_POSIX_BARRIERS */
+
+#elif defined(_WIN32)
+
+/* XXX: see http://locklessinc.com/articles/pthreads_on_windows/ */
+
+#endif /* defined(_WIN32) */
+
 
 
 /* simple convenience framework to assist in running multithreaded tests

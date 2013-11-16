@@ -56,6 +56,11 @@
 #define _SC_NPROCESSORS_ONLN            72
 #endif
 
+/*(Mac OSX requires _DARWIN_C_SOURCE defined for this definition)*/
+#if defined(__APPLE__) && defined(__MACH__)
+#define _SC_NPROCESSORS_ONLN            58
+#endif
+
 long
 plasma_sysconf_nprocessors_onln (void)
 {
