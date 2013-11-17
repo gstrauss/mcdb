@@ -474,6 +474,7 @@ __attribute_pure__
 PLASMA_ENDIAN_C99INLINE
 uint16_t
 plasma_endian_swap16p_func (const uint16_t * const restrict x)
+  __attribute_nothrow__
 {
   #if defined(plasma_endian_swap16p_funcbody)
     plasma_endian_swap16p_funcbody(x);
@@ -525,6 +526,7 @@ __attribute_pure__
 PLASMA_ENDIAN_C99INLINE
 uint32_t
 plasma_endian_swap32p_func (const uint32_t * const restrict x)
+  __attribute_nothrow__
 {
   #if defined(plasma_endian_swap32p_funcbody)
     plasma_endian_swap32p_funcbody(x);
@@ -576,6 +578,7 @@ __attribute_pure__
 PLASMA_ENDIAN_C99INLINE
 uint64_t
 plasma_endian_swap64p_func (const uint64_t * const restrict x)
+  __attribute_nothrow__
 {
   #if defined(plasma_endian_swap64p_funcbody)
     plasma_endian_swap64p_funcbody(x);
