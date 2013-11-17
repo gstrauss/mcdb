@@ -327,6 +327,15 @@
 #endif
 #endif
 
+#ifndef __attribute_may_alias__
+#if __has_attribute(may_alias) \
+ || __GNUC_PREREQ(3,3)
+#define __attribute_may_alias__  __attribute__((__may_alias__))
+#else
+#define __attribute_may_alias__
+#endif
+#endif
+
 #ifndef __attribute_common__
 #if __has_attribute(common) \
  || __GNUC_PREREQ(3,3) \
@@ -749,7 +758,7 @@ enum plasma_attr_mm_hint
  */
 #ifndef __attribute_aligned__
 #if __has_attribute(aligned) \
- || defined(__GNUC__) /* __GNUC_PREREQ(?,?) */ \
+ || defined(__GNUC__) /* __GNUC_PREREQ(2,95) and possibly earlier */ \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
  || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \

@@ -466,6 +466,7 @@ plasma_spin_tktlock_release (plasma_spin_tktlock_t * const restrict spin)
      * ensure that pointer aliasing in union is not optimized into incorrect
      * code.  Might need to disable optimization on this routine or set
      * compiler optimization fences if atomic store does not provide barrier */
+    __attribute_may_alias__
   #if defined(__LITTLE_ENDIAN__)
     uint16_t * const ptr = &spin->lck.t.le;
   #elif defined(__BIG_ENDIAN__)
