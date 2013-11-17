@@ -31,6 +31,9 @@
 
 /* note: tests int32_t and int64_t sizes; char and short not tested below */
 
+/* note: plasma_atomic.t.c fails to compile with (xlC 10.1) xlc_r -q32 -O2
+ * (xlc generates negative .line in asm (.line -4) (compile with -S to see)) */
+
 #include "../plasma_atomic.h"
 #include "../plasma_attr.h"
 #include "../plasma_membar.h"
@@ -739,7 +742,7 @@ plasma_atomic_t_relaxed_ptr (void)
      *      and store-conditional always fails (and we loop on lost reservation)
      */
     /* xor: 0 (identity) */
-    x32 = 0xFFFFFFFF;
+    x32 = (void *)(intptr_t)0xFFFFFFFF;
     r32 = plasma_atomic_fetch_xor_ptr(&x32, 0, memory_order_relaxed);
     plasma_membar_ccfence();
     rc &= PLASMA_TEST_COND(r32 == x32);
