@@ -523,7 +523,7 @@
 #if __has_builtin(__builtin_constant_p) \
  || __GNUC_PREREQ(3,1)/*(check major,minor ver; actually supported in 3.0.1)*/\
  || defined(__IBMC__) || defined(__IBMCPP__) \
- || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x5110) /* Sun Studio 12.2 C   */
+ || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x5100) /* Sun Studio 12.1 C   */
 #define plasma_attr_has_builtin_constant_p
 #else
 #ifndef __builtin_constant_p
@@ -735,7 +735,7 @@ enum plasma_attr_mm_hint
  *   http://docs.oracle.com/cd/E18659_01/html/821-1383/bkbjx.html#bkbjy
  * Solaris standard libc does provide memalign() for allocating aligned memory,
  * but only #pragma align for stack or global alignment, until Sun Studio 12 C
- * and Sun Studio 12.2 C++ (according to doc, but syntax accepted in 12.1 C++).
+ * and Sun Studio 12.2 C++.
  * POSIX documents posix_memalign() which some platforms support.
  * C11 provides aligned_alloc()
  *
@@ -752,7 +752,7 @@ enum plasma_attr_mm_hint
  || defined(__GNUC__) /* __GNUC_PREREQ(?,?) */ \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
- || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5100) /* Sun Studio 12.1 C++ */ \
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
  || defined(__HP_cc) || defined(__HP_aCC)
 #define __attribute_aligned__(x)  __attribute__((__aligned__ (x)))
 #else
