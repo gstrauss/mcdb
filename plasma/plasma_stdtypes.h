@@ -122,6 +122,7 @@ typedef double max_align_t;
 /* plasma_attr.h provides compatibility support for
  * alignof, _Alignof, alignas, _Alignas definitions */
 #if !defined(__alignof_is_defined) || !__alignof_is_defined
+#undef  __alignof_is_defined
 #define __alignof_is_defined 1
 #ifndef alignof
 #define alignof(x)  __alignof__(x)
@@ -134,19 +135,19 @@ typedef double max_align_t;
 #endif
 #endif
 
-/* (compatibly supports only alignas(alignof(type)), not alignas(type) use,
- *  unless __builtin_constant_p() is also supported (e.g. gcc and clang))
- * (check for __builtin_constant_p support since do not want ternary
- *  condition in declaration when __builtin_constant_p is not supported) */
+/* (compatibly supported as alignas(alignof(type)), not alignas(type) use)
+ * (MSVC requires __declspec(align(x)) at beginning of declaration)
+ * (Sun Studio 12U1 C compiler can not be asked to align variables on stack
+ *  "warning: can not set non-default alignment for automatic variable"
+ *  (no warning in 12U1 C++ or Oracle Solaris Studio 12.3 (not tested in 12.2))
+ *  Workaround is to use alignas() on a struct member, so that subsequent use
+ *  of struct has appropriate default alignment on stack) */
 #if !__has_extension(cxx_alignas) \
  && (!defined(__alignas_is_defined) || !__alignas_is_defined)
+#undef  __alignas_is_defined
 #define __alignas_is_defined 1
 #if __has_extension(c_alignas)
 #define alignas(x)  _Alignas(x)
-#elif defined(plasma_attr_has_builtin_constant_p)
-#define alignas(x)  __builtin_constant_p(x) \
-                    ? __attribute_aligned__(x) \
-                    : __attribute_aligned__(__alignof__(x))
 #elif !defined(_MSC_VER)
 #define alignas(x)  __attribute_aligned__(x)
 #else /* defined(_MSC_VER) */
@@ -161,6 +162,13 @@ typedef double max_align_t;
 #endif
 
 #endif /* !C11 <stdalign.h> && !C++11 <cstdalign> */
+
+/* For widest portability, use specialized macros for alignas():
+ *   plasma_stdtypes_alignas_type(T)
+ *   plasma_stdtypes_alignas_sz(sz)
+ * or use what they expand to: alignas(alignof(T)) or alignas(sz) */
+#define plasma_stdtypes_alignas_type(T)  alignas(alignof(T))
+#define plasma_stdtypes_alignas_sz(sz)   alignas(sz)
 
 
 /* stdbool.h
