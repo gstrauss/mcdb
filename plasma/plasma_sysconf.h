@@ -22,6 +22,9 @@
 #ifndef INCLUDED_PLASMA_SYSCONF_H
 #define INCLUDED_PLASMA_SYSCONF_H
 
+#include "plasma_attr.h"    
+PLASMA_ATTR_Pragma_once
+
 #ifdef __cplusplus
 extern "C" {
 #endif

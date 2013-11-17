@@ -24,6 +24,8 @@
 
 #include "plasma_attr.h"
 #include "plasma_stdtypes.h"
+PLASMA_ATTR_Pragma_once
+
 
 #ifdef __cplusplus
 extern "C" {
