@@ -732,21 +732,25 @@ enum plasma_attr_mm_hint
  * (http://en.cppreference.com/w/cpp/language/alignas)
  *
  * portability: __attribute__((aligned)) can be at beginning or end of statement
- * except for xlC which supports __attribute__((aligned)) only at end of line.
- * MS __declspec() is expected early in statement, not at end.
+ * but must be after 'struct' (not before it) or else might be ignored.
+ * MS __declspec() is expected early in statement, not at end. 
  * Placement requirements makes use of this attribute less portable without
  * use of redundant statements: place __declspec_align__(x) at the beginning
  * of a statement and __attribute_aligned__(x) at the end of a statement.
  *
  * Oracle Solaris Studio C++ 12.2 finally adds support for aligned attribute.
  * Earlier versions support #pragma align, but mangled names must be used when
- * #pragma align is used inside a namespace.
+ * #pragma align is used inside a namespace, and local, stack vars not supported
  *   http://docs.oracle.com/cd/E18659_01/html/821-1383/bkbjx.html#bkbjy
  * Solaris standard libc does provide memalign() for allocating aligned memory,
- * but only #pragma align for stack or global alignment, until Sun Studio 12 C
+ * but only #pragma align for static or global alignment, until Sun Studio 12 C
  * and Sun Studio 12.2 C++.
  * POSIX documents posix_memalign() which some platforms support.
  * C11 provides aligned_alloc()
+ *
+ * Later patch releases of Sun Studio 12 update 1 C++ add attribute aligned.
+ *   CC: Sun C++ 5.10 SunOS_sparc Patch 128228-23  (output from $ CC -V )
+ *   https://getupdates.oracle.com/readme/README.128228-23
  *
  * Misaligned memory access -- loads and stores -- can have different penalties
  * depending on whether the access is within a cache line, crosses a cache line,
@@ -761,8 +765,8 @@ enum plasma_attr_mm_hint
  || defined(__GNUC__) /* __GNUC_PREREQ(2,95) and possibly earlier */ \
  || defined(__xlc__) || defined(__xlC__) /* IBM AIX xlC */ \
  || (defined(__SUNPRO_C)  && __SUNPRO_C  >= 0x590)  /* Sun Studio 12   C   */ \
- || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5110) /* Sun Studio 12.2 C++ */ \
- || defined(__HP_cc) || defined(__HP_aCC)
+ || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5100) /* Sun Studio 12.1 C++ */ \
+ || defined(__HP_cc) || defined(__HP_aCC)           /* (need Patch 128228-23)*/
 #define __attribute_aligned__(x)  __attribute__((__aligned__ (x)))
 #else
 #define __attribute_aligned__(x)
