@@ -209,6 +209,7 @@ PLASMA_ATTR_Pragma_once
     #endif
     typedef struct plasma_atomic_words
                      {uint32_t hi; uint32_t lo;} __attribute_aligned__(8)
+                                                 __attribute_may_alias__
                    plasma_atomic_words;
     #define plasma_atomic_CAS_32_impl(ptr, cmpval, newval) \
             __compare_and_swap((int *)(ptr),(int *)(&cmpval),(int)(newval))
@@ -1996,6 +1997,7 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
 
     typedef struct plasma_atomic_words
                      {uint32_t hi; uint32_t lo;} __attribute_aligned__(8)
+                                                 __attribute_may_alias__
                    plasma_atomic_words;
     #define plasma_atomic_load_8_SPARC(lval,ptr)             \
       do {                                                   \
@@ -2279,18 +2281,18 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 
 #else /* Sun Studio 12.1 + */
 
-  #define plasma_atomic_store_8_SPARC(ptr,val)               \
-    do {                                                     \
-      plasma_atomic_words plasma_atomic_tmpw;                \
-      *(uint64_t *)&plasma_atomic_tmpw.hi = (uint64_t)(val); \
-      __asm volatile ("\t sllx %1,32,%1 \n"                  \
-                      "\t srl %2,0,%2 \n"                    \
-                      "\t or %1,%2,%1 \n"                    \
-                      "\t stx %1, [%3] !%0 \n"               \
-                     :"=m"(*(ptr))                           \
-                     :"r"(plasma_atomic_tmpw.hi),            \
-                      "r"(plasma_atomic_tmpw.lo),            \
-                      "r"(ptr));                             \
+  #define plasma_atomic_store_8_SPARC(ptr,val)            \
+    do {                                                  \
+      plasma_atomic_words plasma_atomic_tmpw;             \
+      *(uint64_t *)&plasma_atomic_tmpw = (uint64_t)(val); \
+      __asm volatile ("\t sllx %1,32,%1 \n"               \
+                      "\t srl %2,0,%2 \n"                 \
+                      "\t or %1,%2,%1 \n"                 \
+                      "\t stx %1, [%3] !%0 \n"            \
+                     :"=m"(*(ptr))                        \
+                     :"r"(plasma_atomic_tmpw.hi),         \
+                      "r"(plasma_atomic_tmpw.lo),         \
+                      "r"(ptr));                          \
     } while (0)
 
 #endif /* Sun Studio 12.1 + */
