@@ -244,7 +244,8 @@ PLASMA_ATTR_Pragma_once
                                   "\t srdi %1, %0, 32 \n"                    \
                                  :"=r"(plasma_atomic_tmpw.lo),               \
                                   "=r"(plasma_atomic_tmpw.hi)                \
-                                 :"i"(0),"r"(ptr),"m"(*(ptr)) : "");         \
+                                 :"i"(0),"r"(ptr),"m"(*(ptr))                \
+                                 :"cr0");                                    \
                 *(uint64_t *)&plasma_atomic_tmpw;                            \
               })
       #define plasma_atomic_stdcx(ptr, newval)                               \
@@ -1929,7 +1930,8 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
     __asm__ volatile ("\t ld %0, %2 \n\t srdi %1, %0, 32 \n" \
                      :"=r"(plasma_atomic_tmpw->lo),          \
                       "=r"(plasma_atomic_tmpw->hi)           \
-                     :"m"(*(ptr)));                          \
+                     :"m"(*(ptr))                            \
+                     :"cr0");                                \
   } while (0)
 #else /* defined(__IBMCPP__); xlC did not work with the above macro */
 #define plasma_atomic_load_8_POWER(lval,ptr)            \
@@ -1938,7 +1940,8 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
     __asm__ volatile ("ld %0, %2\n\t srdi %1, %0, 32\n" \
                  :"=r"(plasma_atomic_tmpw.lo),          \
                   "=r"(plasma_atomic_tmpw.hi)           \
-                 :"m"(*(ptr)));                         \
+                 :"m"(*(ptr))                           \
+                 :"cr0");                               \
     (lval) = *(__typeof__(lval) *)&plasma_atomic_tmpw;  \
   } while (0)
 #endif
@@ -2234,7 +2237,8 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
                        "\t mfocrf %0, 0x80 \n"             \
                       :"=r"(workaround),"=m"(*(ptr))       \
                       :"r"(plasma_atomic_tmpw.lo),         \
-                       "r"(plasma_atomic_tmpw.hi));        \
+                       "r"(plasma_atomic_tmpw.hi)          \
+                      :"cr0");                             \
   } while (0)
 
 #undef plasma_atomic_store_explicit
