@@ -455,6 +455,12 @@ extern "C" {
 #if defined(__IBMC__) || defined(__IBMCPP__)
 #define plasma_atomic_ld_nopt(ptr) (*(volatile __typeof__(ptr))(ptr)); __fence()
 #define plasma_atomic_ld_nopt_T(T,ptr) (*(volatile T)(ptr)); __fence()
+#elif defined(__ppc__)   || defined(_ARCH_PPC)  || \
+      defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
+#define plasma_atomic_ld_nopt(ptr) \
+        (*(volatile __typeof__(ptr))(ptr)); plasma_membar_ccfence()
+#define plasma_atomic_ld_nopt_T(T,ptr) \
+        (*(volatile T)(ptr)); plasma_membar_ccfence()
 #else
 #define plasma_atomic_ld_nopt(ptr) (*(volatile __typeof__(ptr))(ptr))
 #define plasma_atomic_ld_nopt_T(T,ptr) (*(volatile T)(ptr))
@@ -482,6 +488,16 @@ extern "C" {
         do { ((*(volatile __typeof__(ptr))(ptr)) = (val)); __fence(); } while(0)
 #define plasma_atomic_st_nopt_T(T,ptr,val) \
         do { ((*(volatile T)(ptr)) = (val)); __fence(); } while (0)
+#elif defined(__ppc__)   || defined(_ARCH_PPC)  || \
+      defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)
+#define plasma_atomic_st_nopt(ptr,val)                     \
+        do { ((*(volatile __typeof__(ptr))(ptr)) = (val)); \
+             plasma_membar_ccfence();                      \
+        } while(0)
+#define plasma_atomic_st_nopt_T(T,ptr,val)   \
+        do { ((*(volatile T)(ptr)) = (val)); \
+             plasma_membar_ccfence();        \
+        } while(0)
 #else
 #define plasma_atomic_st_nopt(ptr,val) \
         ((*(volatile __typeof__(ptr))(ptr)) = (val))
@@ -1921,8 +1937,11 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
 
 
 /* (xlC in 32-bit needs to load a 64-bit quantity into hi and lo words) */
-#if (defined(__IBMC__) || defined(__IBMCPP__)) \
- && !(defined(_LP64) || defined(__LP64__))
+/* (gcc asm on POWER for 64-bit quantity in both 32-bit, 64-bit compilation) */
+#if (defined(__ppc__)   || defined(_ARCH_PPC)  ||                  \
+     defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)) \
+ && (!(defined(_LP64) || defined(__LP64__)) || defined(__GNUC__))
+
 #ifdef __IBMC__
 #define plasma_atomic_load_8_POWER(lval,ptr)                 \
   do {                                                       \
@@ -1934,7 +1953,9 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
                      :"m"(*(ptr))                            \
                      :"cr0");                                \
   } while (0)
-#else /* defined(__IBMCPP__); xlC did not work with the above macro */
+#define plasma_atomic_load_4_POWER(lval,ptr) \
+        plasma_atomic_ld_nopt_into((lval),(ptr))
+#elif defined(__IBMCPP__) /* xlC did not work with the above macro */
 #define plasma_atomic_load_8_POWER(lval,ptr)            \
   do {                                                  \
     plasma_atomic_words plasma_atomic_tmpw;             \
@@ -1945,13 +1966,30 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
                  :"cr0");                               \
     (lval) = *(__typeof__(lval) *)&plasma_atomic_tmpw;  \
   } while (0)
+#define plasma_atomic_load_4_POWER(lval,ptr) \
+        plasma_atomic_ld_nopt_into((lval),(ptr))
+#elif defined(__GNUC__)
+#define plasma_atomic_load_8_POWER(lval,ptr)                           \
+  do {                                                                 \
+    __typeof__(lval) val;                                              \
+    __asm__ __volatile__ ("ld%U1%X1 %0,%1" : "=r"(val) : "m"(*(ptr))); \
+    (lval) = val;                                                      \
+  } while (0)
+#define plasma_atomic_load_4_POWER(lval,ptr)                            \
+  do {                                                                  \
+    __typeof__(lval) val;                                               \
+    __asm__ __volatile__ ("lwz%U1%X1 %0,%1" : "=r"(val) : "m"(*(ptr))); \
+    (lval) = val;                                                       \
+  } while (0)
 #endif
 
 #undef plasma_atomic_load_explicit_into
 #define plasma_atomic_load_explicit_into(lval, ptr, memmodel)          \
         do { if ((memmodel) == memory_order_seq_cst)                   \
                  atomic_thread_fence(memory_order_seq_cst);            \
-             if (sizeof(*(ptr)) <= 4)                                  \
+             if (sizeof(*(ptr)) == 4)                                  \
+                 plasma_atomic_load_4_POWER((lval),(ptr));             \
+             else if (sizeof(*(ptr)) < 4)                              \
                  plasma_atomic_ld_nopt_into((lval),(ptr));             \
              else                                                      \
                  plasma_atomic_load_8_POWER((lval),(ptr));             \
@@ -2224,9 +2262,12 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
 
 
 /* (xlC in 32-bit needs to store a 64-bit quantity from hi and lo words) */
-#if (defined(__IBMC__) || defined(__IBMCPP__)) \
- && !(defined(_LP64) || defined(__LP64__))
+/* (gcc asm on POWER for 64-bit quantity in both 32-bit, 64-bit compilation) */
+#if (defined(__ppc__)   || defined(_ARCH_PPC)  ||                  \
+     defined(_ARCH_PWR) || defined(_ARCH_PWR2) || defined(_POWER)) \
+ && (!(defined(_LP64) || defined(__LP64__)) || defined(__GNUC__))
 
+#if (defined(__IBMC__) || defined(__IBMCPP__))
 /* workaround bug in xlC 11 (C and C++) which is not emitting inline asm
  * (There are probably better ways to workaround the bug than excess mfocrf) */
 #define plasma_atomic_store_8_POWER(ptr,val)               \
@@ -2242,12 +2283,29 @@ plasma_atomic_load_32_impl(const void * const restrict ptr,
                        "r"(plasma_atomic_tmpw.hi)          \
                       :"cr0");                             \
   } while (0)
+#define plasma_atomic_store_4_POWER(ptr,val) \
+        plasma_atomic_st_nopt((ptr),(val))
+#elif defined(__GNUC__)
+#define plasma_atomic_store_8_POWER(ptr,val)                          \
+  do {                                                                \
+    __typeof__(val) v = (val);                                        \
+    __asm__ __volatile__ ("std%U0%X0 %1,%0" : "=m"(*(ptr)) : "r"(v)); \
+  } while (0)
+
+#define plasma_atomic_store_4_POWER(ptr,val)                          \
+  do {                                                                \
+    __typeof__(val) v = (val);                                        \
+    __asm__ __volatile__ ("stw%U0%X0 %1,%0" : "=m"(*(ptr)) : "r"(v)); \
+  } while (0)
+#endif
 
 #undef plasma_atomic_store_explicit
 #define plasma_atomic_store_explicit(ptr, val, memmodel)               \
         do { atomic_thread_fence((memmodel) != memory_order_seq_cst    \
                                  ? (memmodel) : memory_order_release); \
-             if (sizeof(*(ptr)) <= 4)                                  \
+             if (sizeof(*(ptr)) == 4)                                  \
+                 plasma_atomic_store_4_POWER((ptr),(val));             \
+             else if (sizeof(*(ptr)) < 4)                              \
                  plasma_atomic_st_nopt((ptr),(val));                   \
              else                                                      \
                  plasma_atomic_store_8_POWER((ptr),(val));             \
