@@ -1945,7 +1945,7 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
 #ifdef __IBMC__
 #define plasma_atomic_load_8_POWER(lval,ptr)                 \
   do {                                                       \
-    plasma_atomic_words *plasma_atomic_tmpw =                \
+    plasma_atomic_words * const plasma_atomic_tmpw =         \
       (plasma_atomic_words *)(uintptr_t)(char *)&(lval);     \
     __asm__ volatile ("\t ld %0, %2 \n\t srdi %1, %0, 32 \n" \
                      :"=r"(plasma_atomic_tmpw->lo),          \
@@ -2039,7 +2039,7 @@ PLASMA_ATTR_Pragma_rarely_called(plasma_atomic_fetch_op_notimpl)
                    plasma_atomic_words;
     #define plasma_atomic_load_8_SPARC(lval,ptr)             \
       do {                                                   \
-        plasma_atomic_words *plasma_atomic_tmpw =            \
+        plasma_atomic_words * const plasma_atomic_tmpw =     \
           (plasma_atomic_words *)(uintptr_t)(char *)&(lval); \
         __asm volatile ("\t ldx [%2],%1 \n"                  \
                         "\t srlx %1,32,%0 \n"                \
