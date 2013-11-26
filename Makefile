@@ -110,6 +110,9 @@ ifeq ($(OSNAME),Linux)
   nss/nss_mcdbctl lib32/nss/nss_mcdbctl: \
     LDFLAGS+=-Wl,-z,noexecstack
   all: all_nss
+  # Linux on POWER CPU with gcc < 4.7 and 32-bit compilation requires
+  # modification to Makefile to replace instances of -m32 with -m32 -mpowerpc64
+  # for plasma_atomic.h support for atomic operations on 8-byte entities
 endif
 ifeq ($(OSNAME),Darwin)
   # clang 3.1 compiler supports __thread and TLS; gcc 4.2.1 does not
