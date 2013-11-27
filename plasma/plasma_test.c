@@ -90,7 +90,7 @@ plasma_test_perror_abort (const char *func, const int line,
 #include <unistd.h>   /* _POSIX_BARRIERS (if supported) */
 
 /* pthread barriers are optional POSIX extension not implemented on Mac OSX */
-#ifndef _POSIX_BARRIERS
+#if !defined(_POSIX_BARRIERS) || _POSIX_BARRIERS == -1
 
 /* Brent Priddy provides a simple implementation of pthread barriers in
  * http://stackoverflow.com/questions/3640853/performance-test-sem-t-v-s-dispatch-semaphore-t-and-pthread-once-t-v-s-dispat
