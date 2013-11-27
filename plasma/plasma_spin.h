@@ -211,7 +211,7 @@ PLASMA_ATTR_Pragma_once
 #elif defined(PLASMA_FEATURE_POSIX)
   #include <unistd.h>  /* _POSIX_PRIORITY_SCHEDULING */
   #include <poll.h>    /* might also need _XOPEN_SOURCE=500 or better on _AIX */
-  #ifdef _POSIX_PRIORITY_SCHEDULING
+  #if defined(_POSIX_PRIORITY_SCHEDULING) && (_POSIX_PRIORITY_SCHEDULING-0)!= -1
   #include <sched.h>
   #define plasma_spin_yield() do {if (sched_yield()!=0) poll(NULL,0,1);}while(0)
   #else
