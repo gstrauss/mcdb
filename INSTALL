@@ -1,3 +1,8 @@
+mcdb submodules
+
+  ## plasma (https://github.com/gstrauss/plasma/)
+  $ git submodule update --init
+
 mcdb installation
 
   $ make PREFIX=
