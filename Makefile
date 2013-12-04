@@ -402,7 +402,7 @@ endif
 # bootstrap for creating CPAN module MCDB_File dist package
 .PHONY: MCDB_File-bootstrap MCDB_File-bootstrap-clean
 MCDB_File-bootstrap: clean MCDB_File-bootstrap-clean
-	cd .. && tar czf mcdb/contrib/MCDB_File/mcdb.tar.gz --exclude=mcdb.tar.gz --exclude=.git mcdb
+	cd .. && tar czf mcdb/contrib/MCDB_File/mcdb.tar.gz --exclude=contrib --exclude=.git mcdb
 MCDB_File-bootstrap-clean:
 	[ ! -f contrib/MCDB_File/Makefile ] || \
           $(MAKE) -C contrib/MCDB_File distclean
