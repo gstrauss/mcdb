@@ -26,7 +26,7 @@
 #define _POSIX_C_SOURCE 200112L
 #endif
 #ifndef _XOPEN_SOURCE /* >= 500 on Linux for mkstemp(), fchmod(), fdatasync() */
-#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 700
 #endif
 /* large file support needed for stat(),fstat() input file > 2 GB */
 #define PLASMA_FEATURE_ENABLE_LARGEFILE
@@ -41,9 +41,9 @@
 #include "plasma/plasma_stdtypes.h"
 
 #include <errno.h>
-#include <sys/stat.h>  /* fchmod() */
-#include <stdlib.h>    /* mkstemp(), EXIT_SUCCESS */
-#include <string.h>    /* memcpy(), strlen() */
+#include <sys/stat.h>  /* fchmod() umask() */
+#include <stdlib.h>    /* mkstemp() EXIT_SUCCESS */
+#include <string.h>    /* memcpy() strlen() */
 #include <stdio.h>     /* rename() */
 #include <unistd.h>    /* unlink() */
 
@@ -89,7 +89,16 @@ mcdb_makefn_start (struct mcdb_make * const restrict m,
     m->st_mode   = st.st_mode;
     m->fn_malloc = fn_malloc;
     m->fn_free   = fn_free;
+    /* POSIX.1-2008 adds requirement that mkstemp() create file with mode 0600;
+     * glibc <= 2.06 (old) mkstemp() created files with unsafe mode 0666.
+     * Note: setting umask() is global, affects file creation in other threads*/
+  #if !defined(_XOPEN_SOURCE) || _XOPEN_SOURCE-0 < 700
+    st.st_mode   = umask(S_IRWXG|S_IRWXO); /* 0077; octal 077 */
+  #endif
     m->fd        = mkstemp(fntmp);
+  #if !defined(_XOPEN_SOURCE) || _XOPEN_SOURCE-0 < 700
+    umask(st.st_mode);                     /* restore prior umask */
+  #endif
     if (m->fd != -1) {
         m->fntmp = fntmp;
         m->fname = fntmp+len+8;

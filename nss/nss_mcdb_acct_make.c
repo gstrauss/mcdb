@@ -736,7 +736,7 @@ nss_mcdb_acct_make_group_parse(
             if ((c = *(b = ++p)) == '\n')
                 break;                  /* done; no more aliases*/
             TOKEN_COMMADELIM_END(p);
-            if ((c = *p) == '\0')       /* error: invalid line */
+            if ((c = *p) == '\0')       /* error: invalid line; no newline */
                 return false;
             *p = '\0';
             if (n < nmax)
@@ -745,10 +745,6 @@ nss_mcdb_acct_make_group_parse(
                 return false; /* too many members to fit in fixed-sized array */
         } while (c != '\n');
         gr.gr_mem[n] = NULL;
-
-        /* find newline (to prep for beginning of next line) */
-        if (c != '\n')   /* error: no newline; truncated? */
-            return false;
 
         /* process struct group */
         if (!w->encode(w, &gr))

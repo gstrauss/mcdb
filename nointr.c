@@ -36,7 +36,7 @@
 
 int
 nointr_dup(const int fd)
-{ int r; retry_eintr_do_while((r = dup(fd)), (r != -1)); return r; }
+{ int r; retry_eintr_do_while((r = dup(fd)), (r == -1)); return r; }
 
 int
 nointr_open(const char * const restrict fn, const int flags, const mode_t mode)

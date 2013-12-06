@@ -129,9 +129,9 @@ mcdbctl_dump(struct mcdb * const restrict m)
     unsigned char *mark = mcdb_madv_initmark(m->map->ptr, m->map->size, 0);
     int    iovcnt = 0;
     size_t iovlen = 0;
-    size_t buflen = 0;
-    enum { MCDB_IOVNUM = IOV_MAX };/* assert(IOV_MAX >= 7) */
-    struct iovec iov[MCDB_IOVNUM]; /* each db entry uses 7 iovecs */
+    size_t buflen = 0;             /* _XOPEN_IOV_MAX minimum is 16 */
+    enum { MCDB_IOVNUM = IOV_MAX };/* assert(IOV_MAX >= 9) */
+    struct iovec iov[MCDB_IOVNUM]; /* each db entry uses 9 iovecs */
     char buf[(MCDB_IOVNUM * 3)];   /* each db entry might use (2) * 10 chars */
       /* oversized buffer since all num strings must add up to less than max */
 
@@ -145,7 +145,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
 
         /* avoid printf("%.*s\n",...) due to mcdb arbitrary binary data */
         /* klen, dlen each limited to (2GB - 8); space for extra tokens exists*/
-        if (iovlen + klen + 5 > SSIZE_MAX || iovcnt + 7 >= MCDB_IOVNUM) {
+        if (iovlen + klen + 5 > SSIZE_MAX || iovcnt + 8 >= MCDB_IOVNUM) {
             if (!writev_loop(STDOUT_FILENO, iov, iovcnt, (ssize_t)iovlen))
                 return MCDB_ERROR_WRITE;
             iovcnt = 0;
