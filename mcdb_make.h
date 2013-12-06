@@ -67,36 +67,36 @@ struct mcdb_make {
  */
 
 
-extern int
+EXPORT extern int
 mcdb_make_start(struct mcdb_make * restrict, int,
                 void * (*)(size_t), void (*)(void *))
   __attribute_nonnull__  __attribute_warn_unused_result__;
-extern int
+EXPORT extern int
 mcdb_make_add(struct mcdb_make * restrict,
               const char * restrict, size_t,
               const char * restrict, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-extern int
+EXPORT extern int
 mcdb_make_finish(struct mcdb_make * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-extern int
+EXPORT extern int
 mcdb_make_destroy(struct mcdb_make * restrict)
   __attribute_nonnull__;
 
 /* support for adding entries from input stream, instead of fully in memory */
-extern int
+EXPORT extern int
 mcdb_make_addbegin(struct mcdb_make * restrict, size_t, size_t)
   __attribute_nonnull__  __attribute_warn_unused_result__;
-extern void
+EXPORT extern void
 mcdb_make_addbuf_key(struct mcdb_make * restrict,const char * restrict,size_t)
   __attribute_nonnull__  __attribute_nothrow__;
-extern void
+EXPORT extern void
 mcdb_make_addbuf_data(struct mcdb_make * restrict,const char * restrict,size_t)
   __attribute_nonnull__  __attribute_nothrow__;
-extern void
+EXPORT extern void
 mcdb_make_addend(struct mcdb_make * restrict)
   __attribute_nonnull__  __attribute_nothrow__;
-extern void
+EXPORT extern void
 mcdb_make_addrevert(struct mcdb_make * restrict)
   __attribute_nonnull__  __attribute_nothrow__;
 

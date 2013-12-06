@@ -82,12 +82,12 @@ struct mcdb {
   void *vp;        /* user-provided extension data */
 };
 
-extern bool
+EXPORT extern bool
 mcdb_findtagstart(struct mcdb * restrict, const char * restrict, size_t,
                   unsigned char)/* note: must be 0 or cast to (unsigned char) */
   __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_hot__
   __attribute_nothrow__;
-extern bool
+EXPORT extern bool
 mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
                  unsigned char) /* note: must be 0 or cast to (unsigned char) */
   __attribute_nonnull__  __attribute_warn_unused_result__  __attribute_hot__
@@ -99,15 +99,15 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
   (__builtin_expect((mcdb_findstart((m),(key),(klen))), 1) \
                   && mcdb_findnext((m),(key),(klen)))
 
-extern void *
+EXPORT extern void *
 mcdb_read(const struct mcdb * restrict, uintptr_t, uint32_t, void * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-extern uint32_t
+EXPORT extern uint32_t
 mcdb_numrecs(struct mcdb * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-extern bool
+EXPORT extern bool
 mcdb_validate_slots(struct mcdb * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
@@ -134,20 +134,20 @@ struct mcdb_iter {
 #define mcdb_iter_keylen(iter)  ((iter)->klen)
 #define mcdb_iter_keyptr(iter)  ((iter)->ptr-(iter)->dlen-(iter)->klen)
 
-extern bool
+EXPORT extern bool
 mcdb_iter(struct mcdb_iter * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-extern void
+EXPORT extern void
 mcdb_iter_init(struct mcdb_iter * restrict, struct mcdb * restrict)
   __attribute_nonnull__  __attribute_nothrow__;
 
 __attribute_malloc__
-extern struct mcdb_mmap *
+EXPORT extern struct mcdb_mmap *
 mcdb_mmap_create(struct mcdb_mmap * restrict,
                  const char *,const char *,void * (*)(size_t),void (*)(void *))
   __attribute_nonnull_x__((3,4,5))  __attribute_warn_unused_result__;
-extern void
+EXPORT extern void
 mcdb_mmap_destroy(struct mcdb_mmap * restrict)
   ;
 /* check if constant db has been updated and refresh mmap
@@ -164,21 +164,21 @@ mcdb_mmap_destroy(struct mcdb_mmap * restrict)
   (__builtin_expect(!mcdb_mmap_refresh_check(*(mapptr)), true) \
    || __builtin_expect(mcdb_mmap_reopen_threadsafe(mapptr), true))
 
-extern bool
+EXPORT extern bool
 mcdb_mmap_init(struct mcdb_mmap * restrict, int)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-extern void
+EXPORT extern void
 mcdb_mmap_prefault(const struct mcdb_mmap * restrict)
   __attribute_nonnull__  __attribute_nothrow__;
-extern void
+EXPORT extern void
 mcdb_mmap_free(struct mcdb_mmap * restrict)
   ;
-extern bool
+EXPORT extern bool
 mcdb_mmap_reopen(struct mcdb_mmap * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
-extern bool
+EXPORT extern bool
 mcdb_mmap_refresh_check(const struct mcdb_mmap * restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__
   __attribute_nothrow__;
@@ -190,10 +190,10 @@ enum mcdb_flags {
   MCDB_REGISTER_ALREADY_LOCKED = 2
 };
 
-extern struct mcdb_mmap *
+EXPORT extern struct mcdb_mmap *
 mcdb_mmap_thread_registration(struct mcdb_mmap ** restrict, int)
   __attribute_nonnull__;
-extern bool
+EXPORT extern bool
 mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict)
   __attribute_nonnull__  __attribute_warn_unused_result__;
 

@@ -100,7 +100,7 @@ ifeq ($(OSNAME),Linux)
     RPATH= -Wl,-rpath,$(PREFIX)/lib$(LIB_BITS)
   endif
   ifeq (,$(RPM_OPT_FLAGS))
-    CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector
+    CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector -fvisibility=hidden
   endif
   # earlier versions of GNU ld might not support -Wl,--hash-style,gnu
   # (safe to remove -Wl,--hash-style,gnu for RedHat Enterprise 4)
@@ -124,7 +124,7 @@ ifeq ($(OSNAME),Darwin)
     RPATH= -Wl,-rpath,$(PREFIX)/lib$(LIB_BITS)
   endif
   ifeq (,$(RPM_OPT_FLAGS))
-    CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector
+    CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector -fvisibility=hidden
   endif
 endif
 ifeq ($(OSNAME),AIX)
@@ -223,7 +223,7 @@ NSS_PIC_OBJS:= nss/nss_mcdb.o nss/nss_mcdb_acct.o nss/nss_mcdb_authn.o \
 
 PLASMA_OBJS:= plasma/plasma_atomic.o plasma/plasma_attr.o \
               plasma/plasma_endian.o plasma/plasma_spin.o \
-              plasma/plasma_sysconf.o plasma/plasma_test.o
+              plasma/plasma_sysconf.o
 
 PIC_OBJS:= mcdb.o mcdb_make.o mcdb_makefmt.o mcdb_makefn.o nointr.o uint32.o \
            $(PLASMA_OBJS) $(NSS_PIC_OBJS)
@@ -311,21 +311,14 @@ $(PREFIX)/sbin/nss_mcdbctl: nss/nss_mcdbctl $(PREFIX)/sbin
 	&& /bin/mv -f $@.$$$$ $@
 
 .PHONY: install-headers install install-doc install-plasma-headers
-install-plasma-headers: plasma/plasma_atomic.h \
-                        plasma/plasma_attr.h \
-                        plasma/plasma_endian.h \
+install-plasma-headers: plasma/plasma_attr.h \
                         plasma/plasma_feature.h \
-                        plasma/plasma_ident.h \
-                        plasma/plasma_membar.h \
-                        plasma/plasma_spin.h \
-                        plasma/plasma_stdtypes.h \
-                        plasma/plasma_sysconf.h \
-                        plasma/plasma_test.h
+                        plasma/plasma_stdtypes.h
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb/plasma
 	umask 333; \
 	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/plasma/
 install-headers: mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h mcdb_makefn.h \
-                 nointr.h uint32.h | install-plasma-headers
+                 | install-plasma-headers
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb
 	umask 333; \
 	  /bin/cp -f --preserve=timestamps $^ $(PREFIX_USR)/include/mcdb/

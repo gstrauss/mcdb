@@ -39,17 +39,17 @@ extern "C" {
  * Note: caller of mcdb_makefmt_fdintofd() should choose whether or not to then
  * call fsync() or fdatasync().  See notes in mcdb_make.c:mcdb_mmap_commit() */
 
-int
+EXPORT extern int
 mcdb_makefmt_fdintofd (int, char * restrict, size_t,
                        int, void * (*)(size_t), void (*)(void *))
   __attribute_nonnull__  __attribute_warn_unused_result__;
 
-int
+EXPORT extern int
 mcdb_makefmt_fdintofile (const int, char * restrict, size_t,
                          const char * restrict,
                          void * (*)(size_t), void (*)(void *))
   __attribute_nonnull__  __attribute_warn_unused_result__;
-int
+EXPORT extern int
 mcdb_makefmt_fileintofile (const char * restrict, const char * restrict,
                            void * (*)(size_t), void (*)(void *))
   __attribute_nonnull__  __attribute_warn_unused_result__;
