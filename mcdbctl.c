@@ -43,12 +43,12 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>   /* open(), O_RDONLY */
-#include <stdio.h>   /* printf(), IOV_MAX */
+#include <stdio.h>   /* printf() */
 #include <stdlib.h>  /* malloc(), free(), EXIT_SUCCESS */
 #include <string.h>  /* strlen() */
 #include <unistd.h>  /* STDIN_FILENO, STDOUT_FILENO */
 #include <sys/uio.h> /* writev() */
-#include <limits.h>  /* SSIZE_MAX */
+#include <limits.h>  /* IOV_MAX, SSIZE_MAX */
 
 /*(posix_madvise, defines not provided in Solaris 10, even w/ __EXTENSIONS__)*/
 #if (defined(__sun) || defined(__hpux)) && !defined(POSIX_MADV_NORMAL)
