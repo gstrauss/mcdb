@@ -55,15 +55,17 @@ PLASMA_ATTR_Pragma_no_side_effect(strlen)
  *     (_BSD_SOURCE || ( _XOPEN_SOURCE && _XOPEN_SOURCE < 500)  (note: < 500))
  */
 
+__attribute_nonnull__
+__attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_misc_aliasent_decode(struct mcdb * restrict,
-                              const struct nss_mcdb_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+                              const struct nss_mcdb_vinfo * restrict);
 
+__attribute_nonnull__
+__attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_misc_ether_addr_decode(struct mcdb * restrict,
-                                const struct nss_mcdb_vinfo * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+                                const struct nss_mcdb_vinfo * restrict);
 
 
 void _nss_mcdb_setaliasent(void) { nss_mcdb_setent(NSS_DBTYPE_ALIASES,0); }

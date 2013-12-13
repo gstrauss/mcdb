@@ -79,7 +79,9 @@ static ID mcdbrb_id_each;
   if (__builtin_expect( ((void *)m->map == MAP_FAILED), 0)) \
       rb_raise(rb_eRuntimeError, "closed MCDB file");
 
-static void *  __attribute_noinline__  __attribute_cold__
+__attribute_cold__
+__attribute_noinline__
+static void *
 mcdbrb_raise_error(const VALUE obj)
 {  /*(one of these should raise an exception if this routine is called)*/
    Check_Type(obj, T_DATA);

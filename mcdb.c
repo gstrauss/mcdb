@@ -293,11 +293,13 @@ mcdb_iter_init(struct mcdb_iter * const restrict iter,
  */
 
 
-static void  inline
-mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
-  __attribute_nonnull__;
+__attribute_nonnull__
+inline
+static void
+mcdb_mmap_unmap(struct mcdb_mmap * const restrict map);
 
-static void  inline
+inline
+static void
 mcdb_mmap_unmap(struct mcdb_mmap * const restrict map)
 {
     if (map->ptr)

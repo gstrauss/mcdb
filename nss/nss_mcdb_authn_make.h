@@ -35,25 +35,25 @@ PLASMA_ATTR_Pragma_once
 #include <shadow.h>
 
 /* buf size passed should be _SC_GETPW_R_SIZE_MAX + NSS_SP_HDRSZ (not checked)*/
+__attribute_nonnull__
 size_t
 nss_mcdb_authn_make_spwd_datastr(char * restrict, const size_t,
-				 const struct spwd * const restrict)
-  __attribute_nonnull__;
+				 const struct spwd * const restrict);
 
 #endif /* !defined(_AIX) && !defined(__CYGWIN__) */
 
 
+__attribute_nonnull__
 bool
 nss_mcdb_authn_make_spwd_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const)
-  __attribute_nonnull__;
+  const void * const);
 
 
+__attribute_nonnull__
 bool
 nss_mcdb_authn_make_shadow_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict)
-  __attribute_nonnull__;
+  struct nss_mcdb_make_winfo * const restrict, char * restrict);
 
 
 #endif

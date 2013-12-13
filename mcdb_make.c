@@ -90,7 +90,8 @@ struct mcdb_hplist {
 
 /* routine marked to indicate unlikely branch;
  * __attribute_cold__ can be used instead of __builtin_expect() */
-__attribute_noinline__  __attribute_cold__
+__attribute_cold__
+__attribute_noinline__
 static int
 mcdb_make_err(struct mcdb_make * const restrict m, int errnum)
 {
@@ -100,9 +101,11 @@ mcdb_make_err(struct mcdb_make * const restrict m, int errnum)
 }
 
 __attribute_noinline__
+__attribute_nonnull__
+__attribute_warn_unused_result__
 static bool
-mcdb_hplist_alloc(struct mcdb_make * const restrict m)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+mcdb_hplist_alloc(struct mcdb_make * const restrict m);
+
 static bool
 mcdb_hplist_alloc(struct mcdb_make * const restrict m)
 {
@@ -148,9 +151,10 @@ mcdb_hplist_alloc(struct mcdb_make * const restrict m)
 #endif
 #include <sys/statvfs.h>
 __attribute_noinline__
+__attribute_warn_unused_result__
 static int
-mcdb_make_fallocate(const int fd, off_t offset, off_t len)
-  __attribute_warn_unused_result__;
+mcdb_make_fallocate(const int fd, off_t offset, off_t len);
+
 static int
 mcdb_make_fallocate(const int fd, off_t offset, off_t len)
 {
@@ -212,10 +216,12 @@ mcdb_make_fallocate(const int fd, off_t offset, off_t len)
 }
 #endif
 
+__attribute_nonnull__
+__attribute_warn_unused_result__
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
-                 char header[MCDB_HEADER_SZ])
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+                 char header[MCDB_HEADER_SZ]);
+
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
                  char header[MCDB_HEADER_SZ])
@@ -247,10 +253,12 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
 }
 
 __attribute_noinline__
+__attribute_nonnull__
+__attribute_warn_unused_result__
 static bool
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,
-                 const bool sequential)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+                 const bool sequential);
+
 __attribute_noinline__
 static bool
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,

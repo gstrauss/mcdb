@@ -50,16 +50,18 @@ enum {
 
 #include <shadow.h>     /* (struct spwd) */
 
+__attribute_nonnull__
+__attribute_warn_unused_result__
 nss_status_t
 _nss_mcdb_getspent_r(struct spwd * restrict, char * restrict, size_t,
-                     int * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+                     int * restrict);
 
+__attribute_nonnull__
+__attribute_warn_unused_result__
 nss_status_t
 _nss_mcdb_getspnam_r(const char * restrict,
                      struct spwd * restrict, char * restrict, size_t,
-                     int * restrict)
-  __attribute_nonnull__  __attribute_warn_unused_result__;
+                     int * restrict);
 
 #endif /* !defined(_AIX) && !defined(__CYGWIN__) */
 

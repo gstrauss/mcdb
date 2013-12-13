@@ -120,10 +120,12 @@ static void _nss_mcdb_atexit(void)
 }
 #endif
 
+__attribute_cold__
 __attribute_noinline__
+__attribute_warn_unused_result__
 static bool
-_nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
-  __attribute_cold__  __attribute_warn_unused_result__;
+_nss_mcdb_db_openshared(const enum nss_dbtype dbtype);
+
 __attribute_noinline__
 static bool
 _nss_mcdb_db_openshared(const enum nss_dbtype dbtype)
@@ -177,9 +179,10 @@ static bool _nss_mcdb_stayopen = true;
 
 /* get shared mcdb_mmap */
 __attribute_regparm__((1))
+__attribute_warn_unused_result__
 static struct mcdb_mmap *
-_nss_mcdb_db_getshared(const enum nss_dbtype dbtype)
-  __attribute_warn_unused_result__;
+_nss_mcdb_db_getshared(const enum nss_dbtype dbtype);
+
 __attribute_regparm__((1))
 static struct mcdb_mmap *
 _nss_mcdb_db_getshared(const enum nss_dbtype dbtype)

@@ -42,10 +42,12 @@ enum {
   MCDB_ERROR_USAGE      = -5
 };
 
+__attribute_cold__
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 extern int
-mcdb_error (int, const char * restrict, const char * restrict)
-  __attribute_nonnull__  __attribute_cold__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+mcdb_error (int, const char * restrict, const char * restrict);
 
 #ifdef __cplusplus
 }

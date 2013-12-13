@@ -38,39 +38,43 @@ extern "C" {
  * reasonable to block and wait longer.
  */
 
+__attribute_nothrow__
+__attribute_warn_unused_result__
 int
-nointr_dup(const int fd)
-  __attribute_warn_unused_result__  __attribute_nothrow__;
+nointr_dup(const int fd);
 
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 int
-nointr_open(const char * const restrict fn, const int flags, const mode_t mode)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+nointr_open(const char * const restrict fn, const int flags, const mode_t mode);
 
+__attribute_nothrow__
 int
-nointr_close(const int fd)
-  __attribute_nothrow__;
+nointr_close(const int fd);
 
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 ssize_t
-nointr_write(const int fd, const char * restrict buf, size_t sz)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+nointr_write(const int fd, const char * restrict buf, size_t sz);
 
 /* caller must #define _XOPEN_SOURCE >= 500 for XSI-compliant ftruncate() */
 #if defined(_XOPEN_SOURCE) && _XOPEN_SOURCE-0 >= 500
+__attribute_nothrow__
 int
-nointr_ftruncate(const int fd, const off_t sz)
-  __attribute_nothrow__;
+nointr_ftruncate(const int fd, const off_t sz);
 #endif
 
 /* caller must #define _ATFILE_SOURCE on Linux for openat() */
 #if (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE-0 >= 700) \
  || defined(_ATFILE_SOURCE)
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 int
 nointr_openat(const int dfd, const char * const restrict fn,
-              const int flags, const mode_t mode)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+              const int flags, const mode_t mode);
 #endif
 
 

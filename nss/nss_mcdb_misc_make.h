@@ -32,41 +32,41 @@ PLASMA_ATTR_Pragma_once
 #include "nss_mcdb_misc.h"  /* (centralize misc headers between platforms) */
 
 /* buf size 1K + NSS_AE_HDRSZ is probably reasonable */
+__attribute_nonnull__
 size_t
 nss_mcdb_misc_make_aliasent_datastr(char * restrict, const size_t,
-				    const struct aliasent * const restrict)
-  __attribute_nonnull__;
+				    const struct aliasent * const restrict);
 
 /* buf size 1K + NSS_EA_HDRSZ is probably reasonable */
+__attribute_nonnull__
 size_t
 nss_mcdb_misc_make_ether_addr_datastr(char * restrict, const size_t,
 				      const void * const restrict,
-				      const char * const restrict)
-  __attribute_nonnull__;
+				      const char * const restrict);
 
 
+__attribute_nonnull__
 bool
 nss_mcdb_misc_make_aliasent_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
-  __attribute_nonnull__;
+  const void * const restrict);
 
+__attribute_nonnull__
 bool
 nss_mcdb_misc_make_ether_addr_encode(
   struct nss_mcdb_make_winfo * const restrict,
-  const void * const restrict)
-  __attribute_nonnull__;
+  const void * const restrict);
 
 
+__attribute_nonnull__
 bool
 nss_mcdb_misc_make_ethers_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict)
-  __attribute_nonnull__;
+  struct nss_mcdb_make_winfo * const restrict, char * restrict);
 
+__attribute_nonnull__
 bool
 nss_mcdb_misc_make_aliases_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict)
-  __attribute_nonnull__;
+  struct nss_mcdb_make_winfo * const restrict, char * restrict);
 
 
 #endif

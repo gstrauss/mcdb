@@ -77,12 +77,13 @@ extern "C" {
 
 #define uint32_hash_djb_uchar(h,c) (((h) + ((h) << 5)) ^ (c))
 
+__attribute_nonnull__
+__attribute_nothrow__
 __attribute_pure__
+__attribute_warn_unused_result__
 UINT32_C99INLINE
 uint32_t
-uint32_hash_djb(uint32_t, const void * restrict, size_t)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+uint32_hash_djb(uint32_t, const void * restrict, size_t);
 PLASMA_ATTR_Pragma_no_side_effect(uint32_hash_djb)
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
@@ -97,12 +98,13 @@ uint32_hash_djb(uint32_t h, const void * const restrict vbuf, const size_t sz)
 }
 #endif
 
+__attribute_nonnull__
+__attribute_nothrow__
 __attribute_pure__
+__attribute_warn_unused_result__
 UINT32_C99INLINE
 uint32_t
-uint32_hash_identity(uint32_t, const void * restrict, size_t)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+uint32_hash_identity(uint32_t, const void * restrict, size_t);
 PLASMA_ATTR_Pragma_no_side_effect(uint32_hash_identity)
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
@@ -184,10 +186,11 @@ uint32_hash_identity(uint32_t h       __attribute_unused__,
  * (call x = (uint32_to_ascii8uphex(n,buf), buf); to have buf returned)
  * (buf must be at least 8 chars in length; not checked)
  * (buf returned contains exactly 8 chars and is not NUL-terminated) */
+__attribute_nonnull__
+__attribute_nothrow__
 UINT32_C99INLINE
 void
-uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
-  __attribute_nonnull__  __attribute_nothrow__;
+uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf);
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
 void
@@ -220,10 +223,11 @@ uint32_to_ascii8uphex(const uint32_t n, char * const restrict buf)
  * (call x = (uint32_to_ascii4uphex(n,buf), buf); to have buf returned)
  * (buf must be at least 8 chars in length; not checked)
  * (buf returned contains exactly 4 chars and is not NUL-terminated) */
+__attribute_nonnull__
+__attribute_nothrow__
 UINT32_C99INLINE
 void
-uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
-  __attribute_nonnull__  __attribute_nothrow__;
+uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf);
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
 void
@@ -244,12 +248,13 @@ uint16_to_ascii4uphex(const uint32_t n, char * const restrict buf)
 /* convert string of 8 ASCII uppercase hex chars to unsigned 32-bit value
  * (used to convert architecture-independent string data to numerical data)
  * (use when hex chars are known 0..9 A..F) */
+__attribute_nonnull__
+__attribute_nothrow__
 __attribute_pure__
+__attribute_warn_unused_result__
 UINT32_C99INLINE
 uint32_t
-uint32_from_ascii8uphex(const char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+uint32_from_ascii8uphex(const char * const restrict buf);
 PLASMA_ATTR_Pragma_no_side_effect(uint32_from_ascii8uphex)
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
@@ -283,12 +288,13 @@ uint32_from_ascii8uphex(const char * const restrict buf)
  * (used to convert architecture-independent string data to numerical data)
  * (operate in 32-bit intermediates to use more native sizes on modern CPUs)
  * (use when hex chars are known 0..9 A..F) */
+__attribute_nonnull__
+__attribute_nothrow__
 __attribute_pure__
+__attribute_warn_unused_result__
 UINT32_C99INLINE
 uint16_t
-uint16_from_ascii4uphex(const char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+uint16_from_ascii4uphex(const char * const restrict buf);
 PLASMA_ATTR_Pragma_no_side_effect(uint16_from_ascii4uphex)
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
@@ -319,19 +325,23 @@ uint16_from_ascii4uphex(const char * const restrict buf)
 /* convert string of 8 ASCII hex chars to unsigned 32-bit value
  * (used to convert architecture-independent string data to numerical data)
  * (use when hex chars are known 0..9 A..F a..f) */
-uint32_t  __attribute_pure__
-uint32_from_ascii8hex(const char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_pure__
+__attribute_warn_unused_result__
+uint32_t
+uint32_from_ascii8hex(const char * const restrict buf);
 PLASMA_ATTR_Pragma_no_side_effect(uint32_from_ascii8hex)
 
 /* convert string of 4 ASCII hex chars to unsigned 16-bit value
  * (used to convert architecture-independent string data to numerical data)
  * (use when hex chars are known 0..9 A..F a..f) */
-uint16_t  __attribute_pure__
-uint32_from_ascii4hex(const char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_pure__
+__attribute_warn_unused_result__
+uint16_t
+uint32_from_ascii4hex(const char * const restrict buf);
 PLASMA_ATTR_Pragma_no_side_effect(uint32_from_ascii4hex)
 
 
@@ -343,10 +353,11 @@ PLASMA_ATTR_Pragma_no_side_effect(uint32_from_ascii4hex)
 
 /* convert unsigned 32-bit value into string of up to (10) ASCII base-10 digits
  * (helper function for inline function uint32_to_ascii_base10()) (see below) */
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 uint32_t
-uint32_to_ascii_base10_loop (uint32_t x, char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+uint32_to_ascii_base10_loop (uint32_t x, char * const restrict buf);
 
 /* convert unsigned 32-bit value into string of up to (10) ASCII base-10 digits
  * (used to append string to a buffer or to assign into an iovec)
@@ -354,11 +365,12 @@ uint32_to_ascii_base10_loop (uint32_t x, char * const restrict buf)
  * returns number of characters added to buffer (num from 1 to 10, inclusive)
  * (string is not NUL-terminated)
  * (buf must be at least 10 chars in length; not checked) */
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 UINT32_C99INLINE
 uint32_t
-uint32_to_ascii_base10 (const uint32_t x, char * const restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+uint32_to_ascii_base10 (const uint32_t x, char * const restrict buf);
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
 uint32_t
@@ -386,11 +398,12 @@ uint32_to_ascii_base10 (const uint32_t x, char * const restrict buf)
  * (string is not NUL-terminated)
  * (buf must be at least 11 chars in length; not checked)
  * (buf size >= 12 chars can: buf[(int32_to_ascii_base_10(x, buf))] = '\0'; ) */
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 UINT32_C99INLINE
 uint32_t
-int32_to_ascii_base10 (int32_t x, char * restrict buf)
-  __attribute_nonnull__  __attribute_warn_unused_result__
-  __attribute_nothrow__;
+int32_to_ascii_base10 (int32_t x, char * restrict buf);
 #ifdef UINT32_C99INLINE_FUNCS
 UINT32_C99INLINE
 uint32_t
