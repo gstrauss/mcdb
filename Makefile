@@ -316,16 +316,16 @@ install-plasma-headers: plasma/plasma_attr.h \
                         plasma/plasma_stdtypes.h
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb/plasma
 	umask 333; \
-	  /usr/bin/install $^ $(PREFIX_USR)/include/mcdb/plasma/
+	  /usr/bin/install -p $^ $(PREFIX_USR)/include/mcdb/plasma/
 install-headers: mcdb.h mcdb_error.h mcdb_make.h mcdb_makefmt.h mcdb_makefn.h \
                  | install-plasma-headers
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/include/mcdb
 	umask 333; \
-	  /usr/bin/install $^ $(PREFIX_USR)/include/mcdb/
+	  /usr/bin/install -p $^ $(PREFIX_USR)/include/mcdb/
 install-doc: CHANGELOG COPYING FAQ INSTALL NOTES README
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/share/doc/mcdb
 	umask 333; \
-	  /usr/bin/install $^ $(PREFIX_USR)/share/doc/mcdb
+	  /usr/bin/install -p $^ $(PREFIX_USR)/share/doc/mcdb
 install: $(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2 \
          $(PREFIX_USR)/lib$(LIB_BITS)/libnss_mcdb.so.2 \
          $(PREFIX_USR)/lib$(LIB_BITS)/libmcdb.so \
