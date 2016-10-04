@@ -228,6 +228,7 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * const restrict w,
 
         /* sanity check if input file changed during parse */
         /* (stat() prior to close() to avoid A-B-A race where inode reused) */
+        /* coverity[fs_check_call: FALSE] */
         if (stat(input, &st) != 0) /*(stat() not fstat(); maybe new file)*/
             break;/*(proceed in event stat() fails since file parse succeeded)*/
     } while (inode != st.st_ino || fsize != st.st_size || mtime != st.st_mtime);

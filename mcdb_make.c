@@ -33,6 +33,9 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
 /* _DARWIN_C_SOURCE needed for mmap MAP_ANON on MacOSX */
 #define PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
 /* large file support needed for mmap() offset,ftruncate() on mcdb > 2 GB */

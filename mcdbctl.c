@@ -389,6 +389,7 @@ mcdbctl_query(const int argc, char ** restrict argv)
       case MCDBCTL_STATS:
         rv = mcdbctl_stats(&m);
         break;
+      /* coverity[dead_error_begin: FALSE] */
       default: /* should not happen */
         rv = MCDB_ERROR_USAGE;
         break;

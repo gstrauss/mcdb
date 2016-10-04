@@ -23,6 +23,9 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
 
 #include "nss_mcdb_misc.h"
 #include "nss_mcdb.h"

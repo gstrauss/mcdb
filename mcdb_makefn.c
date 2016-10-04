@@ -92,11 +92,14 @@ mcdb_makefn_start (struct mcdb_make * const restrict m,
     /* POSIX.1-2008 adds requirement that mkstemp() create file with mode 0600;
      * glibc <= 2.06 (old) mkstemp() created files with unsafe mode 0666.
      * Note: setting umask() is global, affects file creation in other threads*/
-  #if !defined(_XOPEN_SOURCE) || _XOPEN_SOURCE-0 < 700
+  #if defined(__GLIBC__) \
+   && (__GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ <= 6))
     st.st_mode   = umask(S_IRWXG|S_IRWXO); /* 0077; octal 077 */
   #endif
+    /* coverity[secure_temp : FALSE] */
     m->fd        = mkstemp(fntmp);
-  #if !defined(_XOPEN_SOURCE) || _XOPEN_SOURCE-0 < 700
+  #if defined(__GLIBC__) \
+   && (__GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ <= 6))
     umask(st.st_mode);                     /* restore prior umask */
   #endif
     if (m->fd != -1) {

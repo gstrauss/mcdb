@@ -26,6 +26,9 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
 
 #include "../plasma/plasma_feature.h"
 #include "../plasma/plasma_attr.h"

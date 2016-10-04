@@ -471,8 +471,10 @@ mcdb_mmap_create(struct mcdb_mmap * restrict map,
     size_t flen;
     const int allocated = (map != NULL);
 
+  #if !__has_attribute(nonnull)
     if (fn_malloc == NULL)
         return NULL;
+  #endif
     if (map == NULL && (map = fn_malloc(sizeof(struct mcdb_mmap))) == NULL)
         return NULL;
     /* initialize */

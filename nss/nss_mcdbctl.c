@@ -26,6 +26,9 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
 /* _DARWIN_C_SOURCE for struct rpcent on Darwin */
 #define PLASMA_FEATURE_ENABLE_BSD_SOURCE_TO_DARWIN_C_SOURCE
 /* large file support needed for stat(),fstat() input file > 2 GB */
