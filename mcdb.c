@@ -146,7 +146,6 @@ mcdb_findtagnext(struct mcdb * const restrict m,
                 m->kpos = m->hpos;
             khash= *(uint32_t *)ptr; /* m->khash stored bigendian */
             vpos = uint32_strunpack_bigendian_aligned_macro(ptr+4);
-            ptr  = mptr + vpos;
             if (__builtin_expect((!vpos), 0))
                 break;
             ++m->loop;
