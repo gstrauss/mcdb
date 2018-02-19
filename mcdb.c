@@ -319,7 +319,11 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     if (st.st_size > (off_t)SIZE_MAX) return (errno = EFBIG, false);
   #endif
     x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-    if (x == MAP_FAILED) return false;             /*(touch page w/ mcdb hdr)*/
+    if (__builtin_expect( (x == MAP_FAILED), 0)) {
+        if (errno == EINVAL)
+            x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if (x == MAP_FAILED) return false;
+    } /*(touch page w/ mcdb hdr)*/
     __builtin_prefetch((char *)x, 0, PLASMA_ATTR_MM_HINT_T0);
   #if 0 /* disable; does not appear to improve performance */
     /*(peformance hit when hitting an uncached mcdb on my 32-bit Pentium-M)*/

@@ -65,7 +65,7 @@ nss_mcdb_nsswitch(const char * restrict svc,
                 else
               #endif
                     nsswitch = mmap(NULL, (size_t)st.st_size,
-                                    PROT_READ, MAP_SHARED, fd, 0);
+                                    PROT_READ, MAP_PRIVATE, fd, 0);
             }
             (void) nointr_close(fd);
         }

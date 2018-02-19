@@ -356,7 +356,7 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
        #if !defined(_LP64) && !defined(__LP64__)
         || (st.st_size > (off_t)SIZE_MAX ? (errno = EFBIG) : 0)
        #endif
-        || ((x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0))
+        || ((x = mmap(0, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0))
             == MAP_FAILED))
         errsave = errno;
 
