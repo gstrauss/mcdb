@@ -61,12 +61,12 @@ nss_mcdb_misc_make_ether_addr_encode(
 __attribute_nonnull__
 bool
 nss_mcdb_misc_make_ethers_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 __attribute_nonnull__
 bool
 nss_mcdb_misc_make_aliases_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 
 #endif

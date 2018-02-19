@@ -509,11 +509,12 @@ nss_mcdb_acct_make_group_encode(
 
 bool
 nss_mcdb_acct_make_passwd_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b, *e;
     long n;
     struct passwd pw;
+    (void)plen; /*(unused)*/
 
     for (; *p; ++p) {
 
@@ -677,7 +678,7 @@ nss_mcdb_acct_make_passwd_parse(
 
 bool
 nss_mcdb_acct_make_group_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b, *e;
     int c;
@@ -691,6 +692,7 @@ nss_mcdb_acct_make_group_parse(
         ? sc_ngroups_max
         : NSS_MCDB_NGROUPS_MAX;
     char *gr_mem[nmax+1];
+    (void)plen; /*(unused)*/
 
     gr.gr_mem = gr_mem;
 

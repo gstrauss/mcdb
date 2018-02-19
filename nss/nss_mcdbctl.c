@@ -81,7 +81,7 @@ int main(void)
       const char * const restrict mcdbfile;
       size_t datasz;
       bool (*parse)(struct nss_mcdb_make_winfo * restrict,
-                    char * restrict);
+                    char * restrict, size_t);
       bool (*encode)(struct nss_mcdb_make_winfo * restrict,
                      const void *);
       bool (*flush)(struct nss_mcdb_make_winfo * restrict);

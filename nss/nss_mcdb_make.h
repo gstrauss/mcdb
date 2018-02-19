@@ -64,7 +64,7 @@ bool
 nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * restrict,
                       const char * restrict,
                       bool (*)(struct nss_mcdb_make_winfo * restrict,
-                               char * restrict) );
+                               char * restrict, size_t) );
 
 
 #define TOKEN_WSDELIM_BEGIN(p) \

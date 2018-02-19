@@ -77,7 +77,8 @@ nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,
     }
 }
 
-size_t
+__attribute_nonnull__
+static size_t
 nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct hostent * const restrict he)
 {
@@ -133,11 +134,13 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
 
 
 #ifndef _AIX
-size_t
+__attribute_nonnull__
+static size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct netent * const restrict ne)
 #else
-size_t
+__attribute_nonnull__
+static size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct nwent * const restrict ne)
 #endif
@@ -185,7 +188,8 @@ nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 }
 
 
-size_t
+__attribute_nonnull__
+static size_t
 nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 				     const struct protoent * const restrict pe)
 {
@@ -223,7 +227,8 @@ nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 }
 
 
-size_t
+__attribute_nonnull__
+static size_t
 nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct rpcent * const restrict re)
 {
@@ -261,7 +266,8 @@ nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
 }
 
 
-size_t
+__attribute_nonnull__
+static size_t
 nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct servent * const restrict se)
 {
@@ -522,7 +528,7 @@ nss_mcdb_netdb_make_servent_encode(
 
 bool
 nss_mcdb_netdb_make_hosts_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b;
     int c;
@@ -533,6 +539,7 @@ nss_mcdb_netdb_make_hosts_parse(
     char *h_addr_list[2] = { NULL, NULL }; /* one addr only in /etc/hosts */
     char *h_aliases[256];   /* use DNS if host has more than 255 aliases! */
     /*(255 aliases + canonical name amounts to 1 KB of (256) 3-char names)*/
+    (void)plen; /*(unused)*/
 
     he.h_aliases   = h_aliases;
     he.h_addr_list = h_addr_list;
@@ -618,7 +625,7 @@ nss_mcdb_netdb_make_hosts_parse(
 
 bool
 nss_mcdb_netdb_make_networks_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b;
     int c;
@@ -631,6 +638,7 @@ nss_mcdb_netdb_make_networks_parse(
     struct in_addr in_addr;
     char *n_aliases[256];
     /*(255 aliases + canonical name amounts to 1 KB of (256) 3-char names)*/
+    (void)plen; /*(unused)*/
 
     ne.n_aliases = n_aliases;
 
@@ -716,7 +724,7 @@ nss_mcdb_netdb_make_networks_parse(
 
 bool
 nss_mcdb_netdb_make_protocols_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b, *e;
     int c;
@@ -724,6 +732,7 @@ nss_mcdb_netdb_make_protocols_parse(
     struct protoent pe;
     char *p_aliases[256];
     /*(255 aliases + canonical name amounts to 1 KB of (256) 3-char names)*/
+    (void)plen; /*(unused)*/
 
     pe.p_aliases = p_aliases;
 
@@ -800,7 +809,7 @@ nss_mcdb_netdb_make_protocols_parse(
 
 bool
 nss_mcdb_netdb_make_rpc_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b, *e;
     int c;
@@ -808,6 +817,7 @@ nss_mcdb_netdb_make_rpc_parse(
     struct rpcent re;
     char *r_aliases[256];
     /*(255 aliases + canonical name amounts to 1 KB of (256) 3-char names)*/
+    (void)plen; /*(unused)*/
 
     re.r_aliases = r_aliases;
 
@@ -884,7 +894,7 @@ nss_mcdb_netdb_make_rpc_parse(
 
 bool
 nss_mcdb_netdb_make_services_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b, *e;
     int c;
@@ -892,6 +902,7 @@ nss_mcdb_netdb_make_services_parse(
     struct servent se;
     char *s_aliases[256];
     /*(255 aliases + canonical name amounts to 1 KB of (256) 3-char names)*/
+    (void)plen; /*(unused)*/
 
     se.s_aliases = s_aliases;
 

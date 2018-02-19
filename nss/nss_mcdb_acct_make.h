@@ -158,17 +158,12 @@ nss_mcdb_acct_make_group_flush(
 __attribute_nonnull__
 bool
 nss_mcdb_acct_make_passwd_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 __attribute_nonnull__
 bool
 nss_mcdb_acct_make_group_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
-
-__attribute_nonnull__
-bool
-nss_mcdb_acct_make_shadow_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 
 #endif

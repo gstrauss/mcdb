@@ -144,11 +144,12 @@ nss_mcdb_authn_make_parse_long_int_colon(char * const restrict b,
 
 bool
 nss_mcdb_authn_make_shadow_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b, *e;
     unsigned long u;
     struct spwd sp;
+    (void)plen; /*(unused)*/
 
     for (; *p; ++p) {
 

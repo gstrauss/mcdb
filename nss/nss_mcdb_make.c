@@ -150,7 +150,7 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * const restrict w,
                       const char * const restrict input,
                       bool (* const parse_mmap)
                            (struct nss_mcdb_make_winfo * restrict,
-                            char * restrict) )
+                            char * restrict, size_t) )
 {
     struct nss_mcdb_make_wbuf * const wbuf = &w->wbuf;
     struct mcdb_make * const m = wbuf->m;
@@ -217,7 +217,8 @@ nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * const restrict w,
         if (!nss_mcdb_make_mcdbctl_write(w))
             break;
 
-        rc = parse_mmap(w,map) && (w->flush == NULL || w->flush(w));/*callback*/
+        rc = parse_mmap(w, map, (size_t)fsize)
+          && (w->flush == NULL || w->flush(w));/*callback*/
         if (!rc)
             break;
 

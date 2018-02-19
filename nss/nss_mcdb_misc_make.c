@@ -160,11 +160,12 @@ nss_mcdb_misc_make_ether_addr_encode(
 
 bool
 nss_mcdb_misc_make_ethers_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b;
     struct ether_addr ea;
     char hostname[w->datasz + 1];       /* (>= _SC_HOST_NAME_MAX) */
+    (void)plen; /*(unused)*/
 
     for (; *p; ++p) {
 
@@ -211,7 +212,7 @@ nss_mcdb_misc_make_ethers_parse(
 
 bool
 nss_mcdb_misc_make_aliases_parse(
-  struct nss_mcdb_make_winfo * const restrict w, char * restrict p)
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
 {
     char *b;
     struct aliasent ae;
@@ -219,6 +220,7 @@ nss_mcdb_misc_make_aliases_parse(
     int c;
     char *alias_members[256];
     /* (255 aliases amounts to 1 KB of (256) 3-char names) */
+    (void)plen; /*(unused)*/
 
     ae.alias_members = alias_members;
 

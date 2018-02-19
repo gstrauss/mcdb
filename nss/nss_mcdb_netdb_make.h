@@ -31,6 +31,7 @@ PLASMA_ATTR_Pragma_once
 #include <netdb.h>
 struct rpcent;      /* (forward declaration) */
 
+#if 0
 /* buf size 1K + NSS_HE_HDRSZ is probably reasonable */
 __attribute_nonnull__
 size_t
@@ -68,6 +69,7 @@ __attribute_nonnull__
 size_t
 nss_mcdb_netdb_make_servent_datastr(char * restrict, const size_t,
 				    const struct servent * const restrict);
+#endif
 
 
 __attribute_nonnull__
@@ -104,27 +106,27 @@ nss_mcdb_netdb_make_servent_encode(
 __attribute_nonnull__
 bool
 nss_mcdb_netdb_make_hosts_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 __attribute_nonnull__
 bool
 nss_mcdb_netdb_make_networks_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 __attribute_nonnull__
 bool
 nss_mcdb_netdb_make_protocols_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 __attribute_nonnull__
 bool
 nss_mcdb_netdb_make_rpc_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 __attribute_nonnull__
 bool
 nss_mcdb_netdb_make_services_parse(
-  struct nss_mcdb_make_winfo * const restrict, char * restrict);
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 
 #endif
