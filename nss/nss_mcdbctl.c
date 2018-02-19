@@ -63,11 +63,9 @@
 
 int main(void)
 {
-    /* WBUFSZ must be >= ((largest record possible * 2) + 26) */
-    enum { WBUFSZ = 524288  /* 512 KB */ };
     enum { DBUFSZ =   4096  /*   4 KB */ };
 
-    struct nss_mcdb_make_winfo w = { .wbuf   = { NULL,malloc(WBUFSZ),0,WBUFSZ },
+    struct nss_mcdb_make_winfo w = { .wbuf   = { NULL,NULL,0,0 },
                                      .data   = malloc(DBUFSZ),
                                      .datasz = DBUFSZ };
     struct nss_mcdb_make_wbuf * const wbuf = &w.wbuf;
@@ -161,9 +159,8 @@ int main(void)
       (stat("/etc/nsswitch.conf", &st) == 0) ? st.st_mtime : 0;
     bool rc = false;
 
-    if (wbuf->buf == NULL || w.data == NULL) {
+    if (w.data == NULL) {
         free(w.data);
-        free(wbuf->buf);
         return -1;
     }
 
@@ -174,12 +171,8 @@ int main(void)
         || sc_getgr_r_size_max <= 0 || SHRT_MAX < sc_getgr_r_size_max
         || sc_host_name_max    <= 0 || SHRT_MAX < sc_host_name_max   ) {
         free(w.data);
-        free(wbuf->buf);
         return -1;  /* should not happen */
     }
-
-    /* (mcdb line must fit in WBUFSZ, including key, value, mcdb line tokens) */
-    assert(DBUFSZ*2 <= WBUFSZ);
 
     /* initialize struct mcdb_make for writing .mcdb  */
     memset((wbuf->m = &m), '\0', sizeof(struct mcdb_make));
