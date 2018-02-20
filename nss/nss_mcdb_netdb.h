@@ -1,5 +1,5 @@
 /*
- * nss_mcdb_netdb - query mcdb of hosts, protocols, networks, services, rpc
+ * nss_mcdb_netdb - query mcdb of hosts,protocols,netgroup,networks,services,rpc
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -71,6 +71,10 @@ enum {
   NSS_HE_MEM_NUM = 14,
   NSS_HE_LST_NUM = 16,
   NSS_HE_HDRSZ   = 20   /*(must be multiple of 4; round up)*/
+};
+
+enum {
+  NSS_NG_HDRSZ   =  0   /*(must be multiple of 4; round up)*/
 };
 
 enum {
@@ -148,7 +152,23 @@ _nss_mcdb_gethostbyaddr_r(const void * restrict, socklen_t, int,
                           struct hostent * restrict, char * restrict, size_t,
                           int * restrict, int * restrict);
 
-#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
+#ifdef __GLIBC__
+
+struct __netgrent; /*(declaration)*/
+
+__attribute_nonnull__
+__attribute_warn_unused_result__
+EXPORT int _nss_mcdb_setnetgrent(const char * restrict,
+                                 struct __netgrent * restrict);
+EXPORT void _nss_mcdb_endnetgrent(struct __netgrent * restrict);
+
+__attribute_nonnull__
+__attribute_warn_unused_result__
+EXPORT nss_status_t
+_nss_mcdb_getnetgrent_r(struct __netgrent * restrict, char * restrict, size_t,
+                        int * restrict);
+
+#else
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
@@ -162,6 +182,13 @@ _nss_mcdb_getnetgrent_r(char ** restrict, char ** restrict, char ** restrict,
                         char * restrict, size_t, int * restrict);
 
 #endif
+
+__attribute_nonnull__
+__attribute_warn_unused_result__
+nss_status_t
+_nss_mcdb_innetgr(const char * restrict, const char * restrict,
+                  const char * restrict, const char * restrict,
+                  char * restrict, size_t, int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__

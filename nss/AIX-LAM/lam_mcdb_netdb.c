@@ -294,18 +294,9 @@ ng_test (struct ng_pvt * const restrict ng,
          const char * restrict user,
          const char * restrict domain)
 {   /* similar to innetgr() */
-    const char *hcmp;
-    const char *ucmp;
-    const char *dcmp;
     if (!ng) { errno = EINVAL; return false; }
-    ng_rewind(ng, netgroup);
-    while (ng_next(ng, &hcmp, &ucmp, &dcmp)) {
-        if (   (host   == NULL || hcmp == NULL || 0 == strcmp(host,   hcmp))
-            && (user   == NULL || ucmp == NULL || 0 == strcmp(user,   ucmp))
-            && (domain == NULL || dcmp == NULL || 0 == strcmp(domain, dcmp))  )
-        return true;
-    }
-    return false;
+    return _nss_mcdb_innetgr(netgroup, host, user, domain,
+                             ng->buf, sizeof(ng->buf), &ng->errnum);
 }
 
 #endif /* implemented, but not enabling by default; often used only with NIS+ */

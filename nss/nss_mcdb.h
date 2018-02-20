@@ -128,7 +128,6 @@ INTERNAL nss_status_t
 nss_mcdb_getent(enum nss_dbtype,
                 const struct nss_mcdb_vinfo * restrict);
 
-#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
 /* similar to mcdb_findstart and mcdb_findnext; used for netdb netgroups */
 __attribute_nonnull__
 __attribute_warn_unused_result__
@@ -136,6 +135,12 @@ INTERNAL nss_status_t
 nss_mcdb_getentstart(enum nss_dbtype,
                      const struct nss_mcdb_vinfo * restrict);
 
+__attribute_nonnull__
+__attribute_warn_unused_result__
+INTERNAL nss_status_t
+nss_mcdb_getnetgrentnext(const struct nss_mcdb_vinfo * const restrict v);
+
+#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
 __attribute_nonnull__
 __attribute_warn_unused_result__
 INTERNAL nss_status_t

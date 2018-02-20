@@ -4,6 +4,7 @@
     _nss_mcdb_endgrent;
     _nss_mcdb_endhostent;
     _nss_mcdb_endnetent;
+    _nss_mcdb_endnetgrent;
     _nss_mcdb_endprotoent;
     _nss_mcdb_endpwent;
     _nss_mcdb_endrpcent;
@@ -19,6 +20,7 @@
     _nss_mcdb_getnetbyaddr_r;
     _nss_mcdb_getnetbyname_r;
     _nss_mcdb_getnetent_r;
+    _nss_mcdb_getnetgrent_r;
     _nss_mcdb_getprotobyname_r;
     _nss_mcdb_getprotobynumber_r;
     _nss_mcdb_getprotoent_r;
@@ -34,9 +36,11 @@
     _nss_mcdb_getspent_r;
     _nss_mcdb_getspnam_r;
     _nss_mcdb_initgroups_dyn;
+    _nss_mcdb_innetgr;
     _nss_mcdb_setgrent;
     _nss_mcdb_sethostent;
     _nss_mcdb_setnetent;
+    _nss_mcdb_setnetgrent;
     _nss_mcdb_setprotoent;
     _nss_mcdb_setpwent;
     _nss_mcdb_setrpcent;

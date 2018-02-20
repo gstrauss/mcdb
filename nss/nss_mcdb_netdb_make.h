@@ -1,5 +1,5 @@
 /*
- * nss_mcdb_netdb_make - mcdb of hosts, protocols, networks, services, rpc
+ * nss_mcdb_netdb_make - mcdb of hosts,protocols,netgroup,networks,services,rpc
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -84,6 +84,12 @@ nss_mcdb_netdb_make_netent_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
+__attribute_nonnull_x__((1))
+bool
+nss_mcdb_netdb_make_netgrent_encode(
+  struct nss_mcdb_make_winfo * const restrict,
+  const void * const);
+
 __attribute_nonnull__
 bool
 nss_mcdb_netdb_make_protoent_encode(
@@ -111,6 +117,11 @@ nss_mcdb_netdb_make_hosts_parse(
 __attribute_nonnull__
 bool
 nss_mcdb_netdb_make_networks_parse(
+  struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
+
+__attribute_nonnull__
+bool
+nss_mcdb_netdb_make_netgroup_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
 __attribute_nonnull__

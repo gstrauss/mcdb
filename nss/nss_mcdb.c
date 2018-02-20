@@ -271,7 +271,6 @@ nss_mcdb_getent(const enum nss_dbtype dbtype,
     return NSS_STATUS_NOTFOUND;
 }
 
-#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
 INTERNAL nss_status_t
 nss_mcdb_getentstart(const enum nss_dbtype dbtype,
                      const struct nss_mcdb_vinfo * const restrict v)
@@ -289,6 +288,24 @@ nss_mcdb_getentstart(const enum nss_dbtype dbtype,
     return NSS_STATUS_NOTFOUND;
 }
 
+INTERNAL nss_status_t
+nss_mcdb_getnetgrentnext(const struct nss_mcdb_vinfo * const restrict v)
+{
+    struct mcdb * const restrict m = &_nss_mcdb_st[NSS_DBTYPE_NETGROUP];
+    if (__builtin_expect(m->map == NULL, false)) { /* db must already be open */
+        *v->errnop = errno;
+        return NSS_STATUS_UNAVAIL;
+    }
+    if (m->loop != 0) {                   /* prior search must have succeeded */
+        return v->decode(m, v);                /* decode previous found entry */
+        /* getnetgrent iters through rules in data of provided netgroup;
+         * does not iter through netgroup keys */
+    }
+    *v->errnop = errno = ENOENT;
+    return NSS_STATUS_NOTFOUND;
+}
+
+#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
 INTERNAL nss_status_t
 nss_mcdb_getentnext(const enum nss_dbtype dbtype,
                     const struct nss_mcdb_vinfo * const restrict v)

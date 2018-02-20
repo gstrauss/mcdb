@@ -126,6 +126,12 @@ int main(void)
           nss_mcdb_netdb_make_hosts_parse,
           nss_mcdb_netdb_make_hostent_encode,
           NULL },
+        { "/etc/netgroup",
+          "/etc/mcdb/netgroup.mcdb",
+          NSS_NG_HDRSZ+1024,
+          nss_mcdb_netdb_make_netgroup_parse,
+          nss_mcdb_netdb_make_netgrent_encode,
+          NULL },
         { "/etc/networks",
           "/etc/mcdb/networks.mcdb",
           NSS_NE_HDRSZ+1024,
@@ -313,5 +319,6 @@ db_set_get_end_ent(netdb, services,  servent,  serv,     1)
 #endif
 
 /* Note: /etc/ethers has no equivalent setetherent, getetherent, endetherent */
+/* Note: /etc/netgroup has no standard routines to walk all netgroups */
 
 #undef db_set_get_end_ent

@@ -1,5 +1,5 @@
 /*
- * nss_mcdb_netdb_make - mcdb of hosts, protocols, networks, services, rpc
+ * nss_mcdb_netdb_make - mcdb of hosts,protocols,netgroup,networks,services,rpc
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -50,6 +50,7 @@
 PLASMA_ATTR_Pragma_no_side_effect(strlen)
 
 /* (similar to code nss_mcdb_acct_make.c:nss_mcdb_acct_make_group_datastr()) */
+__attribute_nonnull__
 static size_t
 nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,
                              char * const * const restrict list,
@@ -977,4 +978,669 @@ nss_mcdb_netdb_make_services_parse(
     }
 
     return true;
+}
+
+
+/*
+ * /etc/netgroup
+ *
+ * Note: maximum length of host, user, or domain string is 255 chars each
+ */
+
+#include "../uint32.h"
+#include <ctype.h>      /* isalnum() tolower() */
+#include <stdlib.h>     /* malloc() calloc() realloc() free() */
+
+
+struct ngnode {
+  struct ngnode *next;
+  uint32_t h;
+  uint32_t klen;
+  void *k;
+  void *v;
+};
+
+struct ngtable {
+  struct ngarray { struct ngnode **nodes; size_t used; size_t sz; } a;
+  struct nghash  { struct ngnode **bkts; size_t nbkts; } h;
+};
+
+
+__attribute_nonnull__
+static void
+netgroup_ngtable_free (struct ngtable * const restrict t)
+{
+    for (size_t i = 0, used = t->a.used; i < used; ++i) {
+        free(t->a.nodes[i]->k);
+        free(t->a.nodes[i]);
+    }
+    free(t->a.nodes);
+    free(t->h.bkts);
+}
+
+
+__attribute_nonnull__
+static bool
+netgroup_ngtable_init (struct ngtable * const restrict t, const size_t hint)
+{
+    /* create initial number of hash table buckets and array slots based on
+     * heuristic from file size to minimize realloc of array, and reduce the
+     * need to rebalance hash table (e.g. due to collisions in a full table)
+     * Note: initial allocation required here for simple power-2 resize logic
+     */
+    t->h.bkts = (struct ngnode **)calloc((hint << 1), sizeof(struct ngnode *));
+    if (NULL == t->h.bkts) return false;
+    t->h.nbkts = (hint << 1);
+
+    t->a.nodes = (struct ngnode **)malloc(hint * sizeof(struct ngnode *));
+    if (NULL == t->a.nodes) return false;
+    t->a.sz = hint;
+    t->a.used = 0;
+
+    return true;
+}
+
+
+__attribute_nonnull__
+static void *
+netgroup_node_insert_id (struct ngtable * const restrict t,
+                         const void * const restrict vbuf, const size_t sz)
+{
+    /* hash table lookup */
+    const uint32_t hash = uint32_hash_djb(UINT32_HASH_DJB_INIT, vbuf, sz);
+    struct ngnode ** restrict bktp = &t->h.bkts[hash & (t->h.nbkts - 1)];
+    for (struct ngnode * restrict bn; (bn = *bktp); bktp = &bn->next) {
+        if (bn->h == hash && bn->klen == sz && 0 == memcmp(bn->k, vbuf, sz)) {
+            return bn->v; /* vbuf found in hash table */
+        }
+    }
+
+    if (t->a.used > (SIZE_MAX >> 4)) { errno = ERANGE; return (void *)-1; }
+
+    struct ngnode * const restrict n =
+      (struct ngnode *)malloc(sizeof(struct ngnode));
+    if (NULL == n) return (void *)-1;
+
+    n->next = NULL;
+    n->h = hash;
+    n->klen = sz;
+    n->k = malloc(sz);
+    if (NULL == n->k) { free(n); return (void *)-1; }
+    memcpy(n->k, vbuf, sz);
+
+    *bktp = n; /* hash table insert */
+
+    if (t->a.used == t->a.sz) { /* array resize (if needed) */
+        struct ngnode ** const restrict np = (struct ngnode **)
+          realloc(t->a.nodes, (t->a.sz <<= 1) * sizeof(struct ngnode *));
+        if (NULL == np) return (void *)-1;
+        t->a.nodes = np;
+    }
+    n->v = (void *)t->a.used;
+    t->a.nodes[t->a.used++] = n; /* array insert */
+
+  #if 0
+    if (t->h.nbkts <= (t->a.used << 1)) {/* hash table rebalance (if needed) */
+        /* not bothering to resize/rebalance if created oversized at init time*/
+    }
+  #endif
+
+    return n->v;
+}
+
+
+struct ngdata {
+  const char * restrict s;
+  struct ngtable g; /* netgroup names */
+  struct ngtable r; /* netgroup rules */
+  /* array of int for string triples (0, +int) and subgroups (-int) */
+  struct ngints { int *ptr; uint32_t used; uint32_t sz; } **ap;
+  uint32_t apused;
+  uint32_t apsz;
+  char * restrict data;
+  size_t datalen;
+  size_t datasz;
+  int errnum;
+  int subg;
+  uint32_t nuniq;
+  int *uniq;
+};
+
+
+__attribute_nonnull__
+static void
+netgroup_ngdata_uniq_reset (struct ngdata * const restrict ngd)
+{
+    memset(ngd->uniq+(ngd->nuniq<<6), 0, ngd->nuniq*sizeof(int));
+}
+
+
+__attribute_cold__
+__attribute_noinline__
+__attribute_nonnull__
+static bool
+netgroup_ngdata_uniq_resize (struct ngdata * const restrict ngd)
+{
+    /* nrows must be non-zero power-of-2 */
+    const int nold = ngd->nuniq;
+    if (nold > ((UINT32_MAX-(nold<<2)*sizeof(int)) >> (6+2))/sizeof(int)) {
+        errno = ERANGE;
+        return false;
+    }
+    const int nuniq = (0 == nold) ? 64 : (nold << 2);
+
+    /* nuniq rows of ncols(64) + array of nrows ints at end for used-per-row */
+    int * const restrict uniq =
+      (int *)malloc((nuniq<<6)*sizeof(int) + nuniq*sizeof(int));
+    if (__builtin_expect( (NULL == uniq), 0)) return false;
+    memset(uniq+(nuniq<<6),0,nuniq*sizeof(int));/*netgroup_ngdata_uniq_reset()*/
+
+    if (ngd->uniq) { /* rebalance */
+        const int * const restrict ousedp = ngd->uniq+(nold<<6);
+        const int * restrict orow = ngd->uniq;
+        for (int i = 0; i < nold; ++i, orow += (1<<6)) {
+            for (int j = 0, oused = ousedp[i]; j < oused; ++j) {
+                const int oid = orow[j];
+                const int n = oid & (nuniq-1);
+                int * const restrict usedp = uniq+(nuniq<<6)+n;
+                int * const restrict row = uniq+(n<<6);
+                row[(*usedp)++] = oid;
+            }
+        }
+        free(ngd->uniq);
+    }
+
+    ngd->uniq = uniq;
+    ngd->nuniq = nuniq;
+    return true;
+}
+
+
+__attribute_nonnull__
+static void
+netgroup_ngdata_free (struct ngdata * const restrict ngd)
+{
+    free(ngd->data);
+    netgroup_ngtable_free(&ngd->g);
+    netgroup_ngtable_free(&ngd->r);
+    struct ngints ** const restrict ap = ngd->ap;
+    for (uint32_t i = 0, used = ngd->apused; i < used; ++i) free(ap[i]);
+    free(ap);
+    free(ngd->uniq);
+}
+
+
+__attribute_nonnull__
+static bool
+netgroup_ngdata_init (struct ngdata * const restrict ngd,
+                      char * restrict p, size_t plen)
+{
+    size_t p2 = (1u << 5);
+    while (p2 < plen && p2 < LONG_MAX) p2 <<= 1;
+    plen = p2;
+    memset(ngd, 0, sizeof(struct ngdata));
+    ngd->s = p;
+    ngd->ap = (struct ngints **)malloc((plen >> 5) * sizeof(struct ngints *));
+    if (NULL == ngd->ap) return false;
+    ngd->apsz = (plen >> 5);
+    return netgroup_ngtable_init(&ngd->g, plen >> 5)
+        && netgroup_ngtable_init(&ngd->r, plen >> 4);
+}
+
+
+struct ng_string_triple {
+  const char *h;
+  const char *u;
+  const char *d;
+  int hln;
+  int uln;
+  int dln;
+};
+
+
+__attribute_nonnull__
+static int
+netgroup_string_triple_id (struct ngdata * const restrict ngd,
+                           const struct ng_string_triple * const restrict s)
+{
+    /* data format: 4 unsigned char bytes, followed by '\0' terminated strings
+     * of host, user, domain.  First two unsigned char bytes are total length
+     * of strings, including 4 byte header.  Next is unsigned char byte with
+     * len of host (not including '\0'), followed by unsigned char byte with
+     * len of user (not including '\0').  In list of encoded triplets,
+     * byte[0] == 0 and byte[1] == 0 ends list */
+
+    if (s->hln > 255 || s->uln > 255 || s->dln > 255) return -1;
+    const int sum = 4
+                  + (s->hln ? s->hln+1 : 0)
+                  + (s->uln ? s->uln+1 : 0)
+                  + (s->dln ? s->dln+1 : 0);
+    int off = 4;
+    unsigned char r[4+768];
+    r[0] = (unsigned char)((sum >> 8) & 0xFF);
+    r[1] = (unsigned char)(sum & 0xFF);
+    r[2] = (unsigned char)s->hln;
+    r[3] = (unsigned char)s->uln;
+
+    if (s->hln) { /* lowercase host for consistency and memcmp */
+        const unsigned char * const restrict hun = (const unsigned char *)s->h;
+        unsigned char * const restrict h = r+off;
+        for (int i = 0; i < s->hln; ++i) h[i] = tolower(hun[i]);
+        h[s->hln] = '\0';
+        off += s->hln+1;
+    }
+
+    if (s->uln) { memcpy(r+off, s->u, s->uln); r[(off+=s->uln)] = '\0'; ++off; }
+
+    if (s->dln) { /* lowercase domain for consistency and memcmp */
+        const unsigned char * const restrict dun = (const unsigned char *)s->d;
+        unsigned char * const restrict d = r+off;
+        for (int i = 0; i < s->dln; ++i) d[i] = tolower(dun[i]);
+        d[s->dln] = '\0';
+        off += s->dln+1;
+    }
+
+    /*assert(off == sum)*/
+    return (int)(intptr_t)netgroup_node_insert_id(&ngd->r, r, off);
+}
+
+
+__attribute_nonnull__
+static int
+netgroup_id (struct ngdata * const restrict ngd,
+             const char * const restrict s, const size_t slen)
+{
+    const int id = (int)(intptr_t)netgroup_node_insert_id(&ngd->g, s, slen);
+    if (id < 0) return -1;
+
+    if (ngd->g.a.used > INT_MAX) { errno = ERANGE; return -1; }
+    if (id >= ngd->apused) {
+        if (id != ngd->apused) return -1;
+        if (ngd->apused == ngd->apsz) {
+            if (ngd->apsz > (UINT32_MAX >> 1)) { errno = ERANGE; return -1; }
+            struct ngints ** const restrict np = (struct ngints **)
+              realloc(ngd->ap, (ngd->apsz <<= 1) * sizeof(struct ngints *));
+            if (NULL == np) return -1;
+            ngd->ap = np;
+        }
+        ++ngd->apused;
+        ngd->ap[id] = (struct ngints *)calloc(1, sizeof(struct ngints));
+        if (NULL == ngd->ap[id]) return -1;
+    }
+
+    return id;
+}
+
+
+__attribute_nonnull__
+static bool
+netgroup_ngi_append (struct ngints * const restrict ngi, const int id)
+{
+    if (ngi->used == ngi->sz) {
+        if (ngi->sz > (UINT32_MAX >> 1)) { errno = ERANGE; return -1; }
+        if (0 == ngi->sz) ngi->sz = 2;
+        int * const restrict np = (int *)
+          realloc(ngi->ptr, (ngi->sz <<= 1) * sizeof(int));
+        if (NULL == np) return false;
+        ngi->ptr = np;
+    }
+    ngi->ptr[ngi->used++] = id;
+    return true;
+}
+
+
+__attribute_nonnull__
+__attribute_pure__
+static const char *
+netgroup_advance_linear_ws_cont (const char * restrict s)
+{
+    while (*s == ' ' || *s == '\t' || *s == '\\') {
+        if (s[0] != '\\')
+            ++s;
+        else if (s[1] == '\n')
+            s+=2;
+        else if (s[1] == '\r' && s[2] == '\n')
+            s+=3;
+        else
+            break;
+    }
+    return s;
+}
+
+
+__attribute_nonnull__
+static bool
+netgroup_parse_ngrule (struct ngdata * const restrict ngd,
+                       struct ngints * const restrict ngi)
+{
+    const char * restrict s = ngd->s;
+    uintptr_t n;
+    int id;
+    struct ng_string_triple st = { NULL, NULL, NULL, 0, 0, 0 };
+
+    do {
+        s = netgroup_advance_linear_ws_cont(s);
+        if (*s == '\n' || *s == '\r' || *s == '\0') {
+            ngd->s = s;
+            return true;
+        }
+        if (*s == '\\') { errno = EINVAL; return false; }
+
+        if (*s == '(') { /* netgroup string triple rule */
+            ++s;
+            s = netgroup_advance_linear_ws_cont(s);
+            if (*s == '\0') { errno = EINVAL; return false; }
+            if (*s == '\\') { errno = EINVAL; return false; }
+
+            st.hln = 0;
+            if (*s != ',') {
+                if (!(isalnum(*s) || *s == '_')) { errno=EINVAL; return false; }
+                st.h = s;
+                do { ++s; } while (isalnum(*s)||*s=='.'||*s=='_'||*s=='-');
+                n = (uintptr_t)(s - st.h);
+                if (n > INT_MAX) { errno = ERANGE; return false; }
+                st.hln = (int)n;
+                s = netgroup_advance_linear_ws_cont(s);
+                if (*s != ',') { errno = EINVAL; return false; }
+            }
+            ++s;
+            s = netgroup_advance_linear_ws_cont(s);
+
+            st.uln = 0;
+            if (*s != ',') {
+                if (!(isalnum(*s) || *s == '_')) { errno=EINVAL; return false; }
+                st.u = s;
+                do { ++s; } while (isalnum(*s)||*s=='.'||*s=='_'||*s=='-');
+                n = (uintptr_t)(s - st.u);
+                if (n > INT_MAX) { errno = ERANGE; return false; }
+                st.uln = (int)n;
+                s = netgroup_advance_linear_ws_cont(s);
+                if (*s != ',') { errno = EINVAL; return false; }
+            }
+            ++s;
+            s = netgroup_advance_linear_ws_cont(s);
+
+            st.dln = 0;
+            if (*s != ')') {
+                if (!(isalnum(*s) || *s == '_')) { errno=EINVAL; return false; }
+                st.d = s;
+                do { ++s; } while (isalnum(*s)||*s=='.'||*s=='_'||*s=='-');
+                n = (uintptr_t)(s - st.d);
+                if (n > INT_MAX) { errno = ERANGE; return false; }
+                st.dln = (int)n;
+                s = netgroup_advance_linear_ws_cont(s);
+                if (*s != ')') { errno = EINVAL; return false; }
+            }
+            ++s;
+
+            id = netgroup_string_triple_id(ngd, &st);
+            ngd->s = s;
+            if (id < 0) return false;
+        }
+        else {             /* netgroup name (subgroup) */
+            if (!(isalnum(*s) || *s == '_')) { errno = EINVAL; return false; }
+            ngd->s = s;
+            do { ++s; } while (isalnum(*s) || *s=='.' || *s=='_' || *s=='-');
+            n = (uintptr_t)(s - ngd->s);
+            if (n > INT_MAX) { errno = ERANGE; return false; }
+
+            id = netgroup_id(ngd, ngd->s, n);
+            ngd->s = s;
+            if (id < 0) return false;
+            id = -id;
+        }
+    } while (netgroup_ngi_append(ngi, id));
+    return false;
+}
+
+
+__attribute_nonnull__
+static bool
+netgroup_parse_ng (struct ngdata * const restrict ngd)
+{
+    const char * restrict s = ngd->s;
+    uintptr_t n;
+    int id;
+
+    /* insert catch-all rule "(,,)" with id 0 (known value) (?for later use?) */
+    struct ng_string_triple triple = { NULL, NULL, NULL, 0, 0, 0 };
+    if (0 != netgroup_string_triple_id(ngd, &triple)) return false;
+
+    /* insert bogus netgroup name "" with id 0 (known value) */
+    /*(start netgroups at id = 1, not 0 due to -id encoding in struct ngints)*/
+    if (0 != netgroup_id(ngd, "", 1)) return false;
+
+    while (*s != 0) {
+        /* skip blank lines and comment lines */
+        do {
+            if (*s == '\r') ++s;
+            if (*s == '\n') ++s;
+            if (*s == '#') {
+                do {
+                    while (*s != '\n' && *s != '\r' && *s != '\0') ++s;
+                    if (*s == '\0' || *(s-1) != '\\') break;
+                    if (*s == '\r') ++s;
+                    if (*s == '\n') ++s;
+                } while (*s != '\0');
+            }
+        } while (*s == '\n' || *s == '\r');
+        if (*s == '\0') break;
+
+        if (!(isalnum(*s) || *s == '_')) { errno = EINVAL; return false; }
+        ngd->s = s;
+        do { ++s; } while (isalnum(*s) || *s=='.' || *s=='_' || *s=='-');
+        n = (uintptr_t)(s - ngd->s);
+        if (n > INT_MAX) { errno = ERANGE; return false; }
+        if (*s == ' ' || *s == '\t')
+            ++s;
+        else if (*s != '\\') {
+            while (*s != '\n' && *s != '\r' && *s != '\0') ++s; /*(skip line)*/
+            continue;
+        }
+
+        id = netgroup_id(ngd, ngd->s, n);
+        ngd->s = s;
+        if (id < 0) return false;
+        struct ngints * const restrict ngi = ngd->ap[id];
+        if (!netgroup_parse_ngrule(ngd, ngi)) return false;
+        s = ngd->s;
+    }
+
+    ngd->s = s;
+
+    return true;
+}
+
+
+__attribute_cold__
+__attribute_noinline__
+__attribute_nonnull__
+static bool
+netgroup_datastr_resize (struct ngdata * const restrict ngd, size_t n)
+{
+    /* resize in 256k blocks */
+    if (n > 1024) { errno = ERANGE; return false; } /*(not expected)*/
+    if (ngd->datasz > ULONG_MAX - 262144) { errno = ERANGE; return false; }
+    char * const ndata = realloc(ngd->data, (ngd->datasz += 262144));
+    if (NULL == ndata) return false;
+    ngd->data = ndata;
+    return true;
+}
+
+
+__attribute_nonnull__
+static bool
+netgroup_datastr_extend (struct ngdata * const restrict ngd, size_t n)
+{
+    return (__builtin_expect( (ngd->datasz - ngd->datalen >= n), 1))
+      ? true
+      : netgroup_datastr_resize(ngd, n);
+}
+
+
+__attribute_nonnull__
+static bool
+netgroup_datastr_append (struct ngdata * const restrict ngd, int id)
+{
+    const struct ngnode * const restrict n = ngd->r.a.nodes[id];
+    if (__builtin_expect( !netgroup_datastr_extend(ngd, n->klen), 0))
+        return false;
+    memcpy(ngd->data + ngd->datalen, n->k, n->klen);
+    ngd->datalen += n->klen;
+    return true;
+}
+
+
+__attribute_noinline__
+__attribute_nonnull__
+static bool
+netgroup_datastr_uniq_id (struct ngdata * const restrict ngd, const int id)
+{
+    /* Notes:
+     *
+     * O(n^2) search list of ids (worst case)
+     * simple and most netgroup memberships are short, but this can
+     * be quite expensive for many netgroups with large memberships
+     *
+     * Faster lookups might use a bitfield of all ids, but for a large number
+     * of ids, it would get expensive to clear the set for each netgroup,
+     * since most netgroups are expected to have a small number of members
+     *
+     * Might also take an adaptive approach.  Might scan ngints and if there
+     * are no subgroups, take fast path and skip duplicate detection.  If there
+     * are subgroups, keep a linear list until, say 64 is reached, and then
+     * switch to a hash table or tree or ...
+     *
+     * Compromise: skip duplicate detect when no subgroups (done elsewhere),
+     * then use power-of-2-sized table with buckets of int arrays in order to
+     * reduce n by some orders of magnitude in (O)n^2 searches for dup ids.
+     * Array of ints is used instead of linked list chasing pointers through
+     * linked list is slower than scanning an array of ints.
+     */
+    /* see netgroup_ngdata_uniq_resize() for 2-D data structure of ints */
+    int n = id & (ngd->nuniq-1);
+    int * restrict usedp = ngd->uniq+(ngd->nuniq<<6)+n;
+    int * restrict row = ngd->uniq+(n<<6);
+    for (int i = 0, used = *usedp; i < used; ++i) {
+        if (row[i] == id) return false;
+    }
+
+    while (__builtin_expect( (*usedp == (1<<6)), 0)) {
+        /*(edge case might require resize more than once)*/
+        if (__builtin_expect( !netgroup_ngdata_uniq_resize(ngd), 0))
+            return false;
+        n = id & (ngd->nuniq-1);
+        usedp = ngd->uniq+(ngd->nuniq<<6)+n;
+        row = ngd->uniq+(n<<6);
+    }
+
+    row[(*usedp)++] = id;
+    return true;
+}
+
+
+__attribute_noinline__
+__attribute_nonnull__
+static bool
+netgroup_datastr_recurse (struct ngdata * const restrict ngd, int id)
+{
+    /*(might run out of stack space if netgroup subgroup recursion too deep)*/
+    /*(future: might store/increment recursion depth in ngd and set a limit)*/
+    const struct ngints * const restrict ngi = ngd->ap[id];
+    const int no_subg = !ngd->subg;
+    if (__builtin_expect( (ngi->used > INT_MAX), 0)){errno=ERANGE;return false;}
+    for (int i = 0, used = (int)ngi->used; i < used; ++i) {
+        id = ngi->ptr[i];
+        if ((no_subg || netgroup_datastr_uniq_id(ngd, id))
+            && (id >= 0
+                ? __builtin_expect( !netgroup_datastr_append(ngd, id), 0)
+                : __builtin_expect( !netgroup_datastr_recurse(ngd, -id), 0))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+/* (different signature from other nss_mcdb_netdb_make_*_datastr() funcs) */
+__attribute_nonnull__
+static bool
+netgroup_datastr (struct ngdata * const restrict ngd, int id)
+{
+    ngd->datalen = 0;
+    if (ngd->subg) { ngd->subg = 0; netgroup_ngdata_uniq_reset(ngd); }
+
+    /* scan for subgroups and, if found, enable checks for dups and loops */
+    const struct ngints * const restrict ngi = ngd->ap[id];
+    const int used = (int)ngi->used;
+    int i = 0;
+    for (const int * const restrict p = ngi->ptr; i < used && p[i] >= 0; ++i);
+    if (i != used) {
+        ngd->subg = true;
+        if (__builtin_expect( (0 == ngd->nuniq), 0)
+            && __builtin_expect( !netgroup_ngdata_uniq_resize(ngd), 0))
+            return false;
+        /*(add netgroup to list as -id)*/
+        if (__builtin_expect( !netgroup_datastr_uniq_id(ngd, -id), 0))
+            return false;
+    }
+
+    return __builtin_expect( netgroup_datastr_recurse(ngd, id), 1)
+        && __builtin_expect( (0 == ngd->errnum), 1);
+}
+
+
+bool
+nss_mcdb_netdb_make_netgrent_encode(
+  struct nss_mcdb_make_winfo * const restrict w,
+  const void * const entp)
+{
+    struct ngdata * const restrict ngd = (struct ngdata * restrict)w->extra;
+    (void)entp; /*(unused)*/
+    if (__builtin_expect( (ngd->apused>INT_MAX), 0)){errno=ERANGE;return false;}
+    /*(start netgroups at id = 1, not 0 due to -id encoding in struct ngints)*/
+    for (int id = 1, used = (int)ngd->apused; id < used; ++id) {
+        const struct ngnode * const restrict n = ngd->g.a.nodes[id];
+        w->klen = n->klen;
+        w->key  = n->k;
+
+        if (__builtin_expect( !netgroup_datastr(ngd, id), 0))
+            return false;
+        if (0 == ngd->datalen) continue;
+
+        /* end rules for current netgroup with two bytes of 0 (0-len hdr+rule)*/
+        if (__builtin_expect( !netgroup_datastr_extend(ngd,2), 0)) return false;
+        memcpy(ngd->data + ngd->datalen, "\0\0", 2);
+        ngd->datalen += 2;
+
+        w->dlen = ngd->datalen;
+        w->data = ngd->data;
+
+        w->tagc = '=';
+        if (__builtin_expect( !nss_mcdb_make_mcdbctl_write(w), 0))
+            return false;
+    }
+
+    return true;
+}
+
+
+bool
+nss_mcdb_netdb_make_netgroup_parse(
+  struct nss_mcdb_make_winfo * const restrict w, char * restrict p, size_t plen)
+{
+    struct ngdata ngd;
+    bool rc = false;
+    if (netgroup_ngdata_init(&ngd, p, plen) && netgroup_parse_ng(&ngd)) {
+        /* netgroup data per netgroup might be very large;
+         * use separate w->data buffer; save and restore existing buffer in w */
+        char * restrict const data = w->data;
+        w->data   = NULL;
+        w->extra  = &ngd;
+        rc = w->encode(w, NULL); /* nss_mcdb_netdb_make_netgrent_encode() */
+        w->extra  = NULL;
+        w->data   = data;
+    }
+    netgroup_ngdata_free(&ngd);
+    return rc;
 }

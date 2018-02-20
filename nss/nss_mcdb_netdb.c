@@ -1,5 +1,5 @@
 /*
- * nss_mcdb_netdb - query mcdb of hosts, protocols, networks, services, rpc
+ * nss_mcdb_netdb - query mcdb of hosts,protocols,netgroup,networks,services,rpc
  *
  * Copyright (c) 2010, Glue Logic LLC. All rights reserved. code()gluelogic.com
  *
@@ -44,6 +44,7 @@
 #include <netdb.h>
 #include <sys/socket.h>    /* AF_INET */
 #include <arpa/inet.h>     /* inet_pton() ntohl() ntohs() */
+#include <ctype.h>         /* tolower() */
 
 PLASMA_ATTR_Pragma_no_side_effect(strlen)
 
@@ -256,14 +257,119 @@ _nss_mcdb_gethostbyaddr_r(const void * const restrict addr,
 }
 
 
-#if 0  /* implemented, but not enabling by default; often used only with NIS+ */
-
 /* netgroup setent, getent, endent differ from other netdb *ent routines:
  * setnetgrent() requires netgroup parameter which limits getnetgrent() results
  * instead of getnetgrent() iterating over entries in entire netgroup database*/
 
-/* Note: netgroup creation in nss_mcdb_netdb_make not implemented yet,
- * so implementation below might change, if needed */
+static nss_status_t
+nss_mcdb_getnetgrent_decode(struct mcdb * const restrict m,
+                            const struct nss_mcdb_vinfo * const restrict v)
+{
+    if (m->loop != 0) {
+        const unsigned char * const restrict ptr = mcdb_dataptr(m);
+        unsigned int dlen = (ptr[0] << 8) | ptr[1];
+        if (dlen > 0) {
+            dlen -= 4;
+            if (dlen < v->bufsz) {
+                const unsigned int ph = ptr[2] ? ptr[2]+1 : 0;
+                const unsigned int pu = ptr[3] ? ptr[3]+1 : 0;
+                const unsigned int pd = dlen - ph - pu;
+              #if 0 /*ifdef __GLIBC__*/
+                /* [DISABLED optimization due to nscd/netgroupcache.c]
+                 * skip copy into v->buf and return raw pointers into mmap
+                 * if __GLIBC__ since __GLIBC__ implementation copies the
+                 * data out of returned pointers, if it needs to save data.
+                 * However, still return NSS_STATUS_TRYAGAIN with errno ERANGE
+                 * if the provided buffer is not large enough since
+                 * nscd/netgroupcache.c assumes provided buffer is used.
+                 * Unfortunately, even with buffer large enough,
+                 * nscd/netgroupcache.c *requires* that the results be returned
+                 * in the provided buffer, so this optimization can not safely
+                 * be used with nscd. */
+                const unsigned char *** const restrict vptrs = v->vstruct;
+                mcdb_datapos(m) += 4+dlen;
+                *vptrs[0] = ph ? ptr+4       : NULL; /* host */
+                *vptrs[1] = pu ? ptr+4+ph    : NULL; /* user */
+                *vptrs[2] = pd ? ptr+4+ph+pu : NULL; /* domain */
+              #else
+                const char *** const restrict vptrs = v->vstruct;
+                memcpy(v->buf, ptr+4, dlen);
+                mcdb_datapos(m) += 4+dlen;
+                *vptrs[0] = ph ? v->buf       : NULL; /* host */
+                *vptrs[1] = pu ? v->buf+ph    : NULL; /* user */
+                *vptrs[2] = pd ? v->buf+ph+pu : NULL; /* domain */
+              #endif
+                /* future: prefetch next cache line or 2 or 3 ahead; must test*/
+                return NSS_STATUS_SUCCESS;
+            }
+            *v->errnop = errno = ERANGE;
+            return NSS_STATUS_TRYAGAIN;
+        }
+        m->loop = 0;
+    }
+    *v->errnop = errno = ENOENT;
+    return NSS_STATUS_NOTFOUND;
+}
+
+#ifdef __GLIBC__
+
+/* struct __netgrent truncated from glibc inet/netgroup.h */
+struct __netgrent
+{
+  enum { triple_val, group_val } type;
+
+  union
+  {
+    struct
+    {
+      const char *host;
+      const char *user;
+      const char *domain;
+    }
+    triple;
+
+    const char *group;
+  } val;
+};
+
+int
+_nss_mcdb_setnetgrent(const char * const restrict netgroup,
+                      struct __netgrent * const restrict datap)
+{
+    int errnum;
+    const struct nss_mcdb_vinfo v = { .errnop  = &errnum,
+                                      .key     = netgroup,
+                                      .klen    = strlen(netgroup),
+                                      .tagc    = (unsigned char)'=' };
+    datap->type = triple_val; /* mcdb netgroup database expands subgroups */
+    return nss_mcdb_getentstart(NSS_DBTYPE_NETGROUP, &v);
+}
+
+void _nss_mcdb_endnetgrent(struct __netgrent * const restrict datap)
+{
+    (void)datap; /*(unused)*/
+    nss_mcdb_endent(NSS_DBTYPE_NETGROUP);
+}
+
+nss_status_t
+_nss_mcdb_getnetgrent_r(struct __netgrent * const restrict datap,
+                        char * const restrict buf, const size_t bufsz,
+                        int * const restrict errnop)
+{
+    const char **vptrs[3] = { &datap->val.triple.host,
+                              &datap->val.triple.user,
+                              &datap->val.triple.domain };
+    struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_getnetgrent_decode,
+                                .vstruct = NULL,
+                                .buf     = buf,
+                                .bufsz   = bufsz,
+                                .errnop  = errnop,
+                                .tagc    = (unsigned char)'=' };
+    *((const char ****)&v.vstruct) = vptrs;/*(cast away const)*/
+    return nss_mcdb_getnetgrentnext(&v); /*(uses NSS_DBTYPE_NETGROUP)*/
+}
+
+#else  /* !defined(GLIBC)*/
 
 int
 _nss_mcdb_setnetgrent(const char * const restrict netgroup)
@@ -272,7 +378,7 @@ _nss_mcdb_setnetgrent(const char * const restrict netgroup)
     const struct nss_mcdb_vinfo v = { .errnop  = &errnum,
                                       .key     = netgroup,
                                       .klen    = strlen(netgroup),
-                                      .tagc    = 0 };
+                                      .tagc    = (unsigned char)'=' };
     return nss_mcdb_getentstart(NSS_DBTYPE_NETGROUP, &v);
 }
 
@@ -285,26 +391,89 @@ _nss_mcdb_getnetgrent_r(char ** const restrict host,
                         char * const restrict buf, const size_t bufsz,
                         int * const restrict errnop)
 {
-    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_buf_decode,
-                                      .vstruct = NULL,
+    char **vptrs[3] = { host, user, domain };
+    const struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_getnetgrent_decode,
+                                      .vstruct = vptrs,
                                       .buf     = buf,
                                       .bufsz   = bufsz,
                                       .errnop  = errnop,
-                                      .tagc    = 0 };
-    const nss_status_t status = nss_mcdb_getentnext(NSS_DBTYPE_NETGROUP, &v);
-    if (status == NSS_STATUS_SUCCESS) {
-        /* success ensures valid data (so that memchr will not return NULL) */
-        *host   = buf;
-        *user   = (char *)memchr(buf,   '\0', bufsz) + 1;
-        *domain = (char *)memchr(*user, '\0', bufsz - (*user - buf)) + 1;
-        if (!**host)   *host   = NULL;
-        if (!**user)   *user   = NULL;
-        if (!**domain) *domain = NULL;
-    }
-    return status;
+                                      .tagc    = (unsigned char)'=' };
+    return nss_mcdb_getnetgrentnext(&v); /*(uses NSS_DBTYPE_NETGROUP)*/
 }
 
-#endif
+#endif /* !defined(__GLIBC__) */
+
+static nss_status_t
+nss_mcdb_innetgr_decode(struct mcdb * const restrict m,
+                        const struct nss_mcdb_vinfo * const restrict v)
+{
+    const unsigned char * restrict ptr = mcdb_dataptr(m);
+    const unsigned char ** const restrict vptrs = v->vstruct;
+    const char * const restrict u = (const char *)vptrs[1]; /* user */
+    const size_t ulen = u ? strlen(u) : 0;
+    unsigned int hlen = 0;
+    unsigned int dlen = 0;
+    unsigned int phulen = 0;
+    char h[256], d[256]; /* 255 char limit on host,user,domain at mcdb create */
+    /* lowercase host and domain for comparisons with lowercased mcdb entries */
+    if (vptrs[0]) {
+        const unsigned char * const restrict vh = vptrs[0]; /* host */
+        for (; hlen < sizeof(h) && vh[hlen]; ++hlen) h[hlen]=tolower(vh[hlen]);
+        if (__builtin_expect( (hlen == sizeof(h)), 0)) {
+            *v->errnop = errno = ENOENT;
+            return NSS_STATUS_NOTFOUND;
+        }
+        /*h[hlen] = '\0';*//*(not required for comparisons below)*/
+    }
+    if (vptrs[2]) {
+        const unsigned char * const restrict vd = vptrs[2]; /* domain */
+        for (; dlen < sizeof(d) && vd[dlen]; ++dlen) d[dlen]=tolower(vd[dlen]);
+        if (__builtin_expect( (dlen == sizeof(d)), 0)) {
+            *v->errnop = errno = ENOENT;
+            return NSS_STATUS_NOTFOUND;
+        }
+        /*d[dlen] = '\0';*//*(not required for comparisons below)*/
+    }
+
+    for (unsigned int x; (x = (ptr[0] << 8) | ptr[1]) > 0; ptr += x) {
+        /* future: prefetch next cache line or 2 or 3 ahead; must test */
+        if (   (0 == hlen || ptr[2] == 0
+                || ( hlen == ptr[2]
+                    && 0 == memcmp(h, ptr+4, hlen)))
+            && (0 == ulen || ptr[3] == 0
+                || ( ulen == ptr[3]
+                    && 0 == memcmp(u, ptr+4+(ptr[2] ? ptr[2]+1 : 0), ulen)))
+            && (0 == dlen || 0 == x - 4 - (phulen = (ptr[2] ? ptr[2]+1 : 0)
+                                                   +(ptr[3] ? ptr[3]+1 : 0))
+                || ( dlen == x - 4 - phulen - 1
+                    && 0 == memcmp(d, ptr+4+phulen, dlen)))) {
+            return NSS_STATUS_SUCCESS;
+        }
+    }
+    *v->errnop = errno = ENOENT;
+    return NSS_STATUS_NOTFOUND;
+}
+
+nss_status_t
+_nss_mcdb_innetgr(const char * const restrict netgroup,
+                  const char * const restrict host,
+                  const char * const restrict user,
+                  const char * const restrict domain,
+                  char * const restrict buf, const size_t bufsz,
+                  int * const restrict errnop)
+{
+    const char *vptrs[3] = { host, user, domain };
+    struct nss_mcdb_vinfo v = { .decode  = nss_mcdb_innetgr_decode,
+                                .vstruct = NULL,
+                                .buf     = buf,
+                                .bufsz   = bufsz,
+                                .errnop  = errnop,
+                                .key     = netgroup,
+                                .klen    = strlen(netgroup),
+                                .tagc    = (unsigned char)'=' };
+    *((const char ***)&v.vstruct) = vptrs;/*(cast away const)*/
+    return nss_mcdb_get_generic(NSS_DBTYPE_NETGROUP, &v);
+}
 
 
 nss_status_t
