@@ -58,6 +58,13 @@
 #include <string.h>    /* memcpy() strlen() */
 #include <unistd.h>    /* sysconf() unlink() */
 
+/* compile-time setting for security
+ * /etc/mcdb/ is recommended so that .mcdb are on same partition as flat files
+ * (implies that if flat files visible, then likely so are .mcdb equivalents) */
+#ifndef NSS_MCDB_DBPATH
+#define NSS_MCDB_DBPATH "/etc/mcdb/"
+#endif
+
 /* Note: blank line is required to denote end of mcdb input 
  * Ensure blank line is written after w.wbuf is flushed. */
 
@@ -89,69 +96,69 @@ int main(void)
      * (HDRSZ + 1 KB buffer for db that do not specify max buf size) */
     const struct fdb_st fdb[] = {
         { "/etc/shadow",
-          "/etc/mcdb/shadow.mcdb",
+          NSS_MCDB_DBPATH"shadow.mcdb",
           NSS_SP_HDRSZ+(size_t)sc_getpw_r_size_max,
           nss_mcdb_authn_make_shadow_parse,
           nss_mcdb_authn_make_spwd_encode,
           NULL },
         { "/etc/passwd",
-          "/etc/mcdb/passwd.mcdb",
+          NSS_MCDB_DBPATH"passwd.mcdb",
           NSS_PW_HDRSZ+(size_t)sc_getpw_r_size_max,
           nss_mcdb_acct_make_passwd_parse,
           nss_mcdb_acct_make_passwd_encode,
           NULL },
         { "/etc/group",
-          "/etc/mcdb/group.mcdb",
+          NSS_MCDB_DBPATH"group.mcdb",
           NSS_GR_HDRSZ+(size_t)sc_getgr_r_size_max,
           nss_mcdb_acct_make_group_parse,
           nss_mcdb_acct_make_group_encode,
           nss_mcdb_acct_make_group_flush },
       #if 0  /* implemented, but not enabling by default; little benefit */
         { "/etc/ethers",
-          "/etc/mcdb/ethers.mcdb",
+          NSS_MCDB_DBPATH"ethers.mcdb",
           NSS_EA_HDRSZ+(size_t)sc_host_name_max,
           nss_mcdb_misc_make_ethers_parse,
           nss_mcdb_misc_make_ether_addr_encode,
           NULL },
         { "/etc/aliases",
-          "/etc/mcdb/aliases.mcdb",
+          NSS_MCDB_DBPATH"aliases.mcdb",
           NSS_AE_HDRSZ+1024,
           nss_mcdb_misc_make_aliases_parse,
           nss_mcdb_misc_make_aliasent_encode,
           NULL },
       #endif
         { "/etc/hosts",
-          "/etc/mcdb/hosts.mcdb",
+          NSS_MCDB_DBPATH"hosts.mcdb",
           NSS_HE_HDRSZ+1024,
           nss_mcdb_netdb_make_hosts_parse,
           nss_mcdb_netdb_make_hostent_encode,
           NULL },
         { "/etc/netgroup",
-          "/etc/mcdb/netgroup.mcdb",
+          NSS_MCDB_DBPATH"netgroup.mcdb",
           NSS_NG_HDRSZ+1024,
           nss_mcdb_netdb_make_netgroup_parse,
           nss_mcdb_netdb_make_netgrent_encode,
           NULL },
         { "/etc/networks",
-          "/etc/mcdb/networks.mcdb",
+          NSS_MCDB_DBPATH"networks.mcdb",
           NSS_NE_HDRSZ+1024,
           nss_mcdb_netdb_make_networks_parse,
           nss_mcdb_netdb_make_netent_encode,
           NULL },
         { "/etc/protocols",
-          "/etc/mcdb/protocols.mcdb",
+          NSS_MCDB_DBPATH"protocols.mcdb",
           NSS_PE_HDRSZ+1024,
           nss_mcdb_netdb_make_protocols_parse,
           nss_mcdb_netdb_make_protoent_encode,
           NULL },
         { "/etc/rpc",
-          "/etc/mcdb/rpc.mcdb",
+          NSS_MCDB_DBPATH"rpc.mcdb",
           NSS_RE_HDRSZ+1024,
           nss_mcdb_netdb_make_rpc_parse,
           nss_mcdb_netdb_make_rpcent_encode,
           NULL },
         { "/etc/services",
-          "/etc/mcdb/services.mcdb",
+          NSS_MCDB_DBPATH"services.mcdb",
           NSS_SE_HDRSZ+1024,
           nss_mcdb_netdb_make_services_parse,
           nss_mcdb_netdb_make_servent_encode,

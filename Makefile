@@ -215,8 +215,9 @@ CFLAGS+=$(PTHREAD_FLAGS)
 %.o: %.c $(_DEPENDENCIES_ON_ALL_HEADERS_Makefile)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
-nss/nss_mcdb.o:       CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
-lib32/nss/nss_mcdb.o: CFLAGS+=-DNSS_MCDB_PATH='"$(PREFIX)/etc/mcdb/"'
+nss/nss_mcdb.o:       CFLAGS+=-DNSS_MCDB_DBPATH='"$(PREFIX)/etc/mcdb/"'
+nss/nss_mcdbctl.o:    CFLAGS+=-DNSS_MCDB_DBPATH='"$(PREFIX)/etc/mcdb/"'
+lib32/nss/nss_mcdb.o: CFLAGS+=-DNSS_MCDB_DBPATH='"$(PREFIX)/etc/mcdb/"'
 
 NSS_PIC_OBJS:= nss/nss_mcdb.o nss/nss_mcdb_acct.o nss/nss_mcdb_authn.o \
                nss/nss_mcdb_netdb.o
