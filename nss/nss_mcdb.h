@@ -162,7 +162,7 @@ nss_mcdb_buf_decode(struct mcdb * restrict,
                     const struct nss_mcdb_vinfo * restrict);
 
 
-bool
+EXPORT bool
 nss_mcdb_refresh_check(enum nss_dbtype);
 
 

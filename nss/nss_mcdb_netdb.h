@@ -114,40 +114,40 @@ enum {
   NSS_SE_HDRSZ   = 12   /*(must be multiple of 4)*/
 };
 
-void _nss_mcdb_sethostent(int);
-void _nss_mcdb_endhostent(void);
-void _nss_mcdb_setnetent(int);
-void _nss_mcdb_endnetent(void);
-void _nss_mcdb_setprotoent(int);
-void _nss_mcdb_endprotoent(void);
-void _nss_mcdb_setrpcent(int);
-void _nss_mcdb_endrpcent(void);
-void _nss_mcdb_setservent(int);
-void _nss_mcdb_endservent(void);
+EXPORT void _nss_mcdb_sethostent(int);
+EXPORT void _nss_mcdb_endhostent(void);
+EXPORT void _nss_mcdb_setnetent(int);
+EXPORT void _nss_mcdb_endnetent(void);
+EXPORT void _nss_mcdb_setprotoent(int);
+EXPORT void _nss_mcdb_endprotoent(void);
+EXPORT void _nss_mcdb_setrpcent(int);
+EXPORT void _nss_mcdb_endrpcent(void);
+EXPORT void _nss_mcdb_setservent(int);
+EXPORT void _nss_mcdb_endservent(void);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_gethostent_r(struct hostent * restrict, char * restrict, size_t,
                        int * restrict, int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_gethostbyname2_r(const char * restrict, int,
                            struct hostent * restrict, char * restrict, size_t,
                            int * restrict, int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_gethostbyname_r(const char * restrict,
                           struct hostent * restrict, char * restrict, size_t,
                           int * restrict, int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_gethostbyaddr_r(const void * restrict, socklen_t, int,
                           struct hostent * restrict, char * restrict, size_t,
                           int * restrict, int * restrict);
@@ -172,12 +172,12 @@ _nss_mcdb_getnetgrent_r(struct __netgrent * restrict, char * restrict, size_t,
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-int _nss_mcdb_setnetgrent(const char * restrict);
-void _nss_mcdb_endnetgrent(void);
+EXPORT int _nss_mcdb_setnetgrent(const char * restrict);
+EXPORT void _nss_mcdb_endnetgrent(void);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getnetgrent_r(char ** restrict, char ** restrict, char ** restrict,
                         char * restrict, size_t, int * restrict);
 
@@ -185,87 +185,87 @@ _nss_mcdb_getnetgrent_r(char ** restrict, char ** restrict, char ** restrict,
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_innetgr(const char * restrict, const char * restrict,
                   const char * restrict, const char * restrict,
                   char * restrict, size_t, int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getnetent_r(struct netent * restrict, char * restrict, size_t,
                       int * restrict, int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getnetbyname_r(const char * restrict,
                          struct netent * restrict, char * restrict, size_t,
                          int * restrict, int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getnetbyaddr_r(const uint32_t, int,
                          struct netent * restrict, char * restrict, size_t,
                          int * restrict, int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getprotoent_r(struct protoent * restrict, char * restrict, size_t,
                         int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getprotobyname_r(const char * restrict,
                            struct protoent * restrict, char * restrict, size_t,
                            int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getprotobynumber_r(int,
                              struct protoent * restrict, char * restrict,size_t,
                              int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getrpcent_r(struct rpcent * restrict, char * restrict, size_t,
                       int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getrpcbyname_r(const char * restrict,
                          struct rpcent * restrict, char * restrict, size_t,
                          int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getrpcbynumber_r(int,
                            struct rpcent * restrict, char * restrict, size_t,
                            int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getservent_r(struct servent * restrict, char * restrict, size_t,
                        int * restrict);
 
 __attribute_nonnull_x__((1,3,4,6))
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getservbyname_r(const char * restrict, const char * restrict,
                           struct servent * restrict, char * restrict, size_t,
                           int * restrict);
 
 __attribute_nonnull_x__((3,4,6))
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getservbyport_r(int, const char * restrict,
                           struct servent * restrict, char * restrict, size_t,
                           int * restrict);

@@ -73,63 +73,63 @@ enum {
  */
 #define NSS_MCDB_NGROUPS_MAX 256
 
-void _nss_mcdb_setpwent(void);
-void _nss_mcdb_endpwent(void);
-void _nss_mcdb_setgrent(void);
-void _nss_mcdb_endgrent(void);
-void _nss_mcdb_setspent(void);
-void _nss_mcdb_endspent(void);
+EXPORT void _nss_mcdb_setpwent(void);
+EXPORT void _nss_mcdb_endpwent(void);
+EXPORT void _nss_mcdb_setgrent(void);
+EXPORT void _nss_mcdb_endgrent(void);
+EXPORT void _nss_mcdb_setspent(void);
+EXPORT void _nss_mcdb_endspent(void);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getpwent_r(struct passwd * restrict, char * restrict, size_t,
                      int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getpwnam_r(const char * restrict,
                      struct passwd * restrict, char * restrict, size_t,
                      int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getpwuid_r(uid_t,
                      struct passwd * restrict, char * restrict, size_t,
                      int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getgrent_r(struct group * restrict, char * restrict, size_t,
                      int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getgrnam_r(const char * restrict,
                      struct group * restrict, char * restrict, size_t,
                      int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getgrgid_r(const gid_t gid,
                      struct group * restrict, char * restrict, size_t,
                      int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_initgroups_dyn(const char * restrict, gid_t,
                          long int * restrict, long int * restrict,
                          gid_t ** restrict, long int, int * restrict);
 
 __attribute_nonnull_x__((1,4))
 __attribute_warn_unused_result__
-int
+EXPORT int
 nss_mcdb_getgrouplist(const char * restrict, gid_t,
                       gid_t * restrict, int * restrict);
                       /*((gid_t *)groups can be NULL)*/

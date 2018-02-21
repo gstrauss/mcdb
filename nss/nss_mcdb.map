@@ -1,5 +1,5 @@
 # linker (ld) symbol map file to control symbol visibility in shared object
-{
+NSS_MCDB_PRIVATE {
   global:
     _nss_mcdb_endgrent;
     _nss_mcdb_endhostent;

@@ -29,8 +29,8 @@
 PLASMA_ATTR_Pragma_once
 
 
-void _nss_mcdb_setspent(void);
-void _nss_mcdb_endspent(void);
+EXPORT void _nss_mcdb_setspent(void);
+EXPORT void _nss_mcdb_endspent(void);
 
 enum {
   NSS_SP_LSTCHG  =  0,
@@ -52,13 +52,13 @@ enum {
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getspent_r(struct spwd * restrict, char * restrict, size_t,
                      int * restrict);
 
 __attribute_nonnull__
 __attribute_warn_unused_result__
-nss_status_t
+EXPORT nss_status_t
 _nss_mcdb_getspnam_r(const char * restrict,
                      struct spwd * restrict, char * restrict, size_t,
                      int * restrict);
