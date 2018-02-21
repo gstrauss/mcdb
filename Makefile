@@ -288,7 +288,7 @@ $(PREFIX_USR)/lib$(LIB_BITS):
 endif
 $(PREFIX_USR)/lib$(LIB_BITS)/libnss_mcdb.so.2: \
   $(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2 $(PREFIX_USR)/lib$(LIB_BITS)
-	[ -L $@ ] || /bin/ln -s ../../lib/$(<F) $@
+	[ -L $@ ] || [ -f $@ ] || /bin/ln -s ../../lib/$(<F) $@
 endif
 
 # (update library atomically (important to avoid crashing running programs))
@@ -371,7 +371,7 @@ lib32/libmcdb.so: $(addprefix lib32/, \
 ifneq ($(PREFIX_USR),$(PREFIX))
 $(PREFIX_USR)/lib/libnss_mcdb.so.2: $(PREFIX)/lib/libnss_mcdb.so.2 \
                                     $(PREFIX_USR)/lib
-	[ -L $@ ] || /bin/ln -s ../../lib/$(<F) $@
+	[ -L $@ ] || [ -f $@ ] || /bin/ln -s ../../lib/$(<F) $@
 endif
 
 $(PREFIX)/lib/libnss_mcdb.so.2: lib32/nss/libnss_mcdb.so.2 $(PREFIX)/lib
