@@ -4,6 +4,7 @@
 libnss_mcdb.so.2
 mcdbctl
 nss_mcdbctl
+nss_mcdb_innetgr
 t/testmcdbmake
 t/testmcdbrand
 t/testzero

@@ -9,7 +9,7 @@ endif
 .PHONY: all all_nss
 all: libmcdb.a libmcdb.so mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
 all_nss: nss/libnss_mcdb.a nss/libnss_mcdb_make.a nss/libnss_mcdb.so.2 \
-         nss/nss_mcdbctl
+         nss/nss_mcdbctl nss/nss_mcdb_innetgr
 
 PREFIX?=/usr/local
 ifneq (,$(PREFIX))
@@ -107,7 +107,7 @@ ifeq ($(OSNAME),Linux)
   LDFLAGS+=-Wl,-O,1 -Wl,--hash-style,gnu -Wl,-z,relro,-z,now
   mcdbctl lib32/mcdbctl t/testmcdbmake t/testmcdbrand t/testzero: \
     LDFLAGS+=-Wl,-z,noexecstack
-  nss/nss_mcdbctl lib32/nss/nss_mcdbctl: \
+  nss/nss_mcdbctl lib32/nss/nss_mcdbctl nss/nss_mcdb_innetgr: \
     LDFLAGS+=-Wl,-z,noexecstack
   all: all_nss
   # Linux on POWER CPU with gcc < 4.7 and 32-bit compilation requires
@@ -133,8 +133,8 @@ ifeq ($(OSNAME),AIX)
   endif
   # -lpthreads (AIX) for pthread_mutex_{lock,unlock}() in mcdb.o and nss_mcdb.o
   libmcdb.so lib32/libmcdb.so nss/libnss_mcdb.so.2 lib32/nss/libnss_mcdb.so.2 \
-  mcdbctl lib32/mcdbctl nss/nss_mcdbctl lib32/nss/mcdbctl t/testmcdbrand: \
-    LDFLAGS+=-lpthreads
+  mcdbctl lib32/mcdbctl t/testmcdbrand:                      LDFLAGS+=-lpthreads
+  nss/nss_mcdbctl lib32/nss/nss_mcdbctl nss/nss_mcdb_innetgr:LDFLAGS+=-lpthreads
   all: all_nss
 endif
 ifeq ($(OSNAME),HP-UX)
@@ -150,10 +150,11 @@ ifeq ($(OSNAME),SunOS)
   # -lsocket -lnsl for inet_pton() in nss_mcdb_netdb.o and nss_mcdb_netdb_make.o
   nss/libnss_mcdb.so.2 lib32/nss/libnss_mcdb.so.2: LDFLAGS+=-lsocket -lnsl
   nss/nss_mcdbctl lib32/nss/nss_mcdbctl:           LDFLAGS+=-lsocket -lnsl
+  nss/nss_mcdb_innetgr:                            LDFLAGS+=-lsocket -lnsl
   # -lrt for fdatasync() in mcdb_make.o, for sched_yield() in mcdb.o
   libmcdb.so lib32/libmcdb.so mcdbctl lib32/mcdbctl t/testmcdbrand: \
     LDFLAGS+=-lrt
-  nss/nss_mcdbctl lib32/nss/nss_mcdbctl: \
+  nss/nss_mcdbctl lib32/nss/nss_mcdbctl nss/nss_mcdb_innetgr: \
     LDFLAGS+=-lrt
   all: all_nss
 endif
@@ -273,6 +274,9 @@ t/testzero: t/testzero.o libmcdb.a
 nss/nss_mcdbctl: nss/nss_mcdbctl.o nss/libnss_mcdb_make.a libmcdb.a
 	$(CC) -o $@ $(LDFLAGS) $^
 
+nss/nss_mcdb_innetgr: nss/nss_mcdb_innetgr.o nss/libnss_mcdb.a libmcdb.a
+	$(CC) -o $@ $(LDFLAGS) $^
+
 $(PREFIX)/lib $(PREFIX)/bin $(PREFIX)/sbin:
 	/bin/mkdir -p -m 0755 $@
 ifneq (,$(LIB_BITS))
@@ -311,6 +315,10 @@ $(PREFIX)/sbin/nss_mcdbctl: nss/nss_mcdbctl $(PREFIX)/sbin
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
+$(PREFIX_USR)/bin/nss_mcdb_innetgr: nss/nss_mcdb_innetgr $(PREFIX_USR)/bin
+	/bin/cp -f $< $@.$$$$ \
+	&& /bin/mv -f $@.$$$$ $@
+
 .PHONY: install-headers install install-doc install-plasma-headers
 install-plasma-headers: plasma/plasma_attr.h \
                         plasma/plasma_feature.h \
@@ -331,6 +339,7 @@ install: $(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2 \
          $(PREFIX_USR)/lib$(LIB_BITS)/libnss_mcdb.so.2 \
          $(PREFIX_USR)/lib$(LIB_BITS)/libmcdb.so \
          $(PREFIX_USR)/bin/mcdbctl $(PREFIX)/sbin/nss_mcdbctl \
+         $(PREFIX_USR)/bin/nss_mcdb_innetgr \
          install-headers
 	/bin/mkdir -p -m 0755 $(PREFIX)/etc/mcdb
 
@@ -428,7 +437,8 @@ clean:
 	$(RM) -r lib32
 	$(RM) libmcdb.a nss/libnss_mcdb.a nss/libnss_mcdb_make.a
 	$(RM) libmcdb.so nss/libnss_mcdb.so.2
-	$(RM) mcdbctl nss/nss_mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
+	$(RM) mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
+	$(RM) nss/nss_mcdbctl nss/nss_mcdb_innetgr
 
 clean-contrib:
 	-$(MAKE) MCDB_File-bootstrap-clean
