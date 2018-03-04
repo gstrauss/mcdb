@@ -1,0 +1,12 @@
+Source: mcdb
+Section: utils
+Priority: extra
+Maintainer: Glenn Strauss <gstrauss@gluelogic.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.3
+Homepage: https://github.com/gstrauss/mcdb/
+
+Package: mcdb
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: fast, reliable simple code to create and read constant databases

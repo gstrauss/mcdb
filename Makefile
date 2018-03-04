@@ -11,6 +11,9 @@ all: libmcdb.a libmcdb.so mcdbctl t/testmcdbmake t/testmcdbrand t/testzero
 all_nss: nss/libnss_mcdb.a nss/libnss_mcdb_make.a nss/libnss_mcdb.so.2 \
          nss/nss_mcdbctl nss/nss_mcdb_innetgr
 
+ifneq (,$(DESTDIR))
+PREFIX?=$(DESTDIR)
+endif
 PREFIX?=/usr/local
 ifneq (,$(PREFIX))
 PREFIX_USR?=$(PREFIX)
@@ -28,6 +31,16 @@ ifneq (,$(wildcard /lib64))
   ABI_BITS=64
   LIB_BITS=64
 endif
+endif
+
+ifneq (,$(wildcard /usr/bin/dpkg-architecture))
+  MULTIARCH:=/$(shell /usr/bin/dpkg-architecture -qDEB_HOST_MULTIARCH)
+  ifeq (x86_64,$(shell /bin/uname -m))
+   MULTIARCH32:=/$(shell /usr/bin/dpkg-architecture -ai386 -qDEB_HOST_MULTIARCH)
+  endif
+else
+  MULTIARCH:=$(LIB_BITS)
+  MULTIARCH32:=
 endif
 
 # 'gmake ABI_BITS=64' for 64-bit build (recommended on all 64-bit platforms)
@@ -97,7 +110,7 @@ endif
 
 ifeq ($(OSNAME),Linux)
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
-    RPATH= -Wl,-rpath,$(PREFIX)/lib$(LIB_BITS)
+    RPATH= -Wl,-rpath,$(PREFIX)/lib$(MULTIARCH)
   endif
   ifeq (,$(RPM_OPT_FLAGS))
     CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector -fvisibility=hidden
@@ -121,7 +134,7 @@ ifeq ($(OSNAME),Darwin)
     ANSI=
   endif
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
-    RPATH= -Wl,-rpath,$(PREFIX)/lib$(LIB_BITS)
+    RPATH= -Wl,-rpath,$(PREFIX)/lib$(MULTIARCH)
   endif
   ifeq (,$(RPM_OPT_FLAGS))
     CFLAGS+=-D_FORTIFY_SOURCE=2 -fstack-protector -fvisibility=hidden
@@ -129,7 +142,7 @@ ifeq ($(OSNAME),Darwin)
 endif
 ifeq ($(OSNAME),AIX)
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
-    RPATH= -Wl,-b,libpath:$(PREFIX)/lib$(LIB_BITS)
+    RPATH= -Wl,-b,libpath:$(PREFIX)/lib$(MULTIARCH)
   endif
   # -lpthreads (AIX) for pthread_mutex_{lock,unlock}() in mcdb.o and nss_mcdb.o
   libmcdb.so lib32/libmcdb.so nss/libnss_mcdb.so.2 lib32/nss/libnss_mcdb.so.2 \
@@ -139,12 +152,12 @@ ifeq ($(OSNAME),AIX)
 endif
 ifeq ($(OSNAME),HP-UX)
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
-    RPATH= -Wl,+b,$(PREFIX)/lib$(LIB_BITS)
+    RPATH= -Wl,+b,$(PREFIX)/lib$(MULTIARCH)
   endif
 endif
 ifeq ($(OSNAME),SunOS)
   ifneq (,$(strip $(filter-out /usr,$(PREFIX))))
-    RPATH= -Wl,-R,$(PREFIX)/lib$(LIB_BITS)
+    RPATH= -Wl,-R,$(PREFIX)/lib$(MULTIARCH)
   endif
   CFLAGS+=-D_POSIX_PTHREAD_SEMANTICS
   # -lsocket -lnsl for inet_pton() in nss_mcdb_netdb.o and nss_mcdb_netdb_make.o
@@ -279,31 +292,31 @@ nss/nss_mcdb_innetgr: nss/nss_mcdb_innetgr.o nss/libnss_mcdb.a libmcdb.a
 
 $(PREFIX)/lib $(PREFIX)/bin $(PREFIX)/sbin:
 	/bin/mkdir -p -m 0755 $@
-ifneq (,$(LIB_BITS))
-$(PREFIX)/lib$(LIB_BITS):
+ifneq (,$(MULTIARCH))
+$(PREFIX)/lib$(MULTIARCH):
 	/bin/mkdir -p -m 0755 $@
 endif
 ifneq ($(PREFIX_USR),$(PREFIX))
 $(PREFIX_USR)/lib $(PREFIX_USR)/bin:
 	/bin/mkdir -p -m 0755 $@
-ifneq (,$(LIB_BITS))
-$(PREFIX_USR)/lib$(LIB_BITS):
+ifneq (,$(MULTIARCH))
+$(PREFIX_USR)/lib$(MULTIARCH):
 	/bin/mkdir -p -m 0755 $@
 endif
-$(PREFIX_USR)/lib$(LIB_BITS)/libnss_mcdb.so.2: \
-  $(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2 $(PREFIX_USR)/lib$(LIB_BITS)
-	[ -L $@ ] || [ -f $@ ] || /bin/ln -s ../../lib/$(<F) $@
+$(PREFIX_USR)/lib$(MULTIARCH)/libnss_mcdb.so.2: \
+  $(PREFIX)/lib$(MULTIARCH)/libnss_mcdb.so.2 $(PREFIX_USR)/lib$(MULTIARCH)
+	[ -L $@ ] || [ -f $@ ] || /bin/ln -s ../../lib$(MULTIARCH)/$(<F) $@
 endif
 
 # (update library atomically (important to avoid crashing running programs))
 # (could use /usr/bin/install if available)
-$(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2: nss/libnss_mcdb.so.2 \
-                                           $(PREFIX)/lib$(LIB_BITS)
+$(PREFIX)/lib$(MULTIARCH)/libnss_mcdb.so.2: nss/libnss_mcdb.so.2 \
+                                           $(PREFIX)/lib$(MULTIARCH)
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-$(PREFIX_USR)/lib$(LIB_BITS)/libmcdb.so: libmcdb.so \
-                                         $(PREFIX_USR)/lib$(LIB_BITS)
+$(PREFIX_USR)/lib$(MULTIARCH)/libmcdb.so: libmcdb.so \
+                                         $(PREFIX_USR)/lib$(MULTIARCH)
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
@@ -335,9 +348,9 @@ install-doc: CHANGELOG COPYING FAQ INSTALL NOTES README
 	/bin/mkdir -p -m 0755 $(PREFIX_USR)/share/doc/mcdb
 	umask 333; \
 	  /usr/bin/install -p -m 0444 $^ $(PREFIX_USR)/share/doc/mcdb
-install: $(PREFIX)/lib$(LIB_BITS)/libnss_mcdb.so.2 \
-         $(PREFIX_USR)/lib$(LIB_BITS)/libnss_mcdb.so.2 \
-         $(PREFIX_USR)/lib$(LIB_BITS)/libmcdb.so \
+install: $(PREFIX)/lib$(MULTIARCH)/libnss_mcdb.so.2 \
+         $(PREFIX_USR)/lib$(MULTIARCH)/libnss_mcdb.so.2 \
+         $(PREFIX_USR)/lib$(MULTIARCH)/libmcdb.so \
          $(PREFIX_USR)/bin/mcdbctl $(PREFIX)/sbin/nss_mcdbctl \
          $(PREFIX_USR)/bin/nss_mcdb_innetgr \
          install-headers
@@ -377,17 +390,13 @@ lib32/libmcdb.so: $(addprefix lib32/, \
   $(PLASMA_OBJS))
 	$(CC) -o $@ $(SHLIB) $(FPIC) $(LDFLAGS) $^
 
-ifneq ($(PREFIX_USR),$(PREFIX))
-$(PREFIX_USR)/lib/libnss_mcdb.so.2: $(PREFIX)/lib/libnss_mcdb.so.2 \
-                                    $(PREFIX_USR)/lib
-	[ -L $@ ] || [ -f $@ ] || /bin/ln -s ../../lib/$(<F) $@
-endif
-
-$(PREFIX)/lib/libnss_mcdb.so.2: lib32/nss/libnss_mcdb.so.2 $(PREFIX)/lib
+$(PREFIX)/lib$(MULTIARCH32)/libnss_mcdb.so.2: lib32/nss/libnss_mcdb.so.2 \
+                                              $(PREFIX)/lib$(MULTIARCH32)
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
-$(PREFIX_USR)/lib/libmcdb.so: lib32/libmcdb.so $(PREFIX_USR)/lib
+$(PREFIX_USR)/lib$(MULTIARCH32)/libmcdb.so: lib32/libmcdb.so \
+                                            $(PREFIX_USR)/lib$(MULTIARCH32)
 	/bin/cp -f $< $@.$$$$ \
 	&& /bin/mv -f $@.$$$$ $@
 
@@ -395,8 +404,16 @@ all: lib32/libmcdb.so
 
 all_nss: lib32/nss/libnss_mcdb.so.2
 
-install: $(PREFIX)/lib/libnss_mcdb.so.2 $(PREFIX_USR)/lib/libnss_mcdb.so.2 \
-         $(PREFIX_USR)/lib/libmcdb.so
+install: $(PREFIX)/lib$(MULTIARCH32)/libnss_mcdb.so.2 \
+         $(PREFIX_USR)/lib$(MULTIARCH32)/libmcdb.so
+
+ifneq ($(PREFIX_USR),$(PREFIX))
+install: $(PREFIX_USR)/lib$(MULTIARCH32)/libnss_mcdb.so.2
+$(PREFIX_USR)/lib$(MULTIARCH32)/libnss_mcdb.so.2: \
+    $(PREFIX)/lib$(MULTIARCH32)/libnss_mcdb.so.2 $(PREFIX_USR)/lib$(MULTIARCH32)
+	[ -L $@ ] || [ -f $@ ] || /bin/ln -s ../../lib$(MULTIARCH32)/$(<F) $@
+endif
+
 endif
 endif
 endif

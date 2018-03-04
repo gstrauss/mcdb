@@ -1,0 +1,5 @@
+mcdb (0.09) unstable; urgency=low
+
+  * Initial Release as Debian package.
+
+ -- Glenn Strauss <gstrauss@gluelogic.com>  Sun, 04 Mar 2018 20:28:53 +0000
