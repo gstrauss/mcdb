@@ -249,22 +249,44 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict);
  * The aliases below are not a complete set of mcdb symbols,
  * but instead are the most common used in libnss_mcdb.so.2 */
 #ifdef PLASMA_ATTR_ALIAS
+__attribute_hot__
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_findtagstart)
                         mcdb_findtagstart_h;
+__attribute_hot__
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_findtagnext)
                         mcdb_findtagnext_h;
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_iter)
                         mcdb_iter_h;
+__attribute_nonnull__
+__attribute_nothrow__
 HIDDEN extern __typeof (mcdb_iter_init)
                         mcdb_iter_init_h;
+__attribute_malloc__
+__attribute_nonnull_x__((3,4,5))
+__attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_mmap_create)
                         mcdb_mmap_create_h;
 HIDDEN extern __typeof (mcdb_mmap_destroy)
                         mcdb_mmap_destroy_h;
+__attribute_nonnull__
+__attribute_nothrow__
+__attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_mmap_refresh_check)
                         mcdb_mmap_refresh_check_h;
+__attribute_nonnull__
 HIDDEN extern __typeof (mcdb_mmap_thread_registration)
                         mcdb_mmap_thread_registration_h;
+__attribute_nonnull__
+__attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_mmap_reopen_threadsafe)
                         mcdb_mmap_reopen_threadsafe_h;
 #else
