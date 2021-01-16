@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 from distutils.core import setup, Extension
+from sys import platform
 
 classifiers = [
     'Development Status :: 3 - Alpha',
@@ -13,9 +14,16 @@ classifiers = [
     'Topic :: Database',
     'Topic :: Software Development :: Libraries :: Python Modules']
 
+if platform.startswith('linux'):
+    linker_args = ["../../libmcdb.a", "-Wl,--version-script,src/pythonext.map"]
+elif platform.startswith('darwin'):
+    linker_args = ["-load_hidden", "../../libmcdb.a"]
+else:
+    linker_args = ["../../libmcdb.a"]
+
 setup (
         name = "python-mcdb",
-        version = "0.01",
+        version = "0.02",
         description = "Interface to mcdb constant database files",
         url = "https://github.com/gstrauss/mcdb/",
         author = "gstrauss",
@@ -34,8 +42,7 @@ mcdb is based on D. J. Bernstein's constant database package
                                    ["src/mcdbpy.c"],
                                    # compile,link with local, static libmcdb.a
                                    include_dirs=["../../.."],
-                                   extra_link_args=["../../libmcdb.a",
-                                     "-Wl,--version-script,src/pythonext.map"],
+                                   extra_link_args=linker_args,
                                    # compile,link with system libmcdb.so
                                    #libraries=['mcdb']
                                  )

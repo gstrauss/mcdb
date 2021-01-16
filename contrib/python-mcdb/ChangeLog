@@ -1,5 +1,9 @@
 python-mcdb ChangeLog
 
+17 Jan 2021
+  - Version 0.02
+    port to Python3
+
 10 Sep 2011
   - Version 0.01
     The Python online doc was instrumental to me while writing this extension.

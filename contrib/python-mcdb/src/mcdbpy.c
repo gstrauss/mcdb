@@ -72,6 +72,7 @@
  *   Maybe one day it will be worthwhile to write a custom Py_buffer class.
  */
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
 
@@ -102,6 +103,21 @@
         PyBuffer_FromMemory((p), (Py_ssize_t)(sz))
 #endif
 
+#if PY_VERSION_HEX >= 0x03030000
+#define staticforward static
+#define statichere    static
+#endif
+
+/*(ok for limited current use in this file; might not be generically reusable)*/
+#if PY_VERSION_HEX >= 0x03000000
+#if PY_VERSION_HEX < 0x03030000
+#define PyString_AS_STRING _PyUnicode_AsString
+#else
+#define PyString_AS_STRING PyUnicode_AsUTF8
+#define PyString_Check     PyUnicode_Check
+#endif
+#endif
+
 
 /* special-purpose routine to parse single string from PyObject * for METH_O;
  * modified from Python/getargs.c static funcs convertsimple(),convertbuffer().
@@ -122,6 +138,7 @@ mcdbpy_PyObject_to_buf (PyObject * restrict arg,
      * Python-2.7.2/LICENSE for license, Python Software Foundation copyright.
      * http://www.python.org/ */
     const char *errmsg = "must be string or single-segment read-only buffer";
+  #if PY_VERSION_HEX < 0x03030000
     if (PyString_Check(arg)) {
         *buf = PyString_AS_STRING(arg);
         *len = (uint32_t)PyString_GET_SIZE(arg);
@@ -150,6 +167,31 @@ mcdbpy_PyObject_to_buf (PyObject * restrict arg,
             return true;
         }
     }
+  #else
+    /* mcdbpy_PyObject_to_buf() is modified from cpython/Python/getargs.c
+     * and is licensed under Python Software Foundation License Version 2.  See
+     * cpython/LICENSE for license, Python Software Foundation copyright.
+     * http://www.python.org/ */
+    if (PyUnicode_Check(arg)) {
+        Py_ssize_t plen = 0;
+        *buf = PyUnicode_AsUTF8AndSize(arg, &plen);
+        *len = (uint32_t)plen;
+        if (*buf)
+            return true;
+        errmsg = "(unicode conversion error)";
+    }
+    else { /* read-only bytes-like object */
+        PyBufferProcs * const pb = Py_TYPE(arg)->tp_as_buffer;
+        Py_buffer pyb;
+        if (pb && NULL == pb->bf_releasebuffer
+            && 0 == PyObject_GetBuffer(arg, &pyb, PyBUF_SIMPLE)
+            && PyBuffer_IsContiguous(&pyb, 'C')) {
+            *buf = pyb.buf;
+            *len = (uint32_t)pyb.len;
+            return true;
+        }
+    }
+  #endif
 
     PyErr_SetString(PyExc_TypeError, errmsg);
     return false;
@@ -241,8 +283,31 @@ static PyObject *
 mcdbpy_getseq(struct mcdbpy * const self, PyObject * const args)
 {
     const char *key; uint32_t klen; int seq = 0; bool r = false;
-    if (!PyArg_ParseTuple(args, "s#|i:getseq", &key, &klen, &seq))
+  #if 0
+    PyObject *arg;
+    /*(mcdbpy_PyObject_to_buf() instead of Py_ssize_t klen)*/
+    /*if (!PyArg_ParseTuple(args, "s#|i:getseq", &key, &klen, &seq))*/
+    if (!PyArg_ParseTuple(args, "O|i:getseq", &arg, &seq)
+        || !mcdbpy_PyObject_to_buf(arg, &key, &klen))
         return NULL;
+  #else
+    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
+    if (nargs == 2) {
+        long val = PyLong_AsLong(PyTuple_GET_ITEM(args, 1));
+        if ((val == -1 && PyErr_Occurred()) || val > INT_MAX || val < INT_MIN)
+            nargs = 0; /*(trigger error below)*/
+        else
+            seq = (int)val;
+    }
+    if (nargs != 1 && nargs != 2) {
+        /*re-process to set error strings*/
+        /*klen should be Py_ssize_t so use nargs; results discarded*/
+        PyArg_ParseTuple(args, "s#|i:getseq", &key, &nargs, &seq);
+        return NULL;
+    }
+    if (!mcdbpy_PyObject_to_buf(PyTuple_GET_ITEM(args, 0), &key, &klen))
+        return NULL;
+  #endif
 
     if (mcdb_findstart(&self->m, key, klen))
         while ((r = mcdb_findnext(&self->m, key, klen)) && seq--)
@@ -257,8 +322,24 @@ static PyObject *
 mcdbpy_dict_get(struct mcdbpy * const self, PyObject * const args)
 {
     const char *key; uint32_t klen;
+  #if 0
     PyObject *defaultpy = Py_None;
-    return PyArg_ParseTuple(args, "s#|O:get", &key, &klen, &defaultpy)
+    PyObject *arg;
+    /*(mcdbpy_PyObject_to_buf() instead of Py_ssize_t klen)*/
+    /*return PyArg_ParseTuple(args, "s#|O:get", &key, &klen, &defaultpy)*/
+    return PyArg_ParseTuple(args, "O|O:get", &arg, &defaultpy)
+        && mcdbpy_PyObject_to_buf(arg, &key, &klen)
+  #else
+    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
+    PyObject *defaultpy = (nargs == 2) ? PyTuple_GET_ITEM(args, 1) : Py_None;
+    if (nargs != 1 && nargs != 2) {
+        /*re-process to set error strings*/
+        /*klen should be Py_ssize_t so use nargs; results discarded*/
+        PyArg_ParseTuple(args, "s#|O:get", &key, &nargs, &defaultpy);
+        return NULL;
+    }
+    return mcdbpy_PyObject_to_buf(PyTuple_GET_ITEM(args, 0), &key,  &klen)
+  #endif
       ? mcdb_find(&self->m, key, klen)
           ? mcdbpy_read_data(&self->m)
           : (Py_INCREF(defaultpy), defaultpy)
@@ -457,7 +538,7 @@ mcdbpy_dealloc(struct mcdbpy * const self)
     else if (self->m.map)
         mcdb_mmap_destroy(self->m.map);
     Py_XDECREF(self->fname);
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static int
@@ -485,9 +566,14 @@ mcdbpy_init(struct mcdbpy * const restrict self,
             PyObject * const args, PyObject * const kwds)
 {
     PyObject *fname;
-    return PyArg_ParseTuple(args, "O:__init__", &fname)
-      ? mcdbpy_init_obj(self, fname)
-      : -1;
+    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
+    if (1 != nargs) {
+        /*re-process to set error strings*/
+        PyArg_ParseTuple(args, "O:__init__", &fname);
+        return -1;
+    }
+    fname = PyTuple_GET_ITEM(args, 0);
+    return mcdbpy_init_obj(self, fname);
 }
 
 static PyObject *
@@ -596,7 +682,7 @@ mcdbpy_make_dealloc(struct mcdbpy_make * const restrict self)
     mcdb_make_destroy(&self->m);
     mcdb_makefn_cleanup(&self->m);
     Py_XDECREF(self->fname);
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static int
@@ -879,10 +965,20 @@ static PyMappingMethods mcdbpy_as_mapping = {
  */
 
 
+#ifndef Py_TPFLAGS_HAVE_ITER
+#define Py_TPFLAGS_HAVE_ITER 0
+#endif
+#ifndef Py_TPFLAGS_HAVE_CLASS
+#define Py_TPFLAGS_HAVE_CLASS 0
+#endif
 
 statichere PyTypeObject mcdbpy_Type = {
+  #if PY_VERSION_HEX < 0x03000000
     PyObject_HEAD_INIT(NULL)
     0,                                          /*ob_size*/
+  #else
+    { PyObject_HEAD_INIT(NULL) },
+  #endif
     "mcdb.read",                                /*tp_name*/
     sizeof(struct mcdbpy),                      /*tp_basicsize*/
     0,                                          /*tp_itemsize*/
@@ -930,8 +1026,12 @@ statichere PyTypeObject mcdbpy_Type = {
 };                                              /*tp_... see Include/object.h*/
 
 statichere PyTypeObject mcdbpy_make_Type = {
+  #if PY_VERSION_HEX < 0x03000000
     PyObject_HEAD_INIT(NULL)
     0,                                          /*ob_size*/
+  #else
+    { PyObject_HEAD_INIT(NULL) },
+  #endif
     "mcdb.make",                                /*tp_name*/
     sizeof(struct mcdbpy_make),                 /*tp_basicsize*/
     0,                                          /*tp_itemsize*/
@@ -978,18 +1078,45 @@ statichere PyTypeObject mcdbpy_make_Type = {
     0,                                          /*tp_weaklist*/
 };                                              /*tp_... see Include/object.h*/
 
+#if PY_VERSION_HEX >= 0x03000000
+static struct PyModuleDef mcdb_module = {
+    PyModuleDef_HEAD_INIT,
+    "mcdb",
+    mcdbpy_module_doc,
+    -1,
+    mcdbpy_module_funcs
+};
+#endif
+
+static PyObject *
+init_mcdb (void) {
+    PyObject *m;
+    mcdbpy_Type.tp_new      = mcdbpy_new;
+    mcdbpy_make_Type.tp_new = mcdbpy_make_new;
+    if (PyType_Ready(&mcdbpy_Type) < 0 || PyType_Ready(&mcdbpy_make_Type) < 0)
+        return NULL;
+  #if PY_VERSION_HEX < 0x03000000
+    m = Py_InitModule3("mcdb", mcdbpy_module_funcs, mcdbpy_module_doc);
+  #else
+    m = PyModule_Create(&mcdb_module);
+  #endif
+    PyModule_AddStringConstant(m, "__version__", VERSION);
+    PyModule_AddObject(m, "read", (PyObject *)&mcdbpy_Type);
+    PyModule_AddObject(m, "make", (PyObject *)&mcdbpy_make_Type);
+    return m;
+}
+
+#if PY_VERSION_HEX < 0x03000000
 #ifndef PyMODINIT_FUNC /* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
 PyMODINIT_FUNC
 initmcdb(void) {
-    PyObject *m;
-    mcdbpy_Type.tp_new      = mcdbpy_new;
-    mcdbpy_make_Type.tp_new = mcdbpy_make_new;
-    if (PyType_Ready(&mcdbpy_Type) < 0 || PyType_Ready(&mcdbpy_make_Type) < 0)
-        return;
-    m = Py_InitModule3("mcdb", mcdbpy_module_funcs, mcdbpy_module_doc);
-    PyModule_AddStringConstant(m, "__version__", VERSION);
-    PyModule_AddObject(m, "read", (PyObject *)&mcdbpy_Type);
-    PyModule_AddObject(m, "make", (PyObject *)&mcdbpy_make_Type);
+    init_mcdb();
 }
+#else  /* PY_VERSION_HEX >= 0x03000000 */
+PyMODINIT_FUNC
+PyInit_mcdb(void) {
+    return init_mcdb();
+}
+#endif /* PY_VERSION_HEX >= 0x03000000 */
