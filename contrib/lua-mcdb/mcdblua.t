@@ -7,7 +7,7 @@ function lua_mcdb_make {
   sed '/^#/d' | lua -e "
     local mcdb_make = require('mcdb_make')
     local function fatal(msg)
-        io.stderr:write('lua_mcdb_make: ' .. (msg or '') .. '\n')
+        io.stderr:write('lua_mcdb_make: ' .. (msg or '') .. '\\n')
         os.exit(111)
     end
     local mk, errstr = mcdb_make.init('"$fn"')
@@ -16,7 +16,7 @@ function lua_mcdb_make {
     while 1 do
         local line = io.read('*l')
         if line == nil or #line == 0 then break end
-        local _, last, klen, dlen = line:find('^\+(%d+),(%d+):')
+        local _, last, klen, dlen = line:find('^[+](%d+),(%d+):')
         if last == nil or #line ~= (last + klen + 2 + dlen)
            or line:sub(last+klen+1, last+klen+2) ~= '->' then
             fatal('mk input line error')

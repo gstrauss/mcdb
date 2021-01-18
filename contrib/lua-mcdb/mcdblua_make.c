@@ -179,12 +179,22 @@ int
 luaopen_mcdb_make(lua_State * const restrict L)
 {
     lua_newtable(L);
+  #if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
     luaL_register(L, NULL, mcdblua_make_meta);
+  #else
+    lua_newtable(L);
+    luaL_setfuncs(L, mcdblua_make_meta, 0);
+  #endif
     luaL_newmetatable(L, MCDBLUA_MAKE);
   #if 0  /* requires access to lua internals (and internal headers) */
     mcdblua_make_gcobj = gcvalue(L->top - 1);
   #endif /* see mcdblua_make_struct() routine */
+  #if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
     luaL_register(L, MCDBLUA_MAKE, mcdblua_make_methods);
+  #else
+    lua_newtable(L);
+    luaL_setfuncs(L, mcdblua_make_methods, 0);
+  #endif
     lua_pushliteral(L, "__metatable");
     lua_pushvalue(L, -2);
     lua_rawset(L, -3);

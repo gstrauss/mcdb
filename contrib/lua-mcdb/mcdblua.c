@@ -34,6 +34,10 @@
 #include "lua.h"
 #include "lauxlib.h"
 
+#ifndef luaL_optint
+#define luaL_optint(L,n,s) luaL_optinteger((L),(n),(s))
+#endif
+
 #if 0  /* requires access to lua internals (and internal headers) */
 #include "lstate.h"  /* NOTE: not part of public API; reaching into internals */
 #include "lobject.h" /* NOTE: not part of public API; reaching into internals */
@@ -91,7 +95,7 @@ mcdblua_get(lua_State * const restrict L)
     const char * const restrict k = luaL_checklstring(L, 2, &klen);
     mcdb_find(m, k, klen)
       ? lua_pushlstring(L, (char *)mcdb_dataptr(m), mcdb_datalen(m))
-      : lua_pushnil(L);
+      : (lua_pushnil(L), NULL);
     return 1;
 }
 
@@ -384,12 +388,22 @@ int
 luaopen_mcdb(lua_State * const restrict L)
 {
     lua_newtable(L);
+  #if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
     luaL_register(L, NULL, mcdblua_meta);
+  #else
+    lua_newtable(L);
+    luaL_setfuncs(L, mcdblua_meta, 0);
+  #endif
     luaL_newmetatable(L, MCDBLUA);
   #if 0  /* requires access to lua internals (and internal headers) */
     mcdblua_gcobj = gcvalue(L->top - 1);
   #endif /* see mcdblua_struct() routine */
+  #if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
     luaL_register(L, MCDBLUA, mcdblua_methods);
+  #else
+    lua_newtable(L);
+    luaL_setfuncs(L, mcdblua_methods, 0);
+  #endif
     lua_pushliteral(L, "__metatable");
     lua_pushvalue(L, -2);
     lua_rawset(L, -3);
