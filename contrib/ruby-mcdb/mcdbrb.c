@@ -30,6 +30,7 @@
  */
 
 #include <ruby.h>
+#include <ruby/version.h>
 
 #ifndef RSTRING_LEN
 #define RSTRING_LEN(x) RSTRING(x)->len
@@ -214,7 +215,11 @@ mcdbrb_size (const VALUE obj)
 
 static VALUE
 mcdbrb_count_i (const VALUE y, const VALUE v_count,
-                const int argc, const VALUE * const restrict argv)
+                const int argc, const VALUE * const restrict argv
+              #if RUBY_API_VERSION_CODE >= 20700
+                , const VALUE blockarg
+              #endif
+               )
 {
   #ifdef RUBY_1_8_x   /*(see ruby-mcdb/extconf.rb)*/
     if (RTEST(rb_yield(y)))
@@ -593,6 +598,16 @@ mcdbrb_make_cancel (const VALUE obj)
     return Qnil;
 }
 
+#if RUBY_API_VERSION_CODE >= 20700
+static VALUE
+mcdbrb_make_rescue (const VALUE obj, const VALUE except)
+{
+    return mcdbrb_make_cancel(obj);
+}
+#else
+#define mcdbrb_make_rescue mcdbrb_make_cancel
+#endif
+
 static void
 mcdbrb_make_dtor (struct mcdb_make * const restrict mk)
 {
@@ -632,7 +647,7 @@ mcdbrb_make_open (const int argc, VALUE * const restrict argv,
         if (st_mode != ~0)
             mk->st_mode = (mode_t)st_mode;
         return rb_block_given_p()
-          ? rb_rescue(rb_yield, v, mcdbrb_make_cancel, v)
+          ? rb_rescue(rb_yield, v, mcdbrb_make_rescue, v)
           : v;
     }
     else {
