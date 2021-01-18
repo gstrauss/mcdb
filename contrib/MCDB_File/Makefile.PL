@@ -26,6 +26,7 @@ WriteMakefile(
     dynamic_lib => {
       OTHERLDFLAGS =>
         (  $^O eq 'linux'   ? ' -Wl,--version-script,perlext.map'
+         : $^O eq 'darwin'  ? ' -load_hidden'
          : $^O eq 'solaris' ? ' -lrt'
          :                    ''),
     },
