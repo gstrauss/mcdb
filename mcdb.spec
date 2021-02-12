@@ -29,7 +29,7 @@ mcdb is almost 33% faster, provides support for use in threaded programs, and
 supports databases larger than 4 GB.
 
 nss_mcdb is an nss implementation of standard authentication and netdb files
-built as mcdb databases, which are faster than using nscd.  
+built as mcdb databases, which are faster than using nscd.
 
 https://github.com/gstrauss/mcdb/ provides the latest information about mcdb.
 http://cr.yp.to/cdb.html provides information about cdb, on which mcdb is based.

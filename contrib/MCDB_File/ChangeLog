@@ -1,4 +1,7 @@
 Revision history for Perl extension MCDB_File.
 
+0.0107 - gstrauss <code () gluelogic.com>  2021.01.27
+ - use latest upstream mcdb
+
 0.01 - gstrauss <code () gluelogic.com>  2011.09.10
  - initial version of MCDB_File, with CDB_File v0.97 used as reference

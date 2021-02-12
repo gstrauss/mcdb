@@ -10,7 +10,7 @@ use Exporter ();
 
 @ISA = qw(Exporter DynaLoader);
 
-$VERSION = '0.0106';
+$VERSION = '0.0107';
 
 =head1 NAME
 
@@ -269,7 +269,7 @@ fashion, rather than via tie().
 For more information on the methods available on tied hashes see L<perltie>.
 
 Due to the internal Perl reuse of FETCH method to support queries,
-as well as each() and values(), it will be sligthly more efficient
+as well as each() and values(), it will be slightly more efficient
 to call the $mcdb->find('key') method than to call $mcdb->FETCH('key').
 
 =head1 ACKNOWLEDGEMENTS

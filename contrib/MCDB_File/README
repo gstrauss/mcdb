@@ -13,6 +13,7 @@ INSTALLATION
 To install this module type the following:
 
    perl Makefile.PL
+   gunzip -c mcdb.tar.gz | tar xf -
    make
    make test
    make install
