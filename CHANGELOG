@@ -1,5 +1,8 @@
 mcdb change log
 
+mcdb v0.10 (2022.09.28)
+- mcdb_mmap_madvise()
+
 mcdb v0.09 (2013.11.15)
 - plasma_atomic:
   - C11/C++11 additions

@@ -1,3 +1,9 @@
+mcdb (0.10) unstable; urgency=low
+
+  * mcdb_mmap_madvise()
+
+ -- Glenn Strauss <gstrauss@gluelogic.com>  Sun, 28 Sep 2022 17:09:44 +0000
+
 mcdb (0.09) unstable; urgency=low
 
   * Initial Release as Debian package.
