@@ -33,108 +33,108 @@ struct rpcent;      /* (forward declaration) */
 
 #if 0
 /* buf size 1K + NSS_HE_HDRSZ is probably reasonable */
-__attribute_nonnull__
+__attribute_nonnull__()
 size_t
 nss_mcdb_netdb_make_hostent_datastr(char * restrict, const size_t,
 				    const struct hostent * const restrict);
 
 /* buf size 1K + NSS_NE_HDRSZ is probably reasonable */
 #ifndef _AIX
-__attribute_nonnull__
+__attribute_nonnull__()
 size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict, const size_t,
 			           const struct netent * const restrict);
 #else
 #include "nss_mcdb_netdb.h" /*(for struct nwent on AIX)*/
-__attribute_nonnull__
+__attribute_nonnull__()
 size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict, const size_t,
 			           const struct nwent * const restrict);
 #endif
 
 /* buf size 1K + NSS_PE_HDRSZ is probably reasonable */
-__attribute_nonnull__
+__attribute_nonnull__()
 size_t
 nss_mcdb_netdb_make_protoent_datastr(char * restrict, const size_t,
 				     const struct protoent * const restrict);
 
 /* buf size 1K + NSS_RE_HDRSZ is probably reasonable */
-__attribute_nonnull__
+__attribute_nonnull__()
 size_t
 nss_mcdb_netdb_make_rpcent_datastr(char * restrict, const size_t,
 			           const struct rpcent * const restrict);
 
 /* buf size 1K + NSS_SE_HDRSZ is probably reasonable */
-__attribute_nonnull__
+__attribute_nonnull__()
 size_t
 nss_mcdb_netdb_make_servent_datastr(char * restrict, const size_t,
 				    const struct servent * const restrict);
 #endif
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_hostent_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_netent_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
-__attribute_nonnull_x__((1))
+__attribute_nonnull__((1))
 bool
 nss_mcdb_netdb_make_netgrent_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_protoent_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_rpcent_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_servent_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_hosts_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_networks_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_netgroup_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_protocols_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_rpc_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_netdb_make_services_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);

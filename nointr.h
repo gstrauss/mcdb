@@ -43,7 +43,7 @@ __attribute_warn_unused_result__
 int
 nointr_dup(const int fd);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 int
@@ -53,7 +53,7 @@ __attribute_nothrow__
 int
 nointr_close(const int fd);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 ssize_t
@@ -69,7 +69,7 @@ nointr_ftruncate(const int fd, const off_t sz);
 /* caller must #define _ATFILE_SOURCE on Linux for openat() */
 #if (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE-0 >= 700) \
  || defined(_ATFILE_SOURCE)
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 int

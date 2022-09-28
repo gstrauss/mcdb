@@ -32,13 +32,13 @@ PLASMA_ATTR_Pragma_once
 #include <grp.h>
 
 /* buf size passed should be _SC_GETPW_R_SIZE_MAX + NSS_PW_HDRSZ (not checked)*/
-__attribute_nonnull__
+__attribute_nonnull__()
 size_t
 nss_mcdb_acct_make_passwd_datastr(char * restrict, const size_t,
 			          const struct passwd * const restrict);
 
 /* buf size passed should be _SC_GETGR_R_SIZE_MAX + NSS_GR_HDRSZ (not checked)*/
-__attribute_nonnull__
+__attribute_nonnull__()
 size_t
 nss_mcdb_acct_make_group_datastr(char * restrict, const size_t,
 			         const struct group * const restrict);
@@ -136,31 +136,31 @@ nss_mcdb_acct_make_group_datastr(char * restrict, const size_t,
 
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_acct_make_passwd_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_acct_make_group_encode(
   struct nss_mcdb_make_winfo * const restrict,
   const void * const);
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_acct_make_group_flush(
   struct nss_mcdb_make_winfo * const restrict);
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_acct_make_passwd_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_acct_make_group_parse(
   struct nss_mcdb_make_winfo * const restrict, char * restrict, size_t);

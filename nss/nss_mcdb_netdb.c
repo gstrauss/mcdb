@@ -98,31 +98,31 @@ PLASMA_ATTR_Pragma_no_side_effect(strlen)
  * is invalid (at least on RedHat Fedora release 8).
  */
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_netdb_hostent_decode(struct mcdb * restrict,
                               const struct nss_mcdb_vinfo * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_netdb_netent_decode(struct mcdb * restrict,
                              const struct nss_mcdb_vinfo * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_netdb_protoent_decode(struct mcdb * restrict,
                                const struct nss_mcdb_vinfo * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_netdb_rpcent_decode(struct mcdb * restrict,
                              const struct nss_mcdb_vinfo * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_netdb_servent_decode(struct mcdb * restrict,
@@ -131,18 +131,18 @@ nss_mcdb_netdb_servent_decode(struct mcdb * restrict,
 
 __attribute_cold__
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 static nss_status_t
 nss_mcdb_netdb_gethost_fill_h_errnop(const nss_status_t status,
                                      int * const restrict h_errnop);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static nss_status_t
 nss_mcdb_netdb_gethost_query(const uint32_t type,
                              const struct nss_mcdb_vinfo * restrict v,
                              int * const restrict h_errnop);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static nss_status_t
 nss_mcdb_netdb_gethost_filladdr(const void * const restrict addr,
                                 const int type,

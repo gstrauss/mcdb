@@ -83,7 +83,7 @@ struct mcdb {
 };
 
 __attribute_hot__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern bool
@@ -91,7 +91,7 @@ mcdb_findtagstart(struct mcdb * restrict, const char * restrict, size_t,
                   unsigned char);/* note: must be 0 or cast to (unsigned char)*/
 
 __attribute_hot__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern bool
@@ -104,19 +104,19 @@ mcdb_findtagnext(struct mcdb * restrict, const char * restrict, size_t,
   (__builtin_expect((mcdb_findstart((m),(key),(klen))), 1) \
                   && mcdb_findnext((m),(key),(klen)))
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern void *
 mcdb_read(const struct mcdb * restrict, uintptr_t, uint32_t, void * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern uint32_t
 mcdb_numrecs(struct mcdb * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern bool
@@ -144,19 +144,19 @@ struct mcdb_iter {
 #define mcdb_iter_keylen(iter)  ((iter)->klen)
 #define mcdb_iter_keyptr(iter)  ((iter)->ptr-(iter)->dlen-(iter)->klen)
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern bool
 mcdb_iter(struct mcdb_iter * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 EXPORT extern void
 mcdb_iter_init(struct mcdb_iter * restrict, struct mcdb * restrict);
 
 __attribute_malloc__
-__attribute_nonnull_x__((3,4,5))
+__attribute_nonnull__((3,4,5))
 __attribute_warn_unused_result__
 EXPORT extern struct mcdb_mmap *
 mcdb_mmap_create(struct mcdb_mmap * restrict,
@@ -178,7 +178,7 @@ mcdb_mmap_destroy(struct mcdb_mmap * restrict);
   (__builtin_expect(!mcdb_mmap_refresh_check(*(mapptr)), true) \
    || __builtin_expect(mcdb_mmap_reopen_threadsafe(mapptr), true))
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern bool
@@ -189,13 +189,13 @@ mcdb_mmap_init(struct mcdb_mmap * restrict, int);
 #define MCDB_MADV_SEQUENTIAL  2
 #define MCDB_MADV_WILLNEED    3
 #define MCDB_MADV_DONTNEED    4
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 EXPORT extern void
 mcdb_mmap_madvise(const struct mcdb_mmap * restrict, int advice);
 
 /*(preserve historical symbol even though replaced by macro; remove in future)*/
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 EXPORT extern void
 mcdb_mmap_prefault(const struct mcdb_mmap * restrict);
@@ -204,13 +204,13 @@ mcdb_mmap_prefault(const struct mcdb_mmap * restrict);
 EXPORT extern void
 mcdb_mmap_free(struct mcdb_mmap * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern bool
 mcdb_mmap_reopen(struct mcdb_mmap * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern bool
@@ -223,11 +223,11 @@ enum mcdb_flags {
   MCDB_REGISTER_ALREADY_LOCKED = 2
 };
 
-__attribute_nonnull__
+__attribute_nonnull__()
 EXPORT extern struct mcdb_mmap *
 mcdb_mmap_thread_registration(struct mcdb_mmap ** restrict, int);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT extern bool
 mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict);
@@ -262,42 +262,42 @@ mcdb_mmap_reopen_threadsafe(struct mcdb_mmap ** restrict);
  * but instead are the most common used in libnss_mcdb.so.2 */
 #ifdef PLASMA_ATTR_ALIAS
 __attribute_hot__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_findtagstart)
                         mcdb_findtagstart_h;
 __attribute_hot__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_findtagnext)
                         mcdb_findtagnext_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_iter)
                         mcdb_iter_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 HIDDEN extern __typeof (mcdb_iter_init)
                         mcdb_iter_init_h;
 __attribute_malloc__
-__attribute_nonnull_x__((3,4,5))
+__attribute_nonnull__((3,4,5))
 __attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_mmap_create)
                         mcdb_mmap_create_h;
 HIDDEN extern __typeof (mcdb_mmap_destroy)
                         mcdb_mmap_destroy_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_mmap_refresh_check)
                         mcdb_mmap_refresh_check_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 HIDDEN extern __typeof (mcdb_mmap_thread_registration)
                         mcdb_mmap_thread_registration_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_mmap_reopen_threadsafe)
                         mcdb_mmap_reopen_threadsafe_h;

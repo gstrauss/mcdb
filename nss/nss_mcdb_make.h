@@ -55,11 +55,11 @@ struct nss_mcdb_make_winfo {
  */
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_make_mcdbctl_write(struct nss_mcdb_make_winfo * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 bool
 nss_mcdb_make_dbfile( struct nss_mcdb_make_winfo * restrict,
                       const char * restrict,

@@ -35,19 +35,19 @@ PLASMA_ATTR_Pragma_once
 extern "C" {
 #endif
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT extern int
 mcdb_makefn_start (struct mcdb_make * restrict, const char * restrict,
                    void * (*)(size_t), void (*)(void *));
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 EXPORT extern int
 mcdb_makefn_finish (struct mcdb_make * restrict, const bool);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 EXPORT extern int
 mcdb_makefn_cleanup (struct mcdb_make * restrict);
 

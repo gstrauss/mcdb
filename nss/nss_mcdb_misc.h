@@ -61,43 +61,43 @@ EXPORT void _nss_mcdb_endaliasent(void);
 EXPORT void _nss_mcdb_setetherent(void);
 EXPORT void _nss_mcdb_endetherent(void);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT nss_status_t
 _nss_mcdb_getaliasent_r(struct aliasent * restrict,
                         char * restrict, size_t, int * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT nss_status_t
 _nss_mcdb_getaliasbyname_r(const char * restrict, struct aliasent * restrict,
                            char * restrict, size_t, int * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT nss_status_t
 _nss_mcdb_getpublickey(const char * restrict,
                        char * restrict, size_t, int * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT nss_status_t
 _nss_mcdb_getsecretkey(const char * restrict, const char * restrict,
                        char * restrict, size_t, int * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT nss_status_t
 _nss_mcdb_getetherent_r(struct ether_addr * restrict, char * restrict, size_t,
                         int * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT nss_status_t
 _nss_mcdb_gethostton_r(const char * restrict, struct ether_addr * restrict,
                        int * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT nss_status_t
 _nss_mcdb_getntohost_r(struct ether_addr * restrict, char * restrict, size_t,

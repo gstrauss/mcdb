@@ -104,7 +104,7 @@ mcdb_make_err(struct mcdb_make * const restrict m, int errnum)
 }
 
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static bool
 mcdb_hplist_alloc(struct mcdb_make * const restrict m);
@@ -219,7 +219,7 @@ mcdb_make_fallocate(const int fd, off_t offset, off_t len)
 }
 #endif
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static bool  inline
 mcdb_mmap_commit(struct mcdb_make * const restrict m,
@@ -256,7 +256,7 @@ mcdb_mmap_commit(struct mcdb_make * const restrict m,
 }
 
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static bool
 mcdb_mmap_upsize(struct mcdb_make * const restrict m, const size_t sz,

@@ -50,7 +50,7 @@
 PLASMA_ATTR_Pragma_no_side_effect(strlen)
 
 /* (similar to code nss_mcdb_acct_make.c:nss_mcdb_acct_make_group_datastr()) */
-__attribute_nonnull__
+__attribute_nonnull__()
 static size_t
 nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,
                              char * const * const restrict list,
@@ -78,7 +78,7 @@ nss_mcdb_netdb_make_list2str(char * const restrict buf, const size_t bufsz,
     }
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static size_t
 nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct hostent * const restrict he)
@@ -135,12 +135,12 @@ nss_mcdb_netdb_make_hostent_datastr(char * restrict buf, const size_t bufsz,
 
 
 #ifndef _AIX
-__attribute_nonnull__
+__attribute_nonnull__()
 static size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct netent * const restrict ne)
 #else
-__attribute_nonnull__
+__attribute_nonnull__()
 static size_t
 nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct nwent * const restrict ne)
@@ -189,7 +189,7 @@ nss_mcdb_netdb_make_netent_datastr(char * restrict buf, const size_t bufsz,
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static size_t
 nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 				     const struct protoent * const restrict pe)
@@ -228,7 +228,7 @@ nss_mcdb_netdb_make_protoent_datastr(char * restrict buf, const size_t bufsz,
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static size_t
 nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
 				   const struct rpcent * const restrict re)
@@ -267,7 +267,7 @@ nss_mcdb_netdb_make_rpcent_datastr(char * restrict buf, const size_t bufsz,
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static size_t
 nss_mcdb_netdb_make_servent_datastr(char * restrict buf, const size_t bufsz,
 				    const struct servent * const restrict se)
@@ -1006,7 +1006,7 @@ struct ngtable {
 };
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static void
 netgroup_ngtable_free (struct ngtable * const restrict t)
 {
@@ -1019,7 +1019,7 @@ netgroup_ngtable_free (struct ngtable * const restrict t)
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_ngtable_init (struct ngtable * const restrict t, const size_t hint)
 {
@@ -1041,7 +1041,7 @@ netgroup_ngtable_init (struct ngtable * const restrict t, const size_t hint)
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static void *
 netgroup_node_insert_id (struct ngtable * const restrict t,
                          const void * const restrict vbuf, const size_t sz)
@@ -1107,7 +1107,7 @@ struct ngdata {
 };
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static void
 netgroup_ngdata_uniq_reset (struct ngdata * const restrict ngd)
 {
@@ -1117,7 +1117,7 @@ netgroup_ngdata_uniq_reset (struct ngdata * const restrict ngd)
 
 __attribute_cold__
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_ngdata_uniq_resize (struct ngdata * const restrict ngd)
 {
@@ -1156,7 +1156,7 @@ netgroup_ngdata_uniq_resize (struct ngdata * const restrict ngd)
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static void
 netgroup_ngdata_free (struct ngdata * const restrict ngd)
 {
@@ -1170,7 +1170,7 @@ netgroup_ngdata_free (struct ngdata * const restrict ngd)
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_ngdata_init (struct ngdata * const restrict ngd,
                       char * restrict p, size_t plen)
@@ -1198,7 +1198,7 @@ struct ng_string_triple {
 };
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static int
 netgroup_string_triple_id (struct ngdata * const restrict ngd,
                            const struct ng_string_triple * const restrict s)
@@ -1245,7 +1245,7 @@ netgroup_string_triple_id (struct ngdata * const restrict ngd,
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static int
 netgroup_id (struct ngdata * const restrict ngd,
              const char * const restrict s, const size_t slen)
@@ -1272,7 +1272,7 @@ netgroup_id (struct ngdata * const restrict ngd,
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_ngi_append (struct ngints * const restrict ngi, const int id)
 {
@@ -1289,7 +1289,7 @@ netgroup_ngi_append (struct ngints * const restrict ngi, const int id)
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_pure__
 static const char *
 netgroup_advance_linear_ws_cont (const char * restrict s)
@@ -1308,7 +1308,7 @@ netgroup_advance_linear_ws_cont (const char * restrict s)
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_parse_ngrule (struct ngdata * const restrict ngd,
                        struct ngints * const restrict ngi)
@@ -1394,7 +1394,7 @@ netgroup_parse_ngrule (struct ngdata * const restrict ngd,
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_parse_ng (struct ngdata * const restrict ngd)
 {
@@ -1454,7 +1454,7 @@ netgroup_parse_ng (struct ngdata * const restrict ngd)
 
 __attribute_cold__
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_datastr_resize (struct ngdata * const restrict ngd, size_t n)
 {
@@ -1468,7 +1468,7 @@ netgroup_datastr_resize (struct ngdata * const restrict ngd, size_t n)
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_datastr_extend (struct ngdata * const restrict ngd, size_t n)
 {
@@ -1478,7 +1478,7 @@ netgroup_datastr_extend (struct ngdata * const restrict ngd, size_t n)
 }
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_datastr_append (struct ngdata * const restrict ngd, int id)
 {
@@ -1492,7 +1492,7 @@ netgroup_datastr_append (struct ngdata * const restrict ngd, int id)
 
 
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_datastr_uniq_id (struct ngdata * const restrict ngd, const int id)
 {
@@ -1540,7 +1540,7 @@ netgroup_datastr_uniq_id (struct ngdata * const restrict ngd, const int id)
 
 
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_datastr_recurse (struct ngdata * const restrict ngd, int id)
 {
@@ -1563,7 +1563,7 @@ netgroup_datastr_recurse (struct ngdata * const restrict ngd, int id)
 
 
 /* (different signature from other nss_mcdb_netdb_make_*_datastr() funcs) */
-__attribute_nonnull__
+__attribute_nonnull__()
 static bool
 netgroup_datastr (struct ngdata * const restrict ngd, int id)
 {

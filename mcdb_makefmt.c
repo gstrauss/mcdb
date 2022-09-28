@@ -81,7 +81,7 @@ struct mcdb_input {
  */
 
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static ssize_t
 mcdb_bufread_fd (struct mcdb_input * const restrict b);
@@ -104,7 +104,7 @@ mcdb_bufread_fd (struct mcdb_input * const restrict b)
 
 /* (separate routine from mcdb_bufread_preamble for less frequent code path) */
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static ssize_t
 mcdb_bufread_preamble_fill (struct mcdb_input * const restrict b);
@@ -123,7 +123,7 @@ mcdb_bufread_preamble_fill (struct mcdb_input * const restrict b)
     return r;  /* >= 0 is success; -1 is read error */
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static bool
 mcdb_bufread_number (struct mcdb_input * const restrict b,
@@ -153,7 +153,7 @@ mcdb_bufread_number (struct mcdb_input * const restrict b,
     return false; /*error: no digits or too large; not bothering to set ERANGE*/
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdb_bufread_preamble (struct mcdb_input * const restrict b,
@@ -182,7 +182,7 @@ mcdb_bufread_preamble (struct mcdb_input * const restrict b,
             : MCDB_ERROR_READFORMAT;           /* -1  error read format  */
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static bool
 mcdb_bufread_str (struct mcdb_input * const restrict b, size_t len,
@@ -207,7 +207,7 @@ mcdb_bufread_str (struct mcdb_input * const restrict b, size_t len,
 }
 
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static bool
 mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len);
@@ -221,7 +221,7 @@ mcdb_bufread_xchars (struct mcdb_input * const restrict b, const size_t len)
 }
 
 __attribute_noinline__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static bool
 mcdb_bufread_rec (struct mcdb_make * const restrict m,

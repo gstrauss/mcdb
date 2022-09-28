@@ -44,19 +44,19 @@ PLASMA_ATTR_Pragma_no_side_effect(strlen)
  *     /etc/group
  */
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_acct_passwd_decode(struct mcdb * restrict,
                             const struct nss_mcdb_vinfo * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_acct_group_decode(struct mcdb * restrict,
                            const struct nss_mcdb_vinfo * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_acct_grouplist_decode(struct mcdb * restrict,

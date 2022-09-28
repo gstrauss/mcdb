@@ -43,7 +43,7 @@ enum {
 };
 
 __attribute_cold__
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 __attribute_warn_unused_result__
 extern int

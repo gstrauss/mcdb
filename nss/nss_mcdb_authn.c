@@ -48,7 +48,7 @@ PLASMA_ATTR_Pragma_no_side_effect(strlen)
  *     /etc/shadow
  */
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static nss_status_t
 nss_mcdb_authn_spwd_decode(struct mcdb * restrict,

@@ -67,50 +67,50 @@ struct mcdb_make {
  */
 
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT extern int
 mcdb_make_start(struct mcdb_make * restrict, int,
                 void * (*)(size_t), void (*)(void *));
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT extern int
 mcdb_make_add(struct mcdb_make * restrict,
               const char * restrict, size_t,
               const char * restrict, size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT extern int
 mcdb_make_finish(struct mcdb_make * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 EXPORT extern int
 mcdb_make_destroy(struct mcdb_make * restrict);
 
 /* support for adding entries from input stream, instead of fully in memory */
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 EXPORT extern int
 mcdb_make_addbegin(struct mcdb_make * restrict, size_t, size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 EXPORT extern void
 mcdb_make_addbuf_key(struct mcdb_make * restrict,const char * restrict,size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 EXPORT extern void
 mcdb_make_addbuf_data(struct mcdb_make * restrict,const char * restrict,size_t);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 EXPORT extern void
 mcdb_make_addend(struct mcdb_make * restrict);
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 EXPORT extern void
 mcdb_make_addrevert(struct mcdb_make * restrict);
@@ -121,23 +121,23 @@ mcdb_make_addrevert(struct mcdb_make * restrict);
  * (optimization)
  * The aliases below are not a complete set of mcdb_make symbols */
 #ifdef PLASMA_ATTR_ALIAS
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_make_add)
                         mcdb_make_add_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 HIDDEN extern __typeof (mcdb_make_addbegin)
                         mcdb_make_addbegin_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 HIDDEN extern __typeof (mcdb_make_addbuf_data)
                         mcdb_make_addbuf_data_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 HIDDEN extern __typeof (mcdb_make_addbuf_key)
                         mcdb_make_addbuf_key_h;
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_nothrow__
 HIDDEN extern __typeof (mcdb_make_addend)
                         mcdb_make_addend_h;

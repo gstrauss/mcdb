@@ -62,7 +62,7 @@ extern int madvise(caddr_t, size_t, int);
 #endif
 
 /* code to hint to release memory pages every 32 MB (1u << 25) */
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static unsigned char *
 mcdb_madv_initmark(unsigned char * const ptr,const uintptr_t sz,size_t offset);
@@ -90,7 +90,7 @@ mcdb_madv_initmark(unsigned char * const ptr,const uintptr_t sz,size_t offset)
     }                                                                          \
   } while (0)
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static bool
 writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz);
@@ -121,7 +121,7 @@ writev_loop(const int fd, struct iovec * restrict iov, int iovcnt, ssize_t sz)
 }
 
 /* read and dump data section of mcdb */
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_dump(struct mcdb * const restrict m);
@@ -219,7 +219,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
 }
 
 /* Note: mcdbctl_stats() is equivalent test to pass/fail of djb cdbtest */
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_stats(struct mcdb * const restrict m);
@@ -263,7 +263,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
     return EXIT_SUCCESS;
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_getseq(struct mcdb * const restrict m,
@@ -293,7 +293,7 @@ mcdbctl_getseq(struct mcdb * const restrict m,
     return EXIT_FAILURE;
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_getall(struct mcdb * const restrict m,
@@ -320,7 +320,7 @@ mcdbctl_getall(struct mcdb * const restrict m,
     return EXIT_FAILURE;
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_query(const int argc, char ** restrict argv);
@@ -398,7 +398,7 @@ mcdbctl_query(const int argc, char ** restrict argv)
     return rv;
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_make(const int argc __attribute_unused__, char ** const restrict argv);
@@ -421,7 +421,7 @@ mcdbctl_make(const int argc __attribute_unused__, char ** const restrict argv)
     return rv;
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_has_unique_keys(struct mcdb * const restrict m);
@@ -453,7 +453,7 @@ mcdbctl_has_unique_keys(struct mcdb * const restrict m)
     return true;  /*keys are unique in mcdb*/
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_make_unique_keys(struct mcdb * const restrict m, const bool first);
@@ -516,7 +516,7 @@ mcdbctl_make_unique_keys(struct mcdb * const restrict m, const bool first)
     return rv;
 }
 
-__attribute_nonnull__
+__attribute_nonnull__()
 __attribute_warn_unused_result__
 static int
 mcdbctl_uniq(const int argc, char ** const restrict argv);
