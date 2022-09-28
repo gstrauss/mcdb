@@ -143,7 +143,7 @@ mcdbctl_dump(struct mcdb * const restrict m)
 
     mcdb_iter_init(&iter, m);
     posix_madvise(iter.map, (size_t)(iter.eod - (unsigned char *)iter.map),
-                  POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+                  POSIX_MADV_WILLNEED);
     while (mcdb_iter(&iter)) {
 
         klen = mcdb_iter_keylen(&iter);
@@ -236,8 +236,7 @@ mcdbctl_stats(struct mcdb * const restrict m)
     unsigned long numd[11] = { 0,0,0,0,0,0,0,0,0,0,0 };
     int rv;
     bool rc;
-    posix_madvise(m->map->ptr, m->map->size,
-                  POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+    posix_madvise(m->map->ptr, m->map->size, POSIX_MADV_WILLNEED);
     if (!mcdb_validate_slots(m))
         return MCDB_ERROR_READFORMAT;
     mcdb_iter_init(&iter, m);
@@ -434,8 +433,7 @@ mcdbctl_has_unique_keys(struct mcdb * const restrict m)
     char *k;
     unsigned char *mark = mcdb_madv_initmark(m->map->ptr, m->map->size,
                                              MCDB_HEADER_SZ);
-    posix_madvise(m->map->ptr, m->map->size,
-                  POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+    posix_madvise(m->map->ptr, m->map->size, POSIX_MADV_WILLNEED);
     if (!mcdb_validate_slots(m))
         return MCDB_ERROR_READFORMAT;
     mcdb_iter_init(&iter, m);
@@ -470,8 +468,7 @@ mcdbctl_make_unique_keys(struct mcdb * const restrict m, const bool first)
                                              MCDB_HEADER_SZ);
     uint32_t dlen;
     int rv = EXIT_SUCCESS;
-    posix_madvise(m->map->ptr, m->map->size,
-                  POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+    posix_madvise(m->map->ptr, m->map->size, POSIX_MADV_WILLNEED);
     if (!mcdb_validate_slots(m))
         return MCDB_ERROR_READFORMAT;
     if (mcdb_makefn_start(&mk, m->map->fname, malloc, free) == 0

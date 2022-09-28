@@ -362,8 +362,7 @@ mcdb_makefmt_fileintofile (const char * const restrict infile,
 
     /* close fd after mmap (no longer needed),check mmap succeeded,create mcdb*/
     if (nointr_close(fd) == 0 && x != MAP_FAILED) {
-        posix_madvise(x, (size_t)st.st_size,
-                      POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+        posix_madvise(x, (size_t)st.st_size, POSIX_MADV_WILLNEED);
         /* pass entire map and size as params; fd -1 elides read()/remaps */
         rv = mcdb_makefmt_fdintofile(-1, x, (size_t)st.st_size,
                                      fname, fn_malloc, fn_free);

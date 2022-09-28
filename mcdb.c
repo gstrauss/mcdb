@@ -276,9 +276,8 @@ mcdb_iter_init(struct mcdb_iter * const restrict iter,
     iter->dlen = 0;
     iter->map  = m->map;
     /* Note: callers that intend to iterate through entire mcdb might call
-     * posix_madvise() on the mcdb as long as mcdb fits into physical memory,
-     * e.g. posix_madvise(iter->map, (size_t)(iter->eod - iter->map),
-     *                    POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+     * posix_madvise(iter->map, (size_t)(iter->eod - iter->map),
+     *               POSIX_MADV_SEQUENTIAL);
      *      (if iter->ptr instead of iter->map, round down for page alignment)
      */
 }
@@ -327,6 +326,8 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
     __builtin_prefetch((char *)x, 0, PLASMA_ATTR_MM_HINT_T0);
   #if 0 /* disable; does not appear to improve performance */
     /*(peformance hit when hitting an uncached mcdb on my 32-bit Pentium-M)*/
+    /*(not worth syscall overhead if performing single query against mcdb;
+     * callers expecting heavy usage might add call to mcdb_mmap_madvise())*/
     if (st.st_size > 4194304) /*(skip syscall overhead if < 4 MB (arbitrary))*/
         posix_madvise(((char *)x), st.st_size, POSIX_MADV_RANDOM);
 	/*(addr (x) must be aligned on _SC_PAGESIZE for madvise portability)*/
@@ -345,13 +346,37 @@ mcdb_mmap_init(struct mcdb_mmap * const restrict map, int fd)
 
 __attribute_noinline__
 void
+mcdb_mmap_madvise(const struct mcdb_mmap * const restrict map, int advice)
+{
+  #if MCDB_MADV_NORMAL                 != POSIX_MADV_NORMAL     \
+   || MCDB_MADV_RANDOM                 != POSIX_MADV_RANDOM     \
+   || MCDB_MADV_SEQUENTIAL             != POSIX_MADV_SEQUENTIAL \
+   || MCDB_MADV_WILLNEED               != POSIX_MADV_WILLNEED   \
+   || MCDB_MADV_DONTNEED               != POSIX_MADV_DONTNEED
+    switch (advice) {
+      case MCDB_MADV_NORMAL:     advice = POSIX_MADV_NORMAL;     break;
+      case MCDB_MADV_RANDOM:     advice = POSIX_MADV_RANDOM;     break;
+      case MCDB_MADV_SEQUENTIAL: advice = POSIX_MADV_SEQUENTIAL; break;
+      case MCDB_MADV_WILLNEED:   advice = POSIX_MADV_WILLNEED;   break;
+      case MCDB_MADV_DONTNEED:   advice = POSIX_MADV_DONTNEED;   break;
+      default:                                                   break;
+    }
+  #endif
+    /* MCDB_MADV_RANDOM
+     *   improves performance on large mcdb (if about to make *many* queries) */
+    posix_madvise(((char *)map->ptr), map->size, advice);
+}
+
+/*(preserve historical symbol even though replaced by macro; remove in future)*/
+#undef mcdb_mmap_prefault
+__attribute_noinline__
+void
 mcdb_mmap_prefault(const struct mcdb_mmap * const restrict map)
 {
     /* improves performance on uncached mcdb (if about to make *many* queries)
      * by asking operating system to prefault pages into memory from disk
      * (call only if mcdb fits into filesystem cache in physical memory) */
-    posix_madvise(((char *)map->ptr), map->size,
-                  POSIX_MADV_WILLNEED | POSIX_MADV_RANDOM);
+    posix_madvise(((char *)map->ptr), map->size, POSIX_MADV_WILLNEED);
 }
 
 __attribute_noinline__

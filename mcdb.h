@@ -184,10 +184,22 @@ __attribute_warn_unused_result__
 EXPORT extern bool
 mcdb_mmap_init(struct mcdb_mmap * restrict, int);
 
+#define MCDB_MADV_NORMAL      0
+#define MCDB_MADV_RANDOM      1
+#define MCDB_MADV_SEQUENTIAL  2
+#define MCDB_MADV_WILLNEED    3
+#define MCDB_MADV_DONTNEED    4
+__attribute_nonnull__
+__attribute_nothrow__
+EXPORT extern void
+mcdb_mmap_madvise(const struct mcdb_mmap * restrict, int advice);
+
+/*(preserve historical symbol even though replaced by macro; remove in future)*/
 __attribute_nonnull__
 __attribute_nothrow__
 EXPORT extern void
 mcdb_mmap_prefault(const struct mcdb_mmap * restrict);
+#define mcdb_mmap_prefault(m) mcdb_mmap_madvise((m), MCDB_MADV_WILLNEED)
 
 EXPORT extern void
 mcdb_mmap_free(struct mcdb_mmap * restrict);
