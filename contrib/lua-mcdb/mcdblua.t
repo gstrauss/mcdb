@@ -45,6 +45,8 @@ function lua_mcdb_dump {
         io.stderr:write('lua_mcdb_dump: mcdb.init: ' .. errstr .. '\n')
         os.exit(111)
     end
+    -- better performance with large mcdb; here for testing
+    m:madvise('MADV_SEQUENTIAL')
 
     for k,v in m:iteritems() do
         io.write(string.format('+%d,%d:',#k,#v), k, '->', v, '\n')
@@ -70,6 +72,8 @@ function lua_mcdb_get {
         io.stderr:write('lua_mcdb_get: mcdb.init: ' .. errstr .. '\n')
         os.exit(111)
     end
+    -- better performance with large mcdb *and* many queries; here for testing
+    m:madvise('MADV_RANDOM')
 
     -- get specific sequence instance of multi-value key in mcdb
     --   local val = m:getseq("$key", "$skip"+0)

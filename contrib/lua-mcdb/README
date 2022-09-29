@@ -1,4 +1,4 @@
-lua-mcdb 0.01
+lua-mcdb 0.02
 
 
 Lua interface to create and read mcdb constant databases.

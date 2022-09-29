@@ -309,6 +309,40 @@ mcdblua_name(lua_State * const restrict L)
 }
 
 static int
+mcdblua_madvise(lua_State * const restrict L)
+{
+    /* not frequently called, so string comparison is fine
+     * (alternative: could add definitions to MCDBLUA metatable __index) */
+    size_t klen;
+    const char * const restrict k = luaL_checklstring(L, 2, &klen);
+    int advice = -1;
+    switch (klen) {
+      case 11:
+        if (0 == memcmp(k, "MADV_RANDOM", 11))
+            advice = MCDB_MADV_RANDOM;
+        else if (0 == memcmp(k, "MADV_NORMAL", 11))
+            advice = MCDB_MADV_NORMAL;
+        break;
+      case 13:
+        if (0 == memcmp(k, "MADV_WILLNEED", 13))
+            advice = MCDB_MADV_WILLNEED;
+        else if (0 == memcmp(k, "MADV_DONTNEED", 13))
+            advice = MCDB_MADV_DONTNEED;
+        break;
+      case 15:
+        if (0 == memcmp(k, "MADV_SEQUENTIAL", 15))
+            advice = MCDB_MADV_SEQUENTIAL;
+        break;
+      default:
+        break;
+    }
+    struct mcdb * const restrict m = mcdblua_struct(L);
+    if (advice >= 0 && m->map)
+        mcdb_mmap_madvise(m->map, advice);
+    return 0;
+}
+
+static int
 mcdblua_tostring(lua_State * const restrict L)
 {
     struct mcdb * const restrict m = mcdblua_struct(L);
@@ -370,6 +404,7 @@ static const struct luaL_Reg mcdblua_methods[] = {
   { "values",     mcdblua_values },
   { "items",      mcdblua_items },
   { "name",       mcdblua_name },
+  { "madvise",    mcdblua_madvise },
   { NULL, NULL }
 };
 
