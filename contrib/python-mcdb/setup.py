@@ -23,7 +23,7 @@ else:
 
 setup (
         name = "python-mcdb",
-        version = "0.02",
+        version = "0.03",
         description = "Interface to mcdb constant database files",
         url = "https://github.com/gstrauss/mcdb/",
         author = "gstrauss",

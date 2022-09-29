@@ -29,6 +29,7 @@ del(mk)
 ## mcdb.read object
 
 m = mcdb.read(fn)
+m.madvise(mcdb.MADV_RANDOM)
 print
 print(m.__class__)
 
@@ -75,6 +76,7 @@ else:
     print('no')
 print
 
+m.madvise(mcdb.MADV_SEQUENTIAL)
 def mcdb_dump(m):            # mcdbctl dump
     for r in m.iteritems():  # r = ('key', 'val')
         print("+%d,%d:%s->%s" % ( len(r[0]), len(r[1]), r[0], r[1] ))

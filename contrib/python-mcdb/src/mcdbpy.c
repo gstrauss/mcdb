@@ -87,7 +87,7 @@
 #include <mcdb/mcdb_makefn.h>
 #include <mcdb/uint32.h>
 
-#define VERSION "0.01"
+#define VERSION "0.03"
 
 /*(Py_RETURN_NONE, Py_RETURN_TRUE, Py_RETURN_FALSE but without 'return')*/
 #define mcdbpy_Py_None()  (Py_INCREF(Py_None),  Py_None)
@@ -519,6 +519,21 @@ mcdbpy_dict_items(struct mcdbpy * const self)
 }
 
 static PyObject *
+mcdbpy_madvise(struct mcdbpy * const self, PyObject * const args)
+{
+    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
+    long advice = (nargs == 1) ? PyLong_AsLong(PyTuple_GET_ITEM(args, 0)) : -1;
+    if (advice < 0 || advice > INT_MAX) {
+        /*re-process to set error strings*/
+        unsigned char discard;
+        PyArg_ParseTuple(args, "b:madvise", &discard);
+        return NULL;
+    }
+    mcdb_mmap_madvise(self->m.map, (int)advice);
+    return mcdbpy_Py_None();
+}
+
+static PyObject *
 mcdbpy_repr (struct mcdbpy * const restrict self)
 {
     return Py_INCREF(self->fname), self->fname;
@@ -906,6 +921,12 @@ static PyMethodDef mcdbpy_methods[] = {
    "Not recommended for use on large mcdb with many records.\n"
    "Iterate by using it = m.iteritems()"
   },
+  {"madvise",      (PyCFunction)mcdbpy_madvise,         METH_VARARGS,
+   "Hint to OS about mcdb access patterns; wraps posix_madvise()\n"
+   "Hint must be one of mcdb.MADV_NORMAL, mcdb.MADV_RANDOM,\n"
+   "mcdb.MADV_SEQUENTIAL, mcdb.MADV_WILLNEED, or mcdb.MADV_DONTNEED.\n"
+   "mcdb.MADV_RANDOM may improve performance for many accesses to large mcdb."
+  },
   { NULL, NULL, 0, NULL }
 };
 
@@ -1103,6 +1124,11 @@ init_mcdb (void) {
     PyModule_AddStringConstant(m, "__version__", VERSION);
     PyModule_AddObject(m, "read", (PyObject *)&mcdbpy_Type);
     PyModule_AddObject(m, "make", (PyObject *)&mcdbpy_make_Type);
+    PyModule_AddIntConstant(m, "MADV_NORMAL",     MCDB_MADV_NORMAL);
+    PyModule_AddIntConstant(m, "MADV_RANDOM",     MCDB_MADV_RANDOM);
+    PyModule_AddIntConstant(m, "MADV_SEQUENTIAL", MCDB_MADV_SEQUENTIAL);
+    PyModule_AddIntConstant(m, "MADV_WILLNEED",   MCDB_MADV_WILLNEED);
+    PyModule_AddIntConstant(m, "MADV_DONTNEED",   MCDB_MADV_DONTNEED);
     return m;
 }
 

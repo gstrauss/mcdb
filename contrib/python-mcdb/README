@@ -1,4 +1,4 @@
-python-mcdb 0.01
+python-mcdb
 
 
 Python interface to create and read mcdb constant databases.

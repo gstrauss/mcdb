@@ -1,5 +1,9 @@
 python-mcdb ChangeLog
 
+28 Sep 2022
+  - Version 0.03
+    new madvise() method
+
 17 Jan 2021
   - Version 0.02
     port to Python3
