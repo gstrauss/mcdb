@@ -38,6 +38,12 @@
 #define luaL_optint(L,n,s) luaL_optinteger((L),(n),(s))
 #endif
 
+#if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
+/* lua 5.2 deprecated luaL_register() for luaL_setfuncs()
+ * (this define is valid only when 0 == nup) */
+#define luaL_setfuncs(L, l, nup) luaL_register((L), NULL, (l))
+#endif
+
 #if 0  /* requires access to lua internals (and internal headers) */
 #include "lstate.h"  /* NOTE: not part of public API; reaching into internals */
 #include "lobject.h" /* NOTE: not part of public API; reaching into internals */
@@ -51,7 +57,7 @@ static GCObject *mcdblua_gcobj;
 static inline void *
 mcdblua_struct(lua_State * const restrict L)
 {
-  #if 0
+  #if 0 /* requires access to lua internals (and internal headers) */
     /* There should be a clean and inexpensive way to validate mcdblua object.
      * The code below requires knowledge of internal lstate.h and lobject.h.
      * First, validate that argument is present and is userdata
@@ -60,9 +66,18 @@ mcdblua_struct(lua_State * const restrict L)
     return v != NULL && (GCObject *)uvalue(L->base)->metatable == mcdblua_gcobj
       ? v
       : (void *)luaL_typerror(L, 1, MCDBLUA); /* throws exception */
-  #else /* requires access to lua internals (and internal headers) */
+  #elif 0
     /* lua arg checking overhead is expensive compared to rest of mcdblua code*/
     return luaL_checkudata(L, 1, MCDBLUA);
+  #else
+    /* methods called via MCDBLUA metatable are on this obj; skip revalidate */
+   #if 1
+    return lua_touserdata(L, 1);
+   #else /*(excessive paranoia)*/
+    void * const restrict v = lua_touserdata(L, 1);
+    if (v == NULL) luaL_typerror(L, 1, MCDBLUA); /* throws exception */
+    return v;
+   #endif
   #endif
 }
 
@@ -309,10 +324,11 @@ mcdblua_free(lua_State * const restrict L)
         mcdb_mmap_destroy(m->map);
         m->map = NULL;
     }
-    lua_pushnil(L);
-    lua_setmetatable(L, -2);
     return 0;
 }
+
+static void
+mcdblua_init_metatable(lua_State * const restrict L);
 
 static int
 mcdblua_init(lua_State * const restrict L)
@@ -323,30 +339,8 @@ mcdblua_init(lua_State * const restrict L)
         struct mcdb * const restrict m = lua_newuserdata(L,sizeof(struct mcdb));
         m->map = map;
         m->loop = 0;
-        luaL_getmetatable(L, MCDBLUA);
-
-      #if 0  /* disable custom __index */
-        lua_pushliteral(L, "__index");  /* lua table query t[x] */
-        lua_pushcclosure(L, mcdblua_get, 0);
-        lua_rawset(L, -3);
-      #endif /* lua overloads __index; insufficient encapsulation */
-      #if 0  /* identical to above, but runs __newindex metamethod if present */
-        lua_pushcclosure(L, mcdblua_get, 0);
-        lua_setfield(L, -2, "__index");
-      #endif
-        lua_pushliteral(L, "__call");/* lua table query t(x); in lieu of t[x] */
-        lua_pushcclosure(L, mcdblua_get, 0);
-        lua_rawset(L, -3);
-        lua_pushliteral(L, "__gc");
-        lua_pushcclosure(L, mcdblua_free, 0);
-        lua_rawset(L, -3);
-        lua_pushliteral(L, "__len");
-        lua_pushcclosure(L, mcdblua_size, 0);
-        lua_rawset(L, -3);
-        lua_pushliteral(L, "__tostring");
-        lua_pushcclosure(L, mcdblua_tostring, 0);
-        lua_rawset(L, -3);
-
+        if (luaL_newmetatable(L, MCDBLUA))
+            mcdblua_init_metatable(L);
         lua_setmetatable(L, -2);
         return 1;
     }
@@ -388,29 +382,41 @@ int
 luaopen_mcdb(lua_State * const restrict L)
 {
     lua_newtable(L);
-  #if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
-    luaL_register(L, NULL, mcdblua_meta);
-  #else
-    lua_newtable(L);
     luaL_setfuncs(L, mcdblua_meta, 0);
-  #endif
-    luaL_newmetatable(L, MCDBLUA);
+    return 1;
+}
+
+static void
+mcdblua_init_metatable(lua_State * const restrict L)
+{
+    /* caller must have run: luaL_newmetatable(L, MCDBLUA); */
+
   #if 0  /* requires access to lua internals (and internal headers) */
     mcdblua_gcobj = gcvalue(L->top - 1);
   #endif /* see mcdblua_struct() routine */
-  #if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
-    luaL_register(L, MCDBLUA, mcdblua_methods);
-  #else
+  #if 0  /* disable custom __index */
+    lua_pushliteral(L, "__index");  /* lua table query t[x] */
+    lua_pushcclosure(L, mcdblua_get, 0);
+    lua_rawset(L, -3);
+  #endif /* lua overloads __index; insufficient encapsulation */
+  #if 0  /* identical to above, but runs __newindex metamethod if present */
+    lua_pushcclosure(L, mcdblua_get, 0);
+    lua_setfield(L, -2, "__index");
+  #endif
+    lua_pushliteral(L, "__index");
     lua_newtable(L);
     luaL_setfuncs(L, mcdblua_methods, 0);
-  #endif
-    lua_pushliteral(L, "__metatable");
-    lua_pushvalue(L, -2);
     lua_rawset(L, -3);
-    lua_pushliteral(L, "__index");
-    lua_pushvalue(L, -2);
-    lua_rawset(L, -4);
-    lua_setmetatable(L, -2);
-    lua_pop(L, 1);
-    return 1;
+    lua_pushliteral(L, "__call");/* lua table query t(x); in lieu of t[x] */
+    lua_pushcclosure(L, mcdblua_get, 0);
+    lua_rawset(L, -3);
+    lua_pushliteral(L, "__gc");
+    lua_pushcclosure(L, mcdblua_free, 0);
+    lua_rawset(L, -3);
+    lua_pushliteral(L, "__len");
+    lua_pushcclosure(L, mcdblua_size, 0);
+    lua_rawset(L, -3);
+    lua_pushliteral(L, "__tostring");
+    lua_pushcclosure(L, mcdblua_tostring, 0);
+    lua_rawset(L, -3);
 }

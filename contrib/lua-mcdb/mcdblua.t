@@ -50,6 +50,7 @@ function lua_mcdb_dump {
         io.write(string.format('+%d,%d:',#k,#v), k, '->', v, '\n')
     end
     io.write('\n')
+    io.flush()
 EOF
 }
 

@@ -34,6 +34,12 @@
 #include "lua.h"
 #include "lauxlib.h"
 
+#if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
+/* lua 5.2 deprecated luaL_register() for luaL_setfuncs()
+ * (this define is valid only when 0 == nup) */
+#define luaL_setfuncs(L, l, nup) luaL_register((L), NULL, (l))
+#endif
+
 #if 0  /* requires access to lua internals (and internal headers) */
 #include "lstate.h"  /* NOTE: not part of public API; reaching into internals */
 #include "lobject.h" /* NOTE: not part of public API; reaching into internals */
@@ -48,7 +54,7 @@ static GCObject *mcdblua_make_gcobj;
 static inline void *
 mcdblua_make_struct(lua_State * const restrict L)
 {
-  #if 0
+  #if 0 /* requires access to lua internals (and internal headers) */
     /* There should be a clean and inexpensive way to validate mcdblua object.
      * The code below requires knowledge of internal lstate.h and lobject.h.
      * First, validate that argument is present and is userdata
@@ -57,9 +63,18 @@ mcdblua_make_struct(lua_State * const restrict L)
     return v!=NULL && (GCObject *)uvalue(L->base)->metatable==mcdblua_make_gcobj
       ? v
       : (void *)luaL_typerror(L, 1, MCDBLUA_MAKE); /* throws exception */
-  #else /* requires access to lua internals (and internal headers) */
+  #elif 0
     /* lua arg checking overhead is expensive compared to rest of mcdblua code*/
     return luaL_checkudata(L, 1, MCDBLUA_MAKE);
+  #else
+    /* methods called via MCDBLUA_MAKE metatable are on obj; skip revalidate */
+   #if 1
+    return lua_touserdata(L, 1);
+   #else /*(excessive paranoia)*/
+    void * const restrict v = lua_touserdata(L, 1);
+    if (v == NULL) luaL_typerror(L, 1, MCDBLUA_MAKE); /* throws exception */
+    return v;
+   #endif
   #endif
 }
 
@@ -98,10 +113,10 @@ mcdblua_make_finish(lua_State * const restrict L)
         rv = 0;
     else {
         lua_pushstring(L, strerror(errno));
-        mcdb_make_destroy(mk);
         rv = 1;
     }
     mcdb_makefn_cleanup(mk);
+    /* skip __gc (mcdblua_make_gc()) since already done above */
     lua_pushnil(L);
     lua_setmetatable(L, -2);
     return rv;
@@ -113,8 +128,6 @@ mcdblua_make_gc(lua_State * const restrict L)
     struct mcdb_make * const restrict mk = mcdblua_make_struct(L);
     mcdb_make_destroy(mk);
     mcdb_makefn_cleanup(mk);
-    lua_pushnil(L);
-    lua_setmetatable(L, -2);
     return 0;
 }
 
@@ -125,6 +138,9 @@ mcdblua_make_tostring(lua_State * const restrict L)
     lua_pushfstring(L, "mcdb_make %p", mk);
     return 1;
 }
+
+static void
+mcdblua_make_init_metatable(lua_State * const restrict L);
 
 static int
 mcdblua_make_init(lua_State * const restrict L)
@@ -138,18 +154,8 @@ mcdblua_make_init(lua_State * const restrict L)
         if (lua_gettop(L) > 2) /*(lua_newuserdata() added element to stack)*/
             mk.st_mode = lua_tonumber(L, 2); /* optional mcdb perm mode */
         memcpy(mklua, &mk, sizeof(struct mcdb_make));
-        luaL_getmetatable(L, MCDBLUA_MAKE);
-
-        lua_pushliteral(L, "__gc");
-        lua_pushcclosure(L, mcdblua_make_gc, 0);
-        lua_rawset(L, -3);
-        lua_pushliteral(L, "__newindex");  /* lua table assignment t[x] = y */
-        lua_pushcclosure(L, mcdblua_make_newindex, 0);
-        lua_rawset(L, -3);
-        lua_pushliteral(L, "__tostring");
-        lua_pushcclosure(L, mcdblua_make_tostring, 0);
-        lua_rawset(L, -3);
-
+        if (luaL_newmetatable(L, MCDBLUA_MAKE))
+            mcdblua_make_init_metatable(L);
         lua_setmetatable(L, -2);
         return 1;
     }
@@ -179,29 +185,29 @@ int
 luaopen_mcdb_make(lua_State * const restrict L)
 {
     lua_newtable(L);
-  #if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
-    luaL_register(L, NULL, mcdblua_make_meta);
-  #else
-    lua_newtable(L);
     luaL_setfuncs(L, mcdblua_make_meta, 0);
-  #endif
-    luaL_newmetatable(L, MCDBLUA_MAKE);
+    return 1;
+}
+
+static void
+mcdblua_make_init_metatable(lua_State * const restrict L)
+{
+    /* caller must have run: luaL_newmetatable(L, MCDBLUA_MAKE); */
+
   #if 0  /* requires access to lua internals (and internal headers) */
     mcdblua_make_gcobj = gcvalue(L->top - 1);
   #endif /* see mcdblua_make_struct() routine */
-  #if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
-    luaL_register(L, MCDBLUA_MAKE, mcdblua_make_methods);
-  #else
+    lua_pushliteral(L, "__index");
     lua_newtable(L);
     luaL_setfuncs(L, mcdblua_make_methods, 0);
-  #endif
-    lua_pushliteral(L, "__metatable");
-    lua_pushvalue(L, -2);
     lua_rawset(L, -3);
-    lua_pushliteral(L, "__index");
-    lua_pushvalue(L, -2);
-    lua_rawset(L, -4);
-    lua_setmetatable(L, -2);
-    lua_pop(L, 1);
-    return 1;
+    lua_pushliteral(L, "__gc");
+    lua_pushcclosure(L, mcdblua_make_gc, 0);
+    lua_rawset(L, -3);
+    lua_pushliteral(L, "__newindex");  /* lua table assignment t[x] = y */
+    lua_pushcclosure(L, mcdblua_make_newindex, 0);
+    lua_rawset(L, -3);
+    lua_pushliteral(L, "__tostring");
+    lua_pushcclosure(L, mcdblua_make_tostring, 0);
+    lua_rawset(L, -3);
 }
