@@ -59,7 +59,7 @@ See PERFORMANCE section below for sample usage.
 
 =head2 Creating an mcdb constant database
 
-A B<mcdb> file is created in three steps.  First call
+An B<mcdb> file is created in three steps.  First call
 C<new MCDB_File::Make($fname)>, where C<$fname> is the name of the
 database file to be created.  Secondly, call the C<insert> method
 once for each (I<key>, I<value>) pair.  Finally, call the C<finish>
@@ -72,8 +72,8 @@ pairs. This can be significantly faster because there is less crossing
 over the bridge from perl to C code. One simple way to do this is to pass
 in an entire hash, as in: C<< $mcdb_make->insert(%hash); >>.
 
-A simpler interface to B<cdb> file creation is provided by
-C<MCDB_File::Make::create $fname, %t>.  This creates a B<mcdb> file named
+A simpler interface to B<mcdb> file creation is provided by
+C<MCDB_File::Make::create $fname, %t>.  This creates an B<mcdb> file named
 C<$fname> containing the contents of C<%t>.
 
 =head1 EXAMPLES
@@ -131,12 +131,12 @@ Blank lines and lines beginning with B<#> are skipped.
     }
     print "\n";
 
-5. Although a B<mcdb> file is constant, you can simulate updating it
+5. Although an B<mcdb> file is constant, you can simulate updating it
 in Perl.  This is an expensive operation, as you have to create a
-new database, and copy into it everything that's unchanged from the
+new database, and copy into it everything that is unchanged from the
 old database.  (As compensation, the update does not affect database
-readers.  The old database is available for them, till the moment the
-new one is C<finish>ed.)
+readers.  The old database is available for them, up until the moment
+the new one is C<finish>ed.)
 
     use MCDB_File ();
 
@@ -168,7 +168,7 @@ new one is C<finish>ed.)
 Most users can ignore this section.
 
 An B<mcdb> file can contain repeated keys.  If the C<insert> method is
-called more than once with the same key during the creation of a B<mcdb>
+called more than once with the same key during the creation of an B<mcdb>
 file, that key will be repeated.
 
 Here's an example.
