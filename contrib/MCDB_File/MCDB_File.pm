@@ -10,7 +10,7 @@ use Exporter ();
 
 @ISA = qw(Exporter DynaLoader);
 
-$VERSION = '0.0107';
+$VERSION = '0.0108';
 
 =head1 NAME
 
@@ -255,6 +255,25 @@ to filesystem, or you have run out of disk space.
 
 =head1 PERFORMANCE
 
+The MCDB_File C<madvise> method is a thin wrapper around the C library
+C<posix_madvise> and MCDB_File provides constants: C<MADV_NORMAL>
+C<MADV_RANDOM> C<MADV_SEQUENTIAL> C<MADV_WILLNEED> and C<MADV_DONTNEED>.
+
+For very large B<mcdb> files on which more than a few queries will be made,
+it is recommended that C<madvise> with C<MCDB_File::MADV_RANDOM> be called
+once on the object returned by C<tie>.
+
+  my $mcdb = tie %h, MCDB_File, "$file.mcdb" or die ...;
+  $mcdb->madvise(MCDB_File::MADV_RANDOM);
+  $value = $mcdb->find('key'); # slightly faster than $value = $h{key};
+  # ... (lots more queries)
+  undef $mcdb;
+  untie %h;
+
+For iterating over very large B<mcdb> files, it is recommended that
+C<madvise> with C<MCDB_File::MADV_SEQUENTIAL> be called once on the
+object returned by C<tie>.
+
 Sometimes you need to get the most performance possible out of a
 library. Rumour has it that perl's tie() interface is slow. In order
 to get around that you can use MCDB_File in an object oriented
@@ -285,6 +304,15 @@ gstrauss  <code () gluelogic.com>
 =cut
 
 bootstrap MCDB_File $VERSION;
+
+# (not worth the mess of doing this in .xs; define the values here)
+use constant {
+  MADV_NORMAL     => 0, # MCDB_MADV_NORMAL
+  MADV_RANDOM     => 1, # MCDB_MADV_RANDOM
+  MADV_SEQUENTIAL => 2, # MCDB_MADV_SEQUENTIAL
+  MADV_WILLNEED   => 3, # MCDB_MADV_WILLNEED
+  MADV_DONTNEED   => 4  # MCDB_MADV_DONTNEED
+};
 
 sub CLEAR {
 	croak "Modification of an MCDB_File attempted"

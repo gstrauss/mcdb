@@ -77,6 +77,8 @@ mcdbxs_make_destroy (struct mcdb_make * const restrict mk)
     Safefree(mk);
 }
 
+#define mcdbxs_madvise(this,advice)  mcdb_mmap_madvise((this)->m.map,(advice))
+
 
 MODULE = MCDB_File		PACKAGE = MCDB_File	PREFIX = mcdbxs_
 
@@ -232,6 +234,11 @@ mcdbxs_multi_get(this, k)
                     mcdbxs_svcp(mcdb_dataptr(&this->m),mcdb_datalen(&this->m)));
   OUTPUT:
     RETVAL
+
+void
+mcdbxs_madvise(this, advice)
+    struct mcdbxs_read * this;
+    int advice;
 
 
 MODULE = MCDB_File	PACKAGE = MCDB_File::Make	PREFIX = mcdbxs_make_

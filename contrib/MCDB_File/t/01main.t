@@ -18,6 +18,7 @@ tie(%h, "MCDB_File", $good_file_db) and pass("Test that good file works");
 
 my $t = tied %h;
 isa_ok($t, "MCDB_File" );
+$t->madvise(MCDB_File::MADV_RANDOM);
 is($t->FETCH('one'), 'Hello', "Test that good file FETCHes right results");
 
 is($h{'one'}, 'Hello', "Test that good file hash access gets right results");
@@ -28,6 +29,7 @@ ok(exists($h{'two'}), "Check exists() on a real entry works");
 
 ok(!exists($h{'three'}), "Check exists() on non-existant entry works");
 
+$t->madvise(MCDB_File::MADV_SEQUENTIAL);
 my @h = sort keys %h;
 is(scalar @h, 2, "keys length == 2");
 is($h[0], 'one', "first key right");
