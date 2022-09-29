@@ -25,6 +25,7 @@ m.close
 
 # This block is less an example and more some basic tests exercising methods
 MCDB.open('t.mcdb') do |m|
+  m.madvise(MCDB::MADV_RANDOM)
   pp m.empty?
   pp m.findall('c')
   print %(#{m['c']} #{m.findkey('c')} #{m.findnext} [#{m.findnext}]\n)
@@ -74,6 +75,7 @@ class MCDBex
 
   def MCDBex.dump(file)
     MCDB.open(file) do |m|
+      m.madvise(MCDB::MADV_SEQUENTIAL)
       m.each do |k, d|
         print %(+#{k.length},#{d.length}:#{k}->#{d}\n)
       end

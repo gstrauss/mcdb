@@ -504,6 +504,15 @@ mcdbrb_has_value (const VALUE obj, VALUE value)
 }
 
 static VALUE
+mcdbrb_madvise (const VALUE obj, VALUE v_data)
+{
+    struct mcdb * const restrict m = mcdbrb_Data_Cast_Struct(obj, struct mcdb);
+    int advice = NUM2INT(v_data);
+    mcdb_mmap_madvise(m->map, advice);
+    return Qnil;
+}
+
+static VALUE
 mcdbrb_close (const VALUE obj)
 {
     struct mcdb * const restrict m = mcdbrb_Data_Cast_Struct(obj, struct mcdb);
@@ -711,6 +720,12 @@ Init_mcdb (void)
     rb_define_method(rb_cMCDB, "values",     mcdbrb_values,      0);
     rb_define_method(rb_cMCDB, "index",      mcdbrb_index,       1);
     rb_define_method(rb_cMCDB, "close",      mcdbrb_close,       0);
+    rb_define_method(rb_cMCDB, "madvise",    mcdbrb_madvise,     1);
+    rb_define_const(rb_cMCDB, "MADV_NORMAL",     INT2NUM(MADV_NORMAL));
+    rb_define_const(rb_cMCDB, "MADV_RANDOM",     INT2NUM(MADV_RANDOM));
+    rb_define_const(rb_cMCDB, "MADV_SEQUENTIAL", INT2NUM(MADV_SEQUENTIAL));
+    rb_define_const(rb_cMCDB, "MADV_WILLNEED",   INT2NUM(MADV_WILLNEED));
+    rb_define_const(rb_cMCDB, "MADV_DONTNEED",   INT2NUM(MADV_DONTNEED));
 
     /* Note: use 'index' method to iterate to find key to given value
      * (not providing dbm 'key' method to do same; 'key' too close to 'key?')

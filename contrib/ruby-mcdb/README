@@ -178,6 +178,18 @@ sample.rb has been run under Ruby 1.8.7 and Ruby 1.9.1 on Linux (Fedora Core 14)
     return hash of mcdb data => key
     note: multi-key values are lost, only last key for a value is retained
 
+  obj.madvise(hint)
+    obj.madvise(MCDB::MADV_RANDOM)
+      performance hint to OS before making many queries to a large mcdb
+    obj.madvise(MCDB::MADV_SEQUENTIAL)
+      performance hint to OS before iterating over a large mcdb
+    obj.madvise(MCDB::MADV_NORMAL)
+      performance hint to OS ('man posix_madvise')
+    obj.madvise(MCDB::MADV_WILLNEED)
+      performance hint to OS ('man posix_madvise')
+    obj.madvise(MCDB::MADV_DONTNEED)
+      performance hint to OS ('man posix_madvise')
+
 
   class MCDBmake
   --------------
