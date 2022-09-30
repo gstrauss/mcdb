@@ -118,11 +118,12 @@ mcdbxs_EXISTS(this, k)
     SV * k;
   PREINIT:
     STRLEN klen;
-    char *kp;
+    const char *kp;
   INIT:
     if (!SvOK(k) && (SvGETMAGIC(k), !SvOK(k))) XSRETURN_NO;
   CODE:
-    kp = SvPV(k, klen);
+    kp = SvPV_const(k, klen);
+    if (!kp) XSRETURN_NO;
     RETVAL = mcdb_find(&this->m, kp, klen);
   OUTPUT:
     RETVAL
@@ -133,11 +134,12 @@ mcdbxs_find(this, k)
     SV * k;
   PREINIT:
     STRLEN klen;
-    char *kp;
+    const char *kp;
   INIT:
     if (!SvOK(k) && (SvGETMAGIC(k), !SvOK(k))) XSRETURN_UNDEF;
   CODE:
-    kp = SvPV(k, klen);
+    kp = SvPV_const(k, klen);
+    if (!kp) XSRETURN_UNDEF;
     if (mcdb_find(&this->m, kp, klen))
         RETVAL = mcdbxs_svcp(mcdb_dataptr(&this->m), mcdb_datalen(&this->m));
     else
@@ -151,11 +153,12 @@ mcdbxs_FETCH(this, k)
     SV * k;
   PREINIT:
     STRLEN klen;
-    char *kp;
+    const char *kp;
   INIT:
     if (!SvOK(k) && (SvGETMAGIC(k), !SvOK(k))) XSRETURN_UNDEF;
   CODE:
-    kp = SvPV(k, klen);
+    kp = SvPV_const(k, klen);
+    if (!kp) XSRETURN_UNDEF;
     if (mcdbxs_is_iterkey(&this->iter, kp, klen)) {
         RETVAL = mcdbxs_svcp(mcdb_iter_dataptr(&this->iter),
                              mcdb_iter_datalen(&this->iter));
@@ -221,11 +224,12 @@ mcdbxs_multi_get(this, k)
     SV * k;
   PREINIT:
     STRLEN klen;
-    char *kp;
+    const char *kp;
   INIT:
     if (!SvOK(k) && (SvGETMAGIC(k), !SvOK(k))) XSRETURN_UNDEF;
   CODE:
-    kp = SvPV(k, klen);
+    kp = SvPV_const(k, klen);
+    if (!kp) XSRETURN_UNDEF;
     RETVAL = newAV();   /* might be redundant (see .c generated from .xs) */
     sv_2mortal((SV *)RETVAL);
     if (mcdb_findstart(&this->m, kp, klen))
@@ -251,15 +255,13 @@ mcdbxs_make_insert(mk, ...)
     struct mcdb_make * mk;
   PREINIT:
     SV *k, *v;
-    char *kp, *vp;
+    const char *kp, *vp;
     STRLEN klen, vlen;
     int x;
   PPCODE:
     for (x = 1; x+1 < items; x += 2) {
         k = ST(x); v = ST(x+1);
-        if (   (SvOK(k) || (SvGETMAGIC(k), SvOK(k)))
-            && (SvOK(v) || (SvGETMAGIC(v), SvOK(v)))   ) {
-            kp = SvPV(k, klen); vp = SvPV(v, vlen);
+        if ((kp = SvPV_const(k, klen)) && (vp = SvPV_const(v, vlen))) {
             if (mcdb_make_add(mk, kp, klen, vp, vlen) != 0)
                 croak("MCDB_File::Make::insert: %s", Strerror(errno));
         }
