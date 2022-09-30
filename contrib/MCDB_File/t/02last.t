@@ -8,7 +8,13 @@ my $c = MCDB_File::Make->new('last.mcdb');
 isa_ok($c, 'MCDB_File::Make');
 
 for (1..10) {
-    $c->insert("Key$_" => "Val$_");
+    if ($_ < 10) {
+        $c->insert("Key$_" => "Val$_");
+    }
+    else {
+        #$c->insert(substr("-Key$_-", 1, 5) => substr("-Val$_-", 1, 5));
+        $c->insert("Key$_" => substr("-Val$_-", 1, 5));
+    }
 }
 
 eval { $c->finish; };

@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 120;
+use Test::More tests => 122;
 use MCDB_File;
 
 my $good_file_db = 'good.mcdb';
@@ -20,12 +20,14 @@ my $t = tied %h;
 isa_ok($t, "MCDB_File" );
 $t->madvise(MCDB_File::MADV_RANDOM);
 is($t->FETCH('one'), 'Hello', "Test that good file FETCHes right results");
+ok($t->EXISTS(substr('XoneX', 1, 3)), "Test substr exists (SvGETMAGIC())");
 
 is($h{'one'}, 'Hello', "Test that good file hash access gets right results");
 
 ok(!defined($h{'1'}), "Check defined() non-existant entry works");
 
 ok(exists($h{'two'}), "Check exists() on a real entry works");
+ok(exists($h{substr('XtwoX', 1, 3)}), "Check exists() with substr");
 
 ok(!exists($h{'three'}), "Check exists() on non-existant entry works");
 

@@ -120,7 +120,7 @@ mcdbxs_EXISTS(this, k)
     STRLEN klen;
     char *kp;
   INIT:
-    if (!SvOK(k)) XSRETURN_NO;
+    if (!SvOK(k) && (SvGETMAGIC(k), !SvOK(k))) XSRETURN_NO;
   CODE:
     kp = SvPV(k, klen);
     RETVAL = mcdb_find(&this->m, kp, klen);
@@ -135,7 +135,7 @@ mcdbxs_find(this, k)
     STRLEN klen;
     char *kp;
   INIT:
-    if (!SvOK(k)) XSRETURN_UNDEF;
+    if (!SvOK(k) && (SvGETMAGIC(k), !SvOK(k))) XSRETURN_UNDEF;
   CODE:
     kp = SvPV(k, klen);
     if (mcdb_find(&this->m, kp, klen))
@@ -153,7 +153,7 @@ mcdbxs_FETCH(this, k)
     STRLEN klen;
     char *kp;
   INIT:
-    if (!SvOK(k)) XSRETURN_UNDEF;
+    if (!SvOK(k) && (SvGETMAGIC(k), !SvOK(k))) XSRETURN_UNDEF;
   CODE:
     kp = SvPV(k, klen);
     if (mcdbxs_is_iterkey(&this->iter, kp, klen)) {
@@ -196,7 +196,7 @@ mcdbxs_NEXTKEY(this, k)
     struct mcdbxs_read * this;
     SV * k;
   INIT:
-    if (!SvOK(k)) XSRETURN_UNDEF;
+    if (!k) XSRETURN_UNDEF; /*(avoid unused arg warning)*/
   CODE:
     RETVAL = mcdbxs_nextkey(this);
     if (!RETVAL) XSRETURN_UNDEF;
@@ -223,7 +223,7 @@ mcdbxs_multi_get(this, k)
     STRLEN klen;
     char *kp;
   INIT:
-    if (!SvOK(k)) XSRETURN_UNDEF;
+    if (!SvOK(k) && (SvGETMAGIC(k), !SvOK(k))) XSRETURN_UNDEF;
   CODE:
     kp = SvPV(k, klen);
     RETVAL = newAV();   /* might be redundant (see .c generated from .xs) */
@@ -257,7 +257,8 @@ mcdbxs_make_insert(mk, ...)
   PPCODE:
     for (x = 1; x+1 < items; x += 2) {
         k = ST(x); v = ST(x+1);
-        if (SvOK(k) && SvOK(v)) {
+        if (   (SvOK(k) || (SvGETMAGIC(k), SvOK(k)))
+            && (SvOK(v) || (SvGETMAGIC(v), SvOK(v)))   ) {
             kp = SvPV(k, klen); vp = SvPV(v, vlen);
             if (mcdb_make_add(mk, kp, klen, vp, vlen) != 0)
                 croak("MCDB_File::Make::insert: %s", Strerror(errno));
@@ -265,6 +266,9 @@ mcdbxs_make_insert(mk, ...)
         else
             croak("MCDB_File::Make::insert: invalid argument");
     }
+    if (x != items)
+        croak("MCDB_File::Make::insert: odd num items; "
+              "key,value pairs required");
 
 struct mcdb_make *
 mcdbxs_make_new(CLASS, fname, ...)
