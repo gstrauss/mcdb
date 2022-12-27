@@ -289,11 +289,11 @@ HP-UX
 -----
 Compilation requires newer version of gcc (e.g. 4.6.1)
 
--DFORTIFY_SOURCE=2
+-D_FORTIFY_SOURCE=2
 ------------------
 infinite loop in 'mcdbctl make xxx.mcdb -' reading from stdin on Fedora 16
-with clang 2.9 and mcdb_makefmt.c compiled with -DFORTIFY_SOURCE=2
-(workaround is to compile mcdb_makefmt.c without -DFORTIFY_SOURCE=2)
+with clang 2.9 and mcdb_makefmt.c compiled with -D_FORTIFY_SOURCE=2
+(workaround is to compile mcdb_makefmt.c without -D_FORTIFY_SOURCE=2)
 
 
 
